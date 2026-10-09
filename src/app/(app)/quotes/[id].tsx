@@ -30,9 +30,11 @@ export default function QuoteDetail() {
   const setStatus = (status: string) => run(async () => { const { error } = await supabase.from('quotes').update({ status }).eq('id', id); if (error) throw error; });
 
   const convert = run(async () => {
-    const { data, error } = await supabase.rpc('convert_quote_to_job', { p_quote: id, p_start: null });
+    const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(9, 0, 0, 0);
+    const { data, error } = await supabase.rpc('convert_quote_to_job', { p_quote: id, p_start: start.toISOString() });
     if (error) throw error;
-    router.push({ pathname: '/jobs/edit', params: { id: data } });
+    // Let them schedule + crew the new job, then land on its detail screen.
+    router.push({ pathname: '/jobs/edit', params: { id: data, then: 'detail' } });
   });
 
   return (

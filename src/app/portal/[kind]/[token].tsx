@@ -39,7 +39,7 @@ export default function Portal() {
     const { data: ok, error } = await supabase.rpc('accept_public_quote', { p_token: token, p_name: name });
     if (error) return setError(error.message);
     if (!ok) return setError('This quote can no longer be accepted. It may have expired.');
-    setMsg(`Thank you, ${name}! ${d.org.name} has been notified and will confirm your appointment.`);
+    setMsg(`Thank you, ${name}! Your approval has been sent to ${d.org.name}. They'll be in touch to confirm scheduling.`);
     q.reload();
   };
 

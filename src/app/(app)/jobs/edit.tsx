@@ -12,7 +12,7 @@ import { colors, radius, space } from '../../../lib/theme';
 import type { LineItem } from '../../../lib/types';
 
 export default function JobEdit() {
-  const params = useLocalSearchParams<{ id?: string; customer_id?: string; aircraft_id?: string; start?: string }>();
+  const params = useLocalSearchParams<{ id?: string; customer_id?: string; aircraft_id?: string; start?: string; then?: 'detail' }>();
   const { id } = params;
   const { org, orgId, session } = useOrg();
   const lk = useLookups();
@@ -102,7 +102,8 @@ export default function JobEdit() {
         const { error } = await supabase.from('job_assignments').insert(assignees.map((user_id) => ({ job_id: jobId, user_id, org_id: orgId })));
         if (error) throw error;
       }
-      if (id) router.back();
+      if (id && params.then === 'detail') router.replace(`/jobs/${id}`);
+      else if (id) router.back();
       else router.replace(`/jobs/${jobId}`);
     } catch (e: any) {
       setError(friendlyError(e.message));

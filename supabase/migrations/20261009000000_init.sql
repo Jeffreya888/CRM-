@@ -1175,7 +1175,11 @@ begin
   if coalesce(length(trim(p_name)), 0) < 2 then raise exception 'Please type your full name to accept'; end if;
   update quotes set status = 'accepted', accepted_at = now(), accepted_name = trim(p_name)
     where public_token = p_token and status in ('sent','viewed') and valid_until >= current_date;
-  return found;
+  if not found then return false; end if;
+  insert into activities (org_id, customer_id, kind, body)
+    select org_id, customer_id, 'system', 'Quote ' || number || ' accepted online by ' || trim(p_name)
+    from quotes where public_token = p_token;
+  return true;
 end;
 $$;
 

@@ -35,7 +35,7 @@ export default function InvoiceDetail() {
   const cur = org.currency;
   const run = (fn: () => Promise<unknown>) => async () => { try { await fn(); q.reload(); } catch (e: any) { notify('Error', friendlyError(e.message)); } };
   const update = (patch: Record<string, unknown>) => run(async () => { const { error } = await supabase.from('invoices').update(patch).eq('id', id); if (error) throw error; });
-  const open = Number(d.balance) > 0 && !['void', 'draft'].includes(d.status);
+  const open = Number(d.balance) > 0 && d.status !== 'void';
 
   const collectCard = run(async () => {
     if (!org.stripe_charges_enabled) {

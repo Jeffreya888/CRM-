@@ -170,13 +170,15 @@ end $$;
 -- ---------- Public document access by token (anon) --------------------------
 reset role;
 create temp table tok as select public_token from invoices;
-grant select on tok to anon;
+create temp table qtok as select public_token from quotes;
+grant select on tok, qtok to anon;
 set role anon;
 do $$ declare d jsonb; begin
   d := public.get_public_document('invoice', (select public_token from tok));
   assert d->'doc'->>'number' = 'INV-1001';
   assert d->'doc' ? 'public_token' = false;
   assert public.get_public_document('invoice', 'nope') is null;
+  assert public.accept_public_quote((select public_token from qtok), 'Pat Pilot') = false, 'already-accepted quote cannot be re-accepted';
 end $$;
 
 -- ---------- Paywall: expired trial blocks new records -----------------------
