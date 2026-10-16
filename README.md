@@ -1,4 +1,4 @@
-# SkyShine — CRM for aircraft detailing companies
+# Flight Ready — CRM for aircraft detailing companies
 
 A multi-tenant CRM + field-service app for aircraft detailers, built to ship on
 the **Apple App Store** (and Google Play + web) and sold as a subscription to
@@ -9,7 +9,7 @@ other detailing companies.
 - **Revenue:** App Store / Play subscriptions via RevenueCat, plus a platform fee on
   every invoice your customers' customers pay by card (Stripe Connect)
 
-> "SkyShine" is a placeholder name. Rename it in `src/lib/config.ts` and `app.json`
+> The app name lives in `src/lib/config.ts` and `app.json`
 > (`name`, `slug`, `scheme`, `bundleIdentifier`, `package`).
 
 ---
@@ -96,7 +96,7 @@ date picker need a **development build**: `npx eas-cli@latest build --profile de
    npx supabase@2 link --project-ref YOUR_REF
    npx supabase@2 db push
    ```
-3. Auth → URL configuration: add `skyshine://` and your portal URL to redirect URLs.
+3. Auth → URL configuration: add `flightready://` and your portal URL to redirect URLs.
 4. Deploy functions and secrets:
    ```bash
    cp supabase/functions/.env.example supabase/functions/.env   # fill in
@@ -105,7 +105,7 @@ date picker need a **development build**: `npx eas-cli@latest build --profile de
    ```
 5. Schedule the daily job (SQL editor; enable the `pg_cron` and `pg_net` extensions first):
    ```sql
-   select cron.schedule('skyshine-daily', '0 11 * * *', $$
+   select cron.schedule('flightready-daily', '0 11 * * *', $$
      select net.http_post(
        url := 'https://YOUR_REF.functions.supabase.co/daily-jobs',
        headers := jsonb_build_object('Authorization', 'Bearer YOUR_CRON_SECRET')
@@ -131,9 +131,9 @@ Create a Resend account, verify your domain, and set `RESEND_API_KEY` and `EMAIL
 ### 5. RevenueCat (subscriptions)
 
 1. In **App Store Connect**, create the app, then a subscription group
-   "SkyShine Plans" with six auto-renewable products. **Product ids must contain
-   `solo`, `team` or `fleet`**, e.g. `skyshine_solo_monthly`, `skyshine_solo_annual`,
-   `skyshine_team_monthly`, … Add an introductory offer (e.g. 1 week free) if you like.
+   "Flight Ready Plans" with six auto-renewable products. **Product ids must contain
+   `solo`, `team` or `fleet`**, e.g. `flightready_solo_monthly`, `flightready_solo_annual`,
+   `flightready_team_monthly`, … Add an introductory offer (e.g. 1 week free) if you like.
 2. In **RevenueCat**: add the iOS app (upload the App Store Connect API key + in-app
    purchase key), create entitlements `solo`, `team`, `fleet`, attach the products,
    and create a **current offering** with monthly and annual packages for each.

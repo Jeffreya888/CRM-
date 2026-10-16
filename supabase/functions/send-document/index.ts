@@ -1,6 +1,6 @@
 // Emails a quote or invoice to the customer with a link to the online portal
 // (view, accept, pay). Uses Resend (https://resend.com) — set RESEND_API_KEY
-// and EMAIL_FROM (e.g. "SkyShine <billing@yourdomain.com>").
+// and EMAIL_FROM (e.g. "Flight Ready <billing@yourdomain.com>").
 //
 // POST { kind: "quote" | "invoice", id, to?, message? }
 import { adminClient, callerRole } from "../_shared/clients.ts";

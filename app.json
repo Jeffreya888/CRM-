@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "SkyShine",
-    "slug": "skyshine-crm",
-    "scheme": "skyshine",
+    "name": "Flight Ready",
+    "slug": "flight-ready",
+    "scheme": "flightready",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -13,18 +13,18 @@
       "backgroundColor": "#131926"
     },
     "ios": {
-      "bundleIdentifier": "com.yourcompany.skyshine",
+      "bundleIdentifier": "com.flightready.app",
       "buildNumber": "1",
       "supportsTablet": true,
       "config": { "usesNonExemptEncryption": false },
       "infoPlist": {
-        "NSCameraUsageDescription": "SkyShine uses the camera to take before, after and damage photos of aircraft on each job.",
-        "NSPhotoLibraryUsageDescription": "SkyShine lets you attach existing photos to jobs and aircraft profiles.",
+        "NSCameraUsageDescription": "Flight Ready uses the camera to take before, after and damage photos of aircraft on each job.",
+        "NSPhotoLibraryUsageDescription": "Flight Ready lets you attach existing photos to jobs and aircraft profiles.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.yourcompany.skyshine",
+      "package": "com.flightready.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#131926",
@@ -47,8 +47,8 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "SkyShine uses the camera to take before, after and damage photos of aircraft on each job.",
-          "photosPermission": "SkyShine lets you attach existing photos to jobs and aircraft profiles."
+          "cameraPermission": "Flight Ready uses the camera to take before, after and damage photos of aircraft on each job.",
+          "photosPermission": "Flight Ready lets you attach existing photos to jobs and aircraft profiles."
         }
       ],
       ["expo-notifications", { "color": "#4698E1" }],

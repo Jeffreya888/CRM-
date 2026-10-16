@@ -1,5 +1,5 @@
 -- =============================================================================
--- SkyShine CRM — multi-tenant schema for aircraft detailing businesses.
+-- Flight Ready CRM — multi-tenant schema for aircraft detailing businesses.
 --
 -- Every business row carries org_id. Row Level Security limits each user to the
 -- organizations they belong to, and role checks hide financial data from
