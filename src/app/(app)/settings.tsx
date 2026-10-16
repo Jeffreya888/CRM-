@@ -108,7 +108,7 @@ export default function Settings() {
               <Badge label={org.stripe_charges_enabled ? 'live' : 'off'} tone={org.stripe_charges_enabled ? 'success' : 'neutral'} />
             </Row>
             <T variant="small" style={{ marginTop: 4 }}>
-              Customers pay invoices online and funds go straight to your bank. A {((planInfo?.feeBps ?? 150) / 100).toFixed(1)}% platform fee applies on top of Stripe's processing fee.
+              Customers pay invoices online and funds go straight to your bank. A {((planInfo?.feeBps ?? 150) / 100).toFixed(1)}% platform fee applies on top of Stripe&apos;s processing fee.
             </T>
             <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
               {!org.stripe_charges_enabled ? <Button small icon="card-outline" title={org.stripe_account_id ? 'Continue setup' : 'Connect Stripe'} onPress={() => stripe('onboard')} /> : null}

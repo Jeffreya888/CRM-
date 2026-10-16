@@ -1,16 +1,16 @@
 import { addDays, format, isSameDay, startOfWeek } from 'date-fns';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { jobTone, priorityTone } from '../../../components/status';
-import { Badge, Card, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, Row, Screen, T } from '../../../components/ui';
-import { time } from '../../../lib/format';
-import { canSeeMoney } from '../../../lib/plans';
-import { useOrg } from '../../../lib/session';
-import { supabase } from '../../../lib/supabase';
-import { colors, radius, space } from '../../../lib/theme';
-import type { Job } from '../../../lib/types';
-import { useQuery } from '../../../lib/useQuery';
+import { jobTone, priorityTone } from '../../components/status';
+import { Badge, Card, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, Row, Screen, T } from '../../components/ui';
+import { time } from '../../lib/format';
+import { canSeeMoney } from '../../lib/plans';
+import { useOrg } from '../../lib/session';
+import { supabase } from '../../lib/supabase';
+import { colors, radius, space } from '../../lib/theme';
+import type { Job } from '../../lib/types';
+import { useQuery } from '../../lib/useQuery';
 
 /** Week view with day strip; technicians can filter to "my jobs". */
 export default function Schedule() {
@@ -45,6 +45,7 @@ export default function Schedule() {
   return (
     <View style={{ flex: 1 }}>
       <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
+        <Stack.Screen options={{ title: 'Schedule' }} />
         <Row style={{ justifyContent: 'space-between' }}>
           <IconButton icon="chevron-back" onPress={() => shift(-1)} label="Previous week" />
           <Pressable onPress={() => { const ws = startOfWeek(new Date(), { weekStartsOn: 1 }); setWeekStart(ws); setDay(new Date()); }}>
@@ -59,7 +60,7 @@ export default function Schedule() {
             return (
               <Pressable key={d.toISOString()} onPress={() => setDay(d)}
                 style={{ width: 52, paddingVertical: 8, borderRadius: radius.md, alignItems: 'center', backgroundColor: active ? colors.primary : colors.card }}>
-                <T variant="small" style={{ color: active ? '#C7D2FE' : colors.textMuted }}>{format(d, 'EEE')}</T>
+                <T variant="small" style={{ color: active ? 'rgba(255,255,255,0.75)' : colors.textMuted }}>{format(d, 'EEE')}</T>
                 <T variant="h3" style={{ color: active ? colors.white : colors.text }}>{format(d, 'd')}</T>
                 <View style={{ height: 6, flexDirection: 'row', gap: 2, marginTop: 2 }}>
                   {Array.from({ length: Math.min(count, 4) }).map((_, i) => (
@@ -103,7 +104,7 @@ export default function Schedule() {
           ))
         )}
       </Screen>
-      {canSeeMoney(role) ? <Fab onPress={() => router.push({ pathname: '/jobs/edit', params: { start: (() => { const d = new Date(day); d.setHours(9, 0, 0, 0); return d.toISOString(); })() } })} label="New job" /> : null}
+      {canSeeMoney(role) ? <Fab onPress={() => router.push({ pathname: '/jobs/new', params: { start: (() => { const d = new Date(day); d.setHours(9, 0, 0, 0); return d.toISOString(); })() } })} label="New job" /> : null}
     </View>
   );
 }

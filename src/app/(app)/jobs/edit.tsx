@@ -16,20 +16,20 @@ export default function JobEdit() {
   const { id } = params;
   const { org, orgId, session } = useOrg();
   const lk = useLookups();
-  const [values, setValues] = useState<FormValues | null>(null);
+  const [values, setValues] = useState<FormValues | null>(() => {
+    if (id) return null;
+    const start = params.start ? new Date(params.start) : (() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; })();
+    return {
+      customer_id: params.customer_id || null, aircraft_id: params.aircraft_id || null, status: 'scheduled', priority: 'normal',
+      scheduled_start: start.toISOString(), scheduled_end: new Date(start.getTime() + 4 * 3600e3).toISOString(), weather_sensitive: false,
+    };
+  });
   const [items, setItems] = useState<LineItem[]>([]);
   const [assignees, setAssignees] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) {
-      const start = params.start ? new Date(params.start) : (() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; })();
-      setValues({
-        customer_id: params.customer_id || null, aircraft_id: params.aircraft_id || null, status: 'scheduled', priority: 'normal',
-        scheduled_start: start.toISOString(), scheduled_end: new Date(start.getTime() + 4 * 3600e3).toISOString(), weather_sensitive: false,
-      });
-      return;
-    }
+    if (!id) return;
     Promise.all([
       supabase.from('jobs').select('*').eq('id', id).single(),
       supabase.from('job_items').select('*').eq('job_id', id).order('sort_order'),
@@ -39,13 +39,10 @@ export default function JobEdit() {
       setItems((i.data ?? []).map((x: any) => ({ ...x, quantity: Number(x.quantity), unit_price: Number(x.unit_price) })));
       setAssignees((a.data ?? []).map((x) => x.user_id));
     });
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id]);
 
   // Default location from the aircraft's home base or customer's usual FBO.
   const aircraft = useMemo(() => lk.aircraft.find((a) => a.id === values?.aircraft_id) ?? null, [lk.aircraft, values?.aircraft_id]);
-  useEffect(() => {
-    if (!id && aircraft?.home_location_id && values && !values.location_id) setValues((v) => ({ ...v!, location_id: aircraft.home_location_id }));
-  }, [aircraft?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!values || lk.loading) return <Loading />;
 
@@ -114,7 +111,13 @@ export default function JobEdit() {
     <Screen footer={<Button title={id ? 'Save job' : 'Create job'} onPress={save} />}>
       <Stack.Screen options={{ title: id ? 'Edit job' : 'New job' }} />
       <ErrorBanner message={error} />
-      <FormFields fields={fields.slice(0, 9)} values={values} setValue={(k, v) => setValues((s) => ({ ...s!, [k]: v, ...(k === 'customer_id' ? { aircraft_id: null } : {}) }))} />
+      <FormFields fields={fields.slice(0, 9)} values={values} setValue={(k, v) => setValues((s) => {
+        const next: FormValues = { ...s!, [k]: v, ...(k === 'customer_id' ? { aircraft_id: null } : {}) };
+        // Default the location to the aircraft's home base.
+        const home = k === 'aircraft_id' ? lk.aircraft.find((a) => a.id === v)?.home_location_id : null;
+        if (home && !next.location_id) next.location_id = home;
+        return next;
+      })} />
       <Section title="Crew">
         <Row style={{ flexWrap: 'wrap' }}>
           {lk.members.map((m) => {

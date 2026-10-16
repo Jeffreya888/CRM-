@@ -37,6 +37,12 @@ export function LineItemsEditor({
   const totals = computeTotals(items, discount, taxRate);
   const update = (i: number, patch: Partial<LineItem>) => onChange(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
 
+  const addLine = (line: LineItem) => {
+    onChange([...items, line]);
+    setPicker(false);
+    setQ('');
+  };
+
   const addService = (s: Service) => {
     onChange([
       ...items,
@@ -116,7 +122,20 @@ export function LineItemsEditor({
           </Row>
           <View style={{ paddingHorizontal: space.lg }}><SearchBar value={q} onChange={setQ} placeholder="Search services" /></View>
           <ScrollView contentContainerStyle={{ padding: space.lg }}>
-            {visible.map((s) => (
+            {visible.map((s) => s.pricing_tiers?.length ? (
+              // Tiered services: one choice per tier (e.g. Small / Medium / Large interior).
+              s.pricing_tiers.map((t, i) => (
+                <Card key={`${s.id}-${i}`} onPress={() => addLine({ service_id: s.id, description: `${s.name} (${t.name})`, quantity: 1, unit_price: Number(t.price), taxable: s.taxable })} style={{ padding: space.md }}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <T style={{ fontWeight: '600' }}>{s.name} · {t.name}</T>
+                      {t.detail ? <T variant="small">{t.detail}</T> : null}
+                    </View>
+                    <T variant="money">{money(t.price, currency)}</T>
+                  </Row>
+                </Card>
+              ))
+            ) : (
               <Card key={s.id} onPress={() => addService(s)} style={{ padding: space.md }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>

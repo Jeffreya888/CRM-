@@ -46,3 +46,17 @@ test('plan logic', () => {
   assert.equal(hasFeature('expired', 'reminders'), false);
   assert.equal(trialDaysLeft({ plan: 'trial', trial_ends_at: '2026-10-23T12:00:00Z' }, now), 14);
 });
+
+test('aircraft class guessing', async () => {
+  const { guessCategory } = await import('./pricing.ts');
+  assert.equal(guessCategory('Cessna 172 Skyhawk'), 'piston_single');
+  assert.equal(guessCategory('Cessna Citation CJ4'), 'light_jet');
+  assert.equal(guessCategory('Gulfstream G650'), 'large_jet');
+  assert.equal(guessCategory('Gulfstream G280'), 'super_midsize_jet');
+  assert.equal(guessCategory('Beechcraft King Air 350'), 'turboprop');
+  assert.equal(guessCategory('Cirrus SF50 Vision Jet'), 'very_light_jet');
+  assert.equal(guessCategory('Piper PA-28 Cherokee'), 'piston_single');
+  assert.equal(guessCategory('Beechcraft Baron 58'), 'piston_twin');
+  assert.equal(guessCategory('Bell 407'), 'helicopter');
+  assert.equal(guessCategory('Some Homebuilt'), 'other');
+});

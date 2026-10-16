@@ -6,11 +6,11 @@
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B3D91"
+      "backgroundColor": "#131926"
     },
     "ios": {
       "bundleIdentifier": "com.yourcompany.skyshine",
@@ -27,7 +27,7 @@
       "package": "com.yourcompany.skyshine",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0B3D91",
+        "backgroundColor": "#131926",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -51,7 +51,7 @@
           "photosPermission": "SkyShine lets you attach existing photos to jobs and aircraft profiles."
         }
       ],
-      ["expo-notifications", { "color": "#0B3D91" }],
+      ["expo-notifications", { "color": "#4698E1" }],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

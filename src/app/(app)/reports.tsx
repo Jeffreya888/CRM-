@@ -59,7 +59,7 @@ function MonthBars({ rows }: { rows: { month: string; revenue: number }[] }) {
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 140, gap: 2, borderBottomWidth: 1, borderBottomColor: colors.border }}>
         {rows.map((r) => (
           <Pressable key={r.month} onPress={() => setSel(r.month)} style={{ flex: 1, height: '100%', justifyContent: 'flex-end' }} accessibilityLabel={`${r.month}: ${money(r.revenue)}`}>
-            <View style={{ height: `${Math.max((Number(r.revenue) / max) * 100, 1)}%`, backgroundColor: r.month === active.month ? colors.primary : '#9DB3DB', borderTopLeftRadius: 4, borderTopRightRadius: 4 }} />
+            <View style={{ height: `${Math.max((Number(r.revenue) / max) * 100, 1)}%`, backgroundColor: r.month === active.month ? colors.primary : colors.primarySoft, borderTopLeftRadius: 4, borderTopRightRadius: 4 }} />
           </Pressable>
         ))}
       </View>

@@ -7,13 +7,13 @@ import { Card, ErrorBanner, Ionicons, T } from './ui';
 
 export function AuthShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: space.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', marginBottom: space.xl }}>
-            <Ionicons name="airplane" size={48} color={colors.accent} />
+            <Ionicons name="airplane" size={48} color={colors.primary} />
             <T variant="h1" style={{ color: colors.white, marginTop: space.sm }}>{APP_NAME}</T>
-            <T style={{ color: '#C7D2FE' }}>{APP_TAGLINE}</T>
+            <T variant="muted">{APP_TAGLINE}</T>
           </View>
           <Card style={{ maxWidth: 440, width: '100%', alignSelf: 'center' }}>
             {!isConfigured ? (

@@ -80,3 +80,46 @@ export function computeTotals(items: Pick<LineItem, 'quantity' | 'unit_price' | 
   const tax = round2(taxable * (Number(taxRate) || 0));
   return { subtotal: round2(subtotal), discount: round2(d), taxable: round2(taxable), tax, total: round2(subtotal - d + tax) };
 }
+
+/** "4-6 hours", "2 hours", or null. */
+export function hoursLabel(min: number | null | undefined, max: number | null | undefined): string | null {
+  const a = Number(min) || 0;
+  const b = Number(max) || 0;
+  if (!a && !b) return null;
+  const fmt = (n: number) => String(+n.toFixed(1));
+  if (a && b && b > a) return `${fmt(a)}-${fmt(b)} hours`;
+  const one = a || b;
+  return `${fmt(one)} hour${one === 1 ? '' : 's'}`;
+}
+
+/** Headline price for list cards: a dollar figure, or a rate when it depends on the aircraft. */
+export function headlinePrice(s: PriceableService & { pricing_tiers?: { price: number }[] }): string {
+  const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+  const tiers = (s.pricing_tiers ?? []).map((t) => Number(t.price)).filter((n) => n > 0);
+  if (tiers.length) return tiers.length > 1 ? `From ${usd(Math.min(...tiers))}` : usd(tiers[0]!);
+  if (s.pricing_method === 'per_foot') return `${usd(s.price_per_foot)}/ft`;
+  if (s.pricing_method === 'hourly') return `${usd(s.hourly_rate)}/hr`;
+  if (s.pricing_method === 'per_category') {
+    const ps = Object.values(s.category_prices ?? {}).map(Number).filter((n) => n > 0);
+    return ps.length ? `From ${usd(Math.min(...ps))}` : usd(s.base_price);
+  }
+  return usd(s.base_price);
+}
+
+// Keyword → class for quick aircraft entry ("Cessna 172", "Citation CJ4", "G650").
+const CLASS_HINTS: [RegExp, AircraftCategory][] = [
+  [/\b(r22|r44|r66|as350|h125|h130|h135|h145|bell|robinson|sikorsky|s-?76|aw1(09|39)|ec1(30|35|45)|helicopter)\b/i, 'helicopter'],
+  [/\b(737|bbj|a3[12]\d|acj|lineage|767|777|787)\b/i, 'airliner'],
+  [/\b(g[- ]?(iv|v|450|500|550|600|650|700|800)|gulfstream (iv|v|g[4-8])|global|falcon (7x|8x|900|2000|6x|10x)|challenger (6\d\d)|legacy (500|600|650))\b/i, 'large_jet'],
+  [/\b(challenger (3[05]0)|citation (x|sovereign|longitude)|g280|praetor|falcon 50|hawker 4000|legacy 450)\b/i, 'super_midsize_jet'],
+  [/\b(citation (xls|excel|latitude|vii|iii|vi)|hawker (800|850|900)|learjet (60|75)|lear(jet)? 6\d|g150|g200|praetor 500)\b/i, 'midsize_jet'],
+  [/\b(phenom 100|hondajet|citation (m2|mustang)|eclipse|vision ?jet|sf50|cj1|pc-?24 lite)\b/i, 'very_light_jet'],
+  [/\b(citation|cj[234]|cj3\+|phenom 300|learjet|lear|premier|pc-?24|beechjet|hawker 400)\b/i, 'light_jet'],
+  [/\b(king ?air|pc-?12|tbm|caravan|pilatus|meridian|m600|kodiak|piaggio|avanti|conquest|cheyenne|commander 69|air tractor|dash ?8|atr)\b/i, 'turboprop'],
+  [/\b(baron|seneca|aztec|navajo|seminole|twin comanche|310|340|414|421|da42|da62|duchess|travel air)\b/i, 'piston_twin'],
+  [/\b(cessna|piper|cirrus|sr2[02]|bonanza|mooney|diamond|da40|cub|cherokee|archer|warrior|skyhawk|172|182|152|150|206|210|arrow|grumman|beech)\b/i, 'piston_single'],
+];
+
+export function guessCategory(type: string): AircraftCategory {
+  return CLASS_HINTS.find(([re]) => re.test(type))?.[1] ?? 'other';
+}

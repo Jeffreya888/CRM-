@@ -35,3 +35,21 @@ export async function signedUrls(paths: string[], expiresIn = 3600): Promise<Rec
 export async function removeFile(path: string) {
   await supabase.storage.from(BUCKET).remove([path]);
 }
+
+/** Uploads any local file (video, PDF…) and returns its storage path. */
+export async function uploadFile(orgId: string, folder: string, uri: string, contentType: string, ext: string): Promise<string> {
+  const body = await (await fetch(uri)).arrayBuffer();
+  const path = `${orgId}/${folder}/${randomUUID()}.${ext.replace(/^\./, '') || 'bin'}`;
+  const { error } = await supabase.storage.from(BUCKET).upload(path, body, { contentType });
+  if (error) throw new Error(error.message.includes('exceeded') || error.message.includes('too large') ? 'File is too large. For long videos, paste a YouTube or Vimeo link instead.' : error.message);
+  return path;
+}
+
+/** Picks a video from the library. */
+export async function pickVideo(): Promise<{ uri: string; mime: string; ext: string; durationMin: number | null } | null> {
+  const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], quality: 1 });
+  if (res.canceled || !res.assets?.[0]) return null;
+  const a = res.assets[0];
+  const ext = (a.fileName?.split('.').pop() ?? a.mimeType?.split('/').pop() ?? 'mp4').toLowerCase();
+  return { uri: a.uri, mime: a.mimeType ?? 'video/mp4', ext, durationMin: a.duration ? Math.max(1, Math.round(a.duration / 60000)) : null };
+}

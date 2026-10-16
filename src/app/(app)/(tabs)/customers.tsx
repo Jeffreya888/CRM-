@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, View } from 'react-native';
-import { Avatar, Badge, EmptyState, ErrorBanner, Fab, ListRow, SearchBar, Segmented } from '../../../components/ui';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Avatar, Badge, EmptyState, ErrorBanner, Fab, ListRow, PageTitle, SearchBar, Segmented } from '../../../components/ui';
 import { initials, titleCase } from '../../../lib/format';
 import { canEdit } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
@@ -29,7 +30,7 @@ export default function Customers() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: colors.bg }}>
       <FlatList
         data={rows}
         keyExtractor={(c) => c.id}
@@ -37,6 +38,7 @@ export default function Customers() {
         onRefresh={q.refresh}
         ListHeaderComponent={
           <View style={{ padding: space.lg, paddingBottom: 0 }}>
+            <PageTitle title="Customers" subtitle={`${(q.data ?? []).length} ${status === 'all' ? 'total' : status === 'lead' ? 'leads' : status}`} />
             <SearchBar value={search} onChange={setSearch} placeholder="Name, company, tail number, tag" />
             <Segmented value={status} onChange={setStatus} options={[
               { value: 'active', label: 'Active' }, { value: 'lead', label: 'Leads' }, { value: 'inactive', label: 'Inactive' }, { value: 'all', label: 'All' },
@@ -46,7 +48,7 @@ export default function Customers() {
         }
         renderItem={({ item: c }) => (
           <ListRow
-            left={<Avatar label={initials(c.name)} />}
+            left={<Avatar label={initials(c.name)} size={42} />}
             title={c.name}
             subtitle={[c.company, titleCase(c.kind)].filter(Boolean).join(' · ')}
             meta={c.aircraft.map((a) => a.tail_number).join(', ') || c.email || c.phone}
@@ -57,7 +59,7 @@ export default function Customers() {
         ListEmptyComponent={q.loading ? null : <EmptyState icon="people-outline" title="No customers yet" body="Add aircraft owners, operators, charter and management companies." />}
         contentContainerStyle={{ paddingBottom: 96 }}
       />
-      {canEdit(role) ? <Fab onPress={() => router.push('/customers/edit')} label="New customer" /> : null}
-    </View>
+      {canEdit(role) ? <Fab onPress={() => router.push('/customers/new')} label="New customer" /> : null}
+    </SafeAreaView>
   );
 }

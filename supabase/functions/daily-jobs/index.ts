@@ -7,19 +7,7 @@
 // POST with header  Authorization: Bearer <CRON_SECRET>
 import { adminClient } from "../_shared/clients.ts";
 import { env, json, safeEqual } from "../_shared/http.ts";
-
-type Push = { to: string; title: string; body: string; data?: Record<string, unknown> };
-
-async function sendPushes(messages: Push[]) {
-  for (let i = 0; i < messages.length; i += 100) {
-    const res = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(messages.slice(i, i + 100).map((m) => ({ ...m, sound: "default" }))),
-    });
-    if (!res.ok) console.error("push failed", res.status, await res.text());
-  }
-}
+import { type Push, sendPushes, tokensFor } from "../_shared/push.ts";
 
 Deno.serve(async (req) => {
   if (!safeEqual(req.headers.get("Authorization") ?? "", `Bearer ${env("CRON_SECRET")}`)) {
@@ -46,9 +34,9 @@ Deno.serve(async (req) => {
     .select("id, number, scheduled_start, aircraft:aircraft(tail_number), location:locations(airport_code, fbo_name), job_assignments(user_id)")
     .gte("scheduled_start", start.toISOString()).lt("scheduled_start", end.toISOString())
     .in("status", ["scheduled"]);
-  const userIds = new Set<string>();
+  const techIds = new Set<string>();
   // deno-lint-ignore no-explicit-any
-  for (const j of (jobs ?? []) as any[]) for (const a of j.job_assignments) userIds.add(a.user_id);
+  for (const j of (jobs ?? []) as any[]) for (const a of j.job_assignments) techIds.add(a.user_id);
 
   // Managers of orgs with newly-due reminders.
   // deno-lint-ignore no-explicit-any
@@ -57,19 +45,18 @@ Deno.serve(async (req) => {
   const { data: managers } = dueOrgs.length
     ? await db.from("memberships").select("user_id, org_id").in("org_id", dueOrgs).in("role", ["owner", "admin", "manager"]).eq("active", true)
     : { data: [] as { user_id: string; org_id: string }[] };
-  for (const m of managers ?? []) userIds.add(m.user_id);
 
-  const { data: tokens } = userIds.size
-    ? await db.from("push_tokens").select("token, user_id").in("user_id", [...userIds])
-    : { data: [] as { token: string; user_id: string }[] };
-  const tokensFor = (uid: string) => (tokens ?? []).filter((t) => t.user_id === uid).map((t) => t.token);
+  // Each person's notification preferences are respected per message type.
+  const jobTokens = await tokensFor(db, [...techIds], "job_assignments");
+  const reminderTokens = await tokensFor(db, [...new Set((managers ?? []).map((m) => m.user_id))], "service_reminders");
+  const pick = (list: { token: string; user_id: string }[], uid: string) => list.filter((t) => t.user_id === uid).map((t) => t.token);
 
   // deno-lint-ignore no-explicit-any
   for (const j of (jobs ?? []) as any[]) {
     const where = j.location?.airport_code ?? j.location?.fbo_name ?? "";
     const time = new Date(j.scheduled_start).toISOString().slice(11, 16);
     for (const a of j.job_assignments) {
-      for (const to of tokensFor(a.user_id)) {
+      for (const to of pick(jobTokens, a.user_id)) {
         messages.push({ to, title: "Tomorrow's job", body: `${j.aircraft?.tail_number ?? j.number} ${where} at ${time} UTC`, data: { url: `/jobs/${j.id}` } });
       }
     }
@@ -77,7 +64,7 @@ Deno.serve(async (req) => {
   for (const m of managers ?? []) {
     const mine = dueRows.filter((r) => r.org_id === m.org_id);
     if (!mine.length) continue;
-    for (const to of tokensFor(m.user_id)) {
+    for (const to of pick(reminderTokens, m.user_id)) {
       messages.push({
         to,
         title: `${mine.length} service reminder${mine.length > 1 ? "s" : ""} due`,

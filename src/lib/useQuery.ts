@@ -3,34 +3,42 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { friendlyError } from './supabase';
 
 /**
- * Minimal async loader: runs on mount and whenever the screen regains focus,
- * so lists stay fresh after editing a record on another screen.
+ * Minimal async loader: runs on mount, whenever `deps` change, and whenever the
+ * screen regains focus, so lists stay fresh after editing a record elsewhere.
  */
 export function useQuery<T>(fn: () => Promise<T>, deps: unknown[] = []) {
+  const key = JSON.stringify(deps);
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const fnRef = useRef(fn);
-  fnRef.current = fn;
+  useEffect(() => { fnRef.current = fn; });
   const mounted = useRef(true);
   useEffect(() => () => { mounted.current = false; }, []);
 
-  const run = useCallback(async (mode: 'load' | 'refresh' | 'silent') => {
-    if (mode === 'refresh') setRefreshing(true);
+  // Every state update here happens after the await, so effects can call it safely.
+  const fetchNow = useCallback(async (forKey?: string) => {
     try {
       const v = await fnRef.current();
       if (mounted.current) { setData(v); setError(null); }
     } catch (e: any) {
       if (mounted.current) setError(friendlyError(e?.message ?? String(e)));
     } finally {
-      if (mounted.current) { setLoading(false); setRefreshing(false); }
+      if (mounted.current) {
+        if (forKey !== undefined) setLoadedKey(forKey);
+        setRefreshing(false);
+      }
     }
   }, []);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setLoading(true); run('load'); }, deps);
-  useFocusEffect(useCallback(() => { run('silent'); }, [run]));
+  useEffect(() => { fetchNow(key); }, [key, fetchNow]);
+  useFocusEffect(useCallback(() => { fetchNow(); }, [fetchNow]));
 
-  return { data, error, loading, refreshing, refresh: () => run('refresh'), reload: () => run('silent'), setData };
+  const refresh = () => { setRefreshing(true); return fetchNow(); };
+
+  return {
+    data, error, loading: loadedKey !== key, refreshing,
+    refresh, reload: () => fetchNow(), setData,
+  };
 }

@@ -20,6 +20,14 @@ do $$ begin
   assert (select count(*) from services) = 12, 'seeded services';
   assert (select plan from organizations) = 'trial', 'starts on trial';
   assert public.effective_plan((select v from ctx where k='alpha')) = 'trial';
+  assert (select est_hours_max from services where name = 'Interior Detail') = 6, 'service extras seeded';
+  assert jsonb_array_length((select pricing_tiers from services where name = 'Interior Detail')) = 3, 'interior tiers seeded';
+  assert array_length((select equipment from services where name = 'Exterior Wash'), 1) = 5, 'equipment seeded';
+end $$;
+insert into training_media (org_id, service_id, kind, title, url, duration_min)
+  select org_id, id, 'video', 'Interior Cleaning Guide', 'https://example.com/v.mp4', 30 from services where name = 'Interior Detail';
+do $$ begin
+  assert (public.dashboard_stats((select v from ctx where k='alpha')) ? 'revenue_week'), 'weekly revenue stat';
 end $$;
 
 -- Customer, aircraft, quote with items → totals computed by trigger.
@@ -124,11 +132,23 @@ do $$ begin
   assert (select count(*) from jobs) = 1, 'tech sees jobs';
   assert (select count(*) from invoices) = 0, 'tech cannot see invoices';
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
+  assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
+  assert (select title from jobs) is not null, 'tech still sees what services the job includes';
   assert (select count(*) from services) = 12, 'tech can read service menu';
   assert (public.dashboard_stats((select v from ctx where k='alpha'))->>'revenue_mtd') is null, 'no revenue for tech';
 end $$;
 update job_checklist_items set done = true where sort_order = 101;
 select public.set_my_display_name('Tina T.');
+insert into training_progress (media_id, user_id, org_id) select id, auth.uid(), org_id from training_media;
+do $$ begin
+  assert (select count(*) from training_media) = 1, 'tech sees training';
+  assert (select count(*) from training_progress) = 1, 'tech records own progress';
+  begin
+    insert into training_media (org_id, kind, title, url) select org_id, 'video', 'Sneaky', 'https://x' from training_media;
+    raise exception 'tech should not add training media';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
 do $$ begin
   assert (select display_name from memberships where user_id = auth.uid()) = 'Tina T.';
   assert (select role from memberships where user_id = auth.uid()) = 'technician';
@@ -151,6 +171,7 @@ do $$ begin
   assert (select count(*) from customers) = 0, 'isolation: customers';
   assert (select count(*) from jobs) = 0, 'isolation: jobs';
   assert (select count(*) from organizations) = 1, 'isolation: orgs';
+  assert (select count(*) from training_media) = 0, 'isolation: training';
   begin
     -- Try to attach an aircraft in my org to Alpha's customer id.
     insert into aircraft (org_id, customer_id, tail_number) values

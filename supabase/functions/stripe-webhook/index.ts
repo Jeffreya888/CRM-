@@ -6,6 +6,7 @@
 import { Stripe } from "../_shared/deps.ts";
 import { adminClient, stripe } from "../_shared/clients.ts";
 import { env } from "../_shared/http.ts";
+import { sendPushes, tokensFor } from "../_shared/push.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
 
@@ -43,12 +44,14 @@ Deno.serve(async (req) => {
           platform_fee: Number(session.metadata?.platform_fee_cents ?? 0) / 100,
         }, { onConflict: "stripe_payment_intent_id", ignoreDuplicates: true });
         if (error) throw error;
-        await db.from("activities").insert({
-          org_id: orgId,
-          kind: "system",
-          body: `Online payment received: $${((session.amount_total ?? 0) / 100).toFixed(2)}`,
-          customer_id: (await db.from("invoices").select("customer_id").eq("id", invoiceId).single()).data?.customer_id,
-        });
+        const { data: inv } = await db.from("invoices").select("customer_id, number, customer:customers(name)").eq("id", invoiceId).single();
+        const amount = `$${((session.amount_total ?? 0) / 100).toFixed(2)}`;
+        await db.from("activities").insert({ org_id: orgId, kind: "system", body: `Online payment received: ${amount}`, customer_id: inv?.customer_id });
+        const { data: managers } = await db.from("memberships").select("user_id").eq("org_id", orgId).in("role", ["owner", "admin", "manager"]).eq("active", true);
+        const tokens = await tokensFor(db, (managers ?? []).map((m) => m.user_id), "payments");
+        // deno-lint-ignore no-explicit-any
+        const who = (inv?.customer as any)?.name ?? "A customer";
+        await sendPushes(tokens.map((t) => ({ to: t.token, title: "Payment received", body: `${who} paid ${amount} on invoice ${inv?.number ?? ""}`, data: { url: `/invoices/${invoiceId}` } })));
         break;
       }
       case "charge.refunded": {

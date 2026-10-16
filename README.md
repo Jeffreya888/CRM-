@@ -205,6 +205,7 @@ supabase/tests/          database integration tests (run on plain Postgres)
 ## Checks
 
 ```bash
+npm run lint          # ESLint (Expo config)
 npm run typecheck     # TypeScript
 npm test              # pricing / plan unit tests
 npm run test:db       # migration + RLS + business-flow tests (needs Postgres binaries; run as a non-root user)

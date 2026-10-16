@@ -111,7 +111,7 @@ export default function Paywall() {
       <Button kind="ghost" title="Restore purchases" onPress={doRestore} disabled={!purchasesAvailable} />
       <T variant="small" style={{ textAlign: 'center', marginTop: space.md }}>
         Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period. Payment is charged to your
-        {Platform.OS === 'ios' ? ' Apple ID' : ' Google Play'} account. Manage or cancel anytime in your account settings. The subscription covers all of {org?.name ?? 'your company'}'s team members.
+        {Platform.OS === 'ios' ? ' Apple ID' : ' Google Play'} account. Manage or cancel anytime in your account settings. The subscription covers every team member at {org?.name ?? 'your company'}.
       </T>
       <Row style={{ justifyContent: 'center' }}>
         <Button small kind="ghost" title="Terms of Use" onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)} />

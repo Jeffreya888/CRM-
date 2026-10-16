@@ -1,25 +1,84 @@
+import { format } from 'date-fns';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
-import { Image, Modal, Platform, Pressable, View } from 'react-native';
+import { ActivityIndicator, ActionSheetIOS, Alert, Image, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { confirmAction, FormSheet, notify } from '../../../components/FormSheet';
 import { SignaturePad } from '../../../components/SignaturePad';
-import { jobTone, priorityTone } from '../../../components/status';
-import { Avatar, Badge, Button, Card, ErrorBanner, Field, IconButton, Ionicons, KeyValue, ListRow, Loading, Row, Screen, Section, Segmented, T } from '../../../components/ui';
+import { jobTone } from '../../../components/status';
+import { Avatar, Badge, Button, Card, Divider, ErrorBanner, Field, IconButton, IconTile, Ionicons, KeyValue, ListRow, Loading, Row, Screen, Section, Stepper, T } from '../../../components/ui';
 import { jobReportHtml, sharePdf } from '../../../lib/documents';
 import { dateTime, duration, initials, money, relative } from '../../../lib/format';
 import { pickImage, signedUrls, uploadImage } from '../../../lib/files';
 import { canEdit, canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
-import { colors, radius, space } from '../../../lib/theme';
+import { colors, radius, space, toneColors, type Tone } from '../../../lib/theme';
 import type { PhotoKind } from '../../../lib/types';
 import { useQuery } from '../../../lib/useQuery';
 
-const PHOTO_KINDS: { value: PhotoKind; label: string }[] = [
-  { value: 'before', label: 'Before' }, { value: 'after', label: 'After' }, { value: 'damage', label: 'Damage' }, { value: 'other', label: 'Other' },
-];
+const STATUS_STEP: Record<string, number> = { scheduled: 0, on_hold: 1, in_progress: 1, completed: 2, invoiced: 3 };
+
+/** Asks camera vs. library (camera isn't available on web). */
+function chooseSource(): Promise<'camera' | 'library' | null> {
+  if (Platform.OS === 'web') return Promise.resolve('library');
+  return new Promise((resolve) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions({ options: ['Take Photo', 'Choose from Library', 'Cancel'], cancelButtonIndex: 2 },
+        (i) => resolve(i === 0 ? 'camera' : i === 1 ? 'library' : null));
+    } else {
+      Alert.alert('Add photo', undefined, [
+        { text: 'Take Photo', onPress: () => resolve('camera') },
+        { text: 'Choose from Library', onPress: () => resolve('library') },
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
+      ]);
+    }
+  });
+}
+
+/** Tinted photo strip (Before = amber, After = green, Damage = red) with an "Add Photo" tile. */
+function PhotoSection({ title, tone, photos, onAdd, onView, uploading, required, compact }: {
+  title: string; tone: Tone; photos: { id: string; url?: string }[]; onAdd?: () => void; onView: (u: string) => void;
+  uploading?: boolean; required?: boolean; compact?: boolean;
+}) {
+  const c = toneColors[tone];
+  if (compact && !photos.length) {
+    return onAdd ? <Button small kind="ghost" icon="warning-outline" title="Document damage" onPress={onAdd} style={{ alignSelf: 'flex-start' }} /> : null;
+  }
+  return (
+    <View style={{ marginTop: space.md }}>
+      <Row style={{ justifyContent: 'space-between', marginBottom: space.sm }}>
+        <Row gap={space.sm}>
+          <T style={{ color: c.fg, fontSize: 17, fontWeight: '700' }}>{title}</T>
+          {required && !photos.length ? <Badge label="Required" tone="danger" /> : null}
+        </Row>
+        <T variant="muted">{photos.length} photo{photos.length === 1 ? '' : 's'}</T>
+      </Row>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: space.sm, padding: space.md }}
+        style={{ backgroundColor: c.bg, borderRadius: radius.lg, borderWidth: 1, borderColor: c.fg + '66' }}>
+        {photos.map((p) => (
+          <Pressable key={p.id} onPress={() => p.url && onView(p.url)}>
+            <Image source={{ uri: p.url }} style={{ width: 92, height: 92, borderRadius: 10, backgroundColor: colors.cardRaised }} />
+          </Pressable>
+        ))}
+        {onAdd ? (
+          <Pressable onPress={onAdd} disabled={uploading}
+            style={{ width: 92, height: 92, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: c.fg, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            {uploading ? <ActivityIndicator color={c.fg} /> : <Ionicons name="camera-outline" size={24} color={c.fg} />}
+            <T variant="small" style={{ color: c.fg }}>{uploading ? 'Uploading' : 'Add Photo'}</T>
+          </Pressable>
+        ) : !photos.length ? (
+          <View style={{ width: 92, height: 92, borderRadius: 10, backgroundColor: colors.cardRaised, alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <Ionicons name="camera-outline" size={22} color={colors.textFaint} />
+            <T variant="small" style={{ color: colors.textFaint }}>No photos</T>
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
+  );
+}
 
 export default function JobDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,7 +86,6 @@ export default function JobDetail() {
   const uid = session!.user.id;
   const money$ = canSeeMoney(role);
   const editable = canEdit(role);
-  const [photoKind, setPhotoKind] = useState<PhotoKind>('before');
   const [viewer, setViewer] = useState<string | null>(null);
   const [signing, setSigning] = useState(false);
   const [signer, setSigner] = useState('');
@@ -36,7 +94,8 @@ export default function JobDetail() {
   const [newStep, setNewStep] = useState('');
   const [supplySheet, setSupplySheet] = useState(false);
   const [noteSheet, setNoteSheet] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState<PhotoKind | null>(null);
+  const [now] = useState(() => Date.now());
 
   const q = useQuery(async () => {
     const [j, items, checklist, photos, time, crew, supplies, activity, inventory, invoice] = await Promise.all([
@@ -74,8 +133,7 @@ export default function JobDetail() {
 
   const done = checklist.filter((c: any) => c.done).length;
   const myOpen = time.find((t: any) => t.user_id === uid && !t.ended_at);
-  const totalMinutes = time.reduce((s: number, t: any) => s + ((t.ended_at ? new Date(t.ended_at).getTime() : Date.now()) - new Date(t.started_at).getTime()) / 60000, 0);
-  const supplyCost = supplies.reduce((s: number, m: any) => s + Math.abs(Number(m.delta)) * Number(m.item?.unit_cost ?? 0), 0);
+  const totalMinutes = time.reduce((s: number, t: any) => s + ((t.ended_at ? new Date(t.ended_at).getTime() : now) - new Date(t.started_at).getTime()) / 60000, 0);
   const jobValue = items.reduce((s: number, i: any) => s + Number(i.quantity) * Number(i.unit_price), 0);
 
   const toggleStep = (c: any) => run(async () => {
@@ -83,20 +141,29 @@ export default function JobDetail() {
     if (error) throw error;
   });
 
-  const addPhoto = (source: 'camera' | 'library') => async () => {
+  const addPhoto = (kind: PhotoKind) => async () => {
     try {
+      const source = await chooseSource();
+      if (!source) return;
       const uri = await pickImage(source);
       if (!uri) return;
-      setUploading(true);
+      setUploading(kind);
       const path = await uploadImage(orgId, `jobs/${id}`, uri);
-      const { error } = await supabase.from('job_photos').insert({ org_id: orgId, job_id: id, kind: photoKind, storage_path: path, taken_by: uid });
+      const { error } = await supabase.from('job_photos').insert({ org_id: orgId, job_id: id, kind, storage_path: path, taken_by: uid });
       if (error) throw error;
       q.reload();
     } catch (e: any) {
       notify('Photo upload failed', e.message);
     } finally {
-      setUploading(false);
+      setUploading(null);
     }
+  };
+
+  const afterCount = photos.filter((p: any) => p.kind === 'after').length;
+  const photosOpen = editable && ['scheduled', 'in_progress', 'on_hold'].includes(j.status);
+  const complete = () => {
+    if (done < checklist.length) confirmAction('Checklist incomplete', `${checklist.length - done} step(s) aren't checked. Complete anyway?`, setStatus('completed'));
+    else setStatus('completed')();
   };
 
   const clock = run(async () => {
@@ -126,6 +193,15 @@ export default function JobDetail() {
     router.push(`/invoices/${data}`);
   });
 
+  const footer = !editable ? undefined
+    : j.status === 'scheduled' || j.status === 'on_hold' ? <Button icon="play" title={j.status === 'on_hold' ? 'Resume Job' : 'Start Job'} onPress={setStatus('in_progress')} />
+    : j.status === 'in_progress' ? (afterCount
+      ? <Button icon="checkmark-circle-outline" title="Complete Job" onPress={complete} />
+      : <Button icon="checkmark-circle-outline" title="Add After Photos to Complete" disabled onPress={() => {}} />)
+    : j.status === 'completed' && money$ && !invoice ? <Button icon="receipt-outline" title="Create Invoice" onPress={invoiceIt} />
+    : invoice ? <Button kind="secondary" icon="receipt-outline" title={`View Invoice ${invoice.number}`} onPress={() => router.push(`/invoices/${invoice.id}`)} />
+    : undefined;
+
   const maps = () => {
     const l = j.location;
     const qy = l.latitude && l.longitude ? `${l.latitude},${l.longitude}` : encodeURIComponent([l.fbo_name, l.name, l.airport_code, l.address].filter(Boolean).join(' '));
@@ -133,43 +209,81 @@ export default function JobDetail() {
   };
 
   return (
-    <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
-      <Stack.Screen options={{ title: j.number, headerRight: () => money$ ? <IconButton icon="create-outline" label="Edit" onPress={() => router.push({ pathname: '/jobs/edit', params: { id } })} /> : null }} />
+    <Screen refreshing={q.refreshing} onRefresh={q.refresh} footer={footer}>
+      <Stack.Screen options={{ title: 'Job Details', headerRight: () => <Badge large label={j.status} tone={jobTone[j.status]} /> }} />
 
       <Card>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <T variant="overline">{j.number}</T>
-          <Row gap={4}>
-            {j.priority !== 'normal' ? <Badge label={j.priority} tone={priorityTone[j.priority]} /> : null}
-            <Badge label={j.status} tone={jobTone[j.status]} />
-          </Row>
-        </Row>
-        <T variant="h2" style={{ marginTop: 4 }}>{j.aircraft?.tail_number ?? 'No aircraft'}{j.aircraft?.model ? ` · ${j.aircraft.model}` : ''}</T>
-        <T variant="muted">{j.title}</T>
-        <KeyValue label="When" value={`${dateTime(j.scheduled_start)}${j.scheduled_end ? ` → ${dateTime(j.scheduled_end)}` : ''}`} />
-        <KeyValue label="Customer" value={j.customer?.name} onPress={() => router.push(`/customers/${j.customer.id}`)} />
-        {j.parking_spot ? <KeyValue label="Spot" value={j.parking_spot} /> : null}
-        {j.weather_sensitive ? <KeyValue label="Weather" value="Outdoor work, check forecast" /> : null}
-        {j.actual_start ? <KeyValue label="Started" value={dateTime(j.actual_start)} /> : null}
-        {j.actual_end ? <KeyValue label="Completed" value={dateTime(j.actual_end)} /> : null}
-        <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
-          {j.customer?.phone ? <Button small kind="secondary" icon="call-outline" title="Call" onPress={() => Linking.openURL(`tel:${j.customer.phone}`)} /> : null}
-          {j.customer?.phone ? <Button small kind="secondary" icon="chatbubble-outline" title="Text" onPress={() => Linking.openURL(`sms:${j.customer.phone}`)} /> : null}
-          {j.aircraft ? <Button small kind="ghost" icon="airplane-outline" title="Aircraft" onPress={() => router.push(`/aircraft/${j.aircraft.id}`)} /> : null}
+        <T variant="h3" style={{ marginBottom: space.md }}>Status</T>
+        <Stepper steps={['Scheduled', 'In Progress', 'Completed', 'Invoiced']} current={STATUS_STEP[j.status] ?? 0} />
+        {j.status === 'on_hold' || j.status === 'cancelled' ? <Badge label={j.status} tone={jobTone[j.status]} /> : null}
+      </Card>
+
+      <Card onPress={() => router.push(`/customers/${j.customer.id}`)}>
+        <Row gap={space.md}>
+          <IconTile icon="person-outline" tone="info" round size={44} />
+          <View style={{ flex: 1 }}>
+            <T variant="muted">Customer</T>
+            <T style={{ fontSize: 20, fontWeight: '700' }}>{j.customer?.name}</T>
+          </View>
+          {j.customer?.phone ? <IconButton icon="call-outline" label="Call" onPress={() => Linking.openURL(`tel:${j.customer.phone}`)} /> : null}
+          {j.customer?.phone ? <IconButton icon="chatbubble-outline" label="Text" onPress={() => Linking.openURL(`sms:${j.customer.phone}`)} /> : null}
         </Row>
       </Card>
 
+      {j.aircraft ? (
+        <Card onPress={() => router.push(`/aircraft/${j.aircraft.id}`)}>
+          <Row gap={space.md}>
+            <IconTile icon="airplane-outline" tone="warning" round size={44} />
+            <View style={{ flex: 1 }}>
+              <T variant="muted">Aircraft</T>
+              <T style={{ fontSize: 17, fontWeight: '700' }}>{[j.aircraft.manufacturer, j.aircraft.model].filter(Boolean).join(' ') || j.aircraft.tail_number}</T>
+              <T variant="muted">{j.aircraft.tail_number}</T>
+            </View>
+          </Row>
+        </Card>
+      ) : null}
+
+      <Card>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Row gap={space.sm} style={{ flex: 1 }}>
+            <Ionicons name="document-text-outline" size={22} color={colors.primary} />
+            <T style={{ fontSize: 17, fontWeight: '700', flex: 1 }}>{j.title ?? 'Job'}</T>
+          </Row>
+          {money$ ? <T style={{ color: colors.success, fontSize: 18, fontWeight: '700' }}>{money(jobValue, org.currency).replace(/\.00$/, '')}</T> : null}
+        </Row>
+        {money$ && items.length > 1 ? items.map((i: any) => (
+          <Row key={i.id} style={{ justifyContent: 'space-between', marginTop: 4, paddingLeft: 30 }}>
+            <T variant="muted" style={{ flex: 1 }}>{i.description}</T>
+            <T variant="muted">{money(Number(i.quantity) * Number(i.unit_price), org.currency)}</T>
+          </Row>
+        )) : null}
+        <Row gap={space.sm} style={{ marginTop: space.md }}>
+          <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+          <T style={{ color: colors.textMuted }}>{j.scheduled_start ? format(new Date(j.scheduled_start), 'EEEE, MMMM d, yyyy · h:mm a') : 'Not scheduled'}</T>
+        </Row>
+        {j.actual_start ? (
+          <Row gap={space.sm} style={{ marginTop: 6 }}>
+            <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+            <T style={{ color: colors.textMuted }}>Started at {format(new Date(j.actual_start), 'h:mm a')}{j.actual_end ? ` · Completed ${format(new Date(j.actual_end), 'MMM d, h:mm a')}` : ''}</T>
+          </Row>
+        ) : null}
+        {j.notes ? <><Divider /><T variant="muted">{j.notes}</T></> : null}
+      </Card>
+
+      <PhotoSection title="Before Photos" tone="warning" photos={photos.filter((p: any) => p.kind === 'before')}
+        onAdd={photosOpen ? addPhoto('before') : undefined} onView={setViewer} uploading={uploading === 'before'} />
+      <PhotoSection title="After Photos" tone="success" photos={photos.filter((p: any) => p.kind === 'after')}
+        required={j.status === 'in_progress'} onAdd={photosOpen ? addPhoto('after') : undefined} onView={setViewer} uploading={uploading === 'after'} />
+      {photos.some((p: any) => p.kind === 'damage') || photosOpen ? (
+        <PhotoSection title="Damage Photos" tone="danger" photos={photos.filter((p: any) => p.kind === 'damage')}
+          onAdd={photosOpen ? addPhoto('damage') : undefined} onView={setViewer} uploading={uploading === 'damage'} compact />
+      ) : null}
+
       {editable ? (
-        <Row style={{ flexWrap: 'wrap' }}>
-          {j.status === 'scheduled' || j.status === 'on_hold' ? <Button style={{ flex: 1 }} icon="play" title="Start job" onPress={setStatus('in_progress')} /> : null}
-          {j.status === 'in_progress' ? <Button style={{ flex: 1 }} icon="checkmark-done" title="Complete" onPress={() => {
-            if (done < checklist.length) confirmAction('Checklist incomplete', `${checklist.length - done} step(s) aren't checked. Complete anyway?`, setStatus('completed'));
-            else setStatus('completed')();
-          }} /> : null}
-          {j.status === 'in_progress' ? <Button kind="secondary" icon="pause" title="Hold" onPress={setStatus('on_hold')} /> : null}
-          {['completed', 'invoiced'].includes(j.status) ? <Button style={{ flex: 1 }} kind="secondary" icon="document-outline" title="Service report" onPress={report} /> : null}
-          {money$ && j.status === 'completed' && !invoice ? <Button style={{ flex: 1 }} icon="receipt-outline" title="Create invoice" onPress={invoiceIt} /> : null}
-          {invoice ? <Button style={{ flex: 1 }} kind="secondary" icon="receipt-outline" title={`Invoice ${invoice.number}`} onPress={() => router.push(`/invoices/${invoice.id}`)} /> : null}
+        <Row style={{ flexWrap: 'wrap', marginTop: space.sm }}>
+          {j.status === 'in_progress' ? <Button small kind="secondary" icon="pause" title="Put on hold" onPress={setStatus('on_hold')} /> : null}
+          {['completed', 'invoiced'].includes(j.status) ? <Button small kind="secondary" icon="document-outline" title="Service report PDF" onPress={report} /> : null}
+          {money$ ? <Button small kind="secondary" icon="create-outline" title="Edit job" onPress={() => router.push({ pathname: '/jobs/edit', params: { id } })} /> : null}
         </Row>
       ) : null}
 
@@ -244,39 +358,6 @@ export default function JobDetail() {
           ) : null}
         </Card>
       </Section>
-
-      <Section title={`Photos (${photos.length})`}>
-        <Segmented value={photoKind} onChange={setPhotoKind} options={PHOTO_KINDS.map((k) => ({ ...k, label: `${k.label} (${photos.filter((p: any) => p.kind === k.value).length})` }))} />
-        <Row style={{ flexWrap: 'wrap' }}>
-          {photos.filter((p: any) => p.kind === photoKind).map((p: any) => (
-            <Pressable key={p.id} onPress={() => setViewer(p.url)}>
-              <Image source={{ uri: p.url }} style={{ width: 104, height: 104, borderRadius: radius.md, backgroundColor: colors.border }} />
-            </Pressable>
-          ))}
-        </Row>
-        {editable ? (
-          <Row style={{ marginTop: space.sm }}>
-            <Button small icon="camera-outline" title={uploading ? 'Uploading…' : `Take ${photoKind} photo`} loading={uploading} onPress={addPhoto('camera')} />
-            <Button small kind="secondary" icon="images-outline" title="Library" onPress={addPhoto('library')} />
-          </Row>
-        ) : null}
-        <T variant="small" style={{ marginTop: 4 }}>Document pre-existing damage before starting. It protects you and the customer.</T>
-      </Section>
-
-      {money$ && items.length ? (
-        <Section title="Services">
-          <Card>
-            {items.map((i: any) => (
-              <Row key={i.id} style={{ justifyContent: 'space-between', paddingVertical: 3 }}>
-                <T style={{ flex: 1 }}>{i.description}</T>
-                <T variant="money">{money(Number(i.quantity) * Number(i.unit_price), org.currency)}</T>
-              </Row>
-            ))}
-            <KeyValue label="Job value" value={money(jobValue, org.currency)} />
-            {supplyCost ? <KeyValue label="Supplies used" value={money(supplyCost, org.currency)} /> : null}
-          </Card>
-        </Section>
-      ) : null}
 
       {can('inventory') ? (
         <Section title="Supplies used" action={editable ? <Button small kind="ghost" icon="add" title="Log" onPress={() => setSupplySheet(true)} /> : null}>

@@ -21,6 +21,7 @@ export interface Organization {
   default_quote_terms: string | null; default_invoice_notes: string | null;
   plan: Plan; trial_ends_at: string; plan_expires_at: string | null;
   stripe_account_id: string | null; stripe_charges_enabled: boolean;
+  instagram: string | null; facebook: string | null; youtube: string | null; linkedin: string | null;
 }
 
 export interface Membership {
@@ -29,7 +30,8 @@ export interface Membership {
   organization?: Organization;
 }
 
-export interface Profile { id: string; full_name: string | null; phone: string | null; avatar_url: string | null; current_org_id: string | null }
+export interface NotificationPrefs { job_assignments?: boolean; service_reminders?: boolean; payments?: boolean; quote_accepted?: boolean }
+export interface Profile { id: string; full_name: string | null; phone: string | null; avatar_url: string | null; current_org_id: string | null; notification_prefs: NotificationPrefs }
 
 export interface Location {
   id: string; org_id: string; name: string; airport_code: string | null; fbo_name: string | null; address: string | null;
@@ -56,7 +58,16 @@ export interface Aircraft {
 export interface Service {
   id: string; org_id: string; name: string; description: string | null; category: string; pricing_method: PricingMethod;
   base_price: number; price_per_foot: number; hourly_rate: number; category_prices: Partial<Record<AircraftCategory, number>>;
-  est_hours: number | null; recurring_interval_days: number | null; taxable: boolean; checklist: string[]; active: boolean; sort_order: number;
+  est_hours: number | null; est_hours_max: number | null; recurring_interval_days: number | null; taxable: boolean; checklist: string[]; active: boolean; sort_order: number;
+  pricing_tiers: PricingTier[]; equipment: string[];
+}
+
+export interface PricingTier { name: string; detail?: string | null; price: number }
+
+export interface TrainingMedia {
+  id: string; org_id: string; service_id: string | null; kind: 'video' | 'document'; title: string; description: string | null;
+  url: string | null; storage_path: string | null; thumbnail_path: string | null; duration_min: number | null; sort_order: number;
+  service?: { name: string; category: string } | null;
 }
 
 export interface LineItem {

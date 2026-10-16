@@ -33,13 +33,6 @@ export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoic
     });
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply customer tax exemption / discount when the customer changes on a new document.
-  const customer = lk.customers.find((c) => c.id === values?.customer_id);
-  useEffect(() => {
-    if (id || !customer || !values) return;
-    setValues((v) => ({ ...v!, tax_rate: customer.tax_exempt ? 0 : org.tax_rate }));
-  }, [customer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const aircraft = useMemo(() => lk.aircraft.find((a) => a.id === values?.aircraft_id) ?? null, [lk.aircraft, values?.aircraft_id]);
 
   if (!values || lk.loading) return <Loading />;
@@ -95,7 +88,13 @@ export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoic
     <Screen footer={<Button title={id ? 'Save' : `Create ${kind}`} onPress={save} />}>
       <Stack.Screen options={{ title }} />
       <ErrorBanner message={error} />
-      <FormFields fields={fields} values={values} setValue={(k, v) => setValues((s) => ({ ...s!, [k]: v, ...(k === 'customer_id' ? { aircraft_id: null } : {}) }))} />
+      <FormFields fields={fields} values={values} setValue={(k, v) => setValues((s) => {
+        const next: FormValues = { ...s!, [k]: v, ...(k === 'customer_id' ? { aircraft_id: null } : {}) };
+        // Tax-exempt customers get a 0% rate on new documents.
+        const c = k === 'customer_id' && !id ? lk.customers.find((x) => x.id === v) : null;
+        if (c) { next.tax_rate = c.tax_exempt ? 0 : org.tax_rate; next.tax_rate_pct = undefined; }
+        return next;
+      })} />
       <Section title="Services">
         <LineItemsEditor
           items={items}

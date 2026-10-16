@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { friendlyError } from '../lib/supabase';
@@ -95,9 +95,11 @@ export function FormSheet({
 }) {
   const [values, setValues] = useState<FormValues>(initial ?? {});
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
     if (visible) { setValues(initial ?? {}); setError(null); }
-  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+  }
 
   const submit = async () => {
     const msg = validate(fields, values);

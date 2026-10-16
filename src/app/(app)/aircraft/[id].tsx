@@ -51,7 +51,7 @@ export default function AircraftDetail() {
         {canSeeMoney(role) ? (
           <Row style={{ marginTop: space.md }}>
             <Button small icon="document-text-outline" title="Quote" onPress={() => router.push({ pathname: '/quotes/edit', params: { customer_id: a.customer_id ?? '', aircraft_id: id } })} />
-            <Button small kind="secondary" icon="construct-outline" title="Schedule job" onPress={() => router.push({ pathname: '/jobs/edit', params: { customer_id: a.customer_id ?? '', aircraft_id: id } })} />
+            <Button small kind="secondary" icon="construct-outline" title="Schedule job" onPress={() => router.push({ pathname: '/jobs/new', params: { customer_id: a.customer_id ?? '', aircraft_id: id } })} />
           </Row>
         ) : null}
       </Card>

@@ -94,7 +94,7 @@ export default function CustomerDetail() {
       {money$ ? (
         <Row style={{ flexWrap: 'wrap' }}>
           <Button small icon="document-text-outline" title="New quote" onPress={() => router.push({ pathname: '/quotes/edit', params: { customer_id: id } })} />
-          <Button small kind="secondary" icon="construct-outline" title="New job" onPress={() => router.push({ pathname: '/jobs/edit', params: { customer_id: id } })} />
+          <Button small kind="secondary" icon="construct-outline" title="New job" onPress={() => router.push({ pathname: '/jobs/new', params: { customer_id: id } })} />
           <Button small kind="secondary" icon="receipt-outline" title="New invoice" onPress={() => router.push({ pathname: '/invoices/edit', params: { customer_id: id } })} />
         </Row>
       ) : null}

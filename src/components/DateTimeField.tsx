@@ -28,12 +28,12 @@ export function DateTimeField({
   const [iosOpen, setIosOpen] = useState(false);
   const [webText, setWebText] = useState(current ? format(current, mode === 'date' ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm") : '');
 
-  const box = { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.md, paddingVertical: 12, flexDirection: 'row' as const, alignItems: 'center' as const };
+  const box = { backgroundColor: colors.input, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.lg, paddingVertical: 14, flexDirection: 'row' as const, alignItems: 'center' as const };
 
   if (Platform.OS === 'web') {
     return (
-      <View style={{ marginBottom: space.md }}>
-        <T variant="small" style={{ marginBottom: 6, fontWeight: '600', color: colors.text }}>{label}</T>
+      <View style={{ marginBottom: space.lg }}>
+        <T style={{ marginBottom: 8, fontWeight: '600', fontSize: 15 }}>{label}</T>
         <TextInput
           value={webText}
           placeholder={mode === 'date' ? 'YYYY-MM-DD' : 'YYYY-MM-DDTHH:mm'}
@@ -78,10 +78,10 @@ export function DateTimeField({
   };
 
   return (
-    <View style={{ marginBottom: space.md }}>
-      <T variant="small" style={{ marginBottom: 6, fontWeight: '600', color: colors.text }}>{label}</T>
+    <View style={{ marginBottom: space.lg }}>
+      <T style={{ marginBottom: 8, fontWeight: '600', fontSize: 15 }}>{label}</T>
       <Pressable onPress={open} style={box}>
-        <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
+        <Ionicons name="calendar-outline" size={20} color={colors.primary} />
         <Text style={{ flex: 1, marginLeft: 8, fontSize: 16, color: current ? colors.text : colors.textMuted }}>{display}</Text>
         {allowClear && current ? (
           <Pressable hitSlop={10} onPress={() => onChange(null)}>
@@ -94,6 +94,7 @@ export function DateTimeField({
           value={current ?? new Date()}
           mode={mode}
           display="inline"
+          themeVariant="dark"
           minuteInterval={15}
           onChange={(_, d) => d && emit(d)}
         />
