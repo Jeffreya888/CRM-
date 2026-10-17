@@ -45,17 +45,16 @@ function DetailInner() {
         : Promise.resolve([]),
     ]);
     const plannedTimes = ((planned ?? []) as unknown[]).map((r) => (typeof r === 'string' ? r : String(Object.values(r as object)[0])));
-    return { s, jobs: (jobs ?? []) as VisitJob[], planned: plannedTimes };
+    return { s, jobs: (jobs ?? []) as VisitJob[], planned: plannedTimes, now: Date.now() };
   }, [id]);
 
   if (!canSeeMoney(role)) return <Screen><Stack.Screen options={{ title: 'Schedule' }} /><EmptyState icon="lock-closed-outline" title="Managers only" /></Screen>;
   if (q.loading && !q.data) return <><Stack.Screen options={{ title: 'Schedule' }} /><Loading /></>;
   if (!q.data) return <Screen><Stack.Screen options={{ title: 'Schedule' }} /><ErrorBanner message={q.error ?? 'Schedule not found'} onRetry={q.reload} /></Screen>;
 
-  const { s, jobs, planned } = q.data;
+  const { s, jobs, planned, now } = q.data;
   const state = scheduleState(s);
   const tz = s.timezone;
-  const now = Date.now();
   const past = jobs.filter((j) => j.scheduled_start && new Date(j.scheduled_start).getTime() < now).reverse();
   const upcomingJobs = jobs.filter((j) => !j.scheduled_start || new Date(j.scheduled_start).getTime() >= now);
   const jobDays = new Set(upcomingJobs.filter((j) => j.scheduled_start && j.status !== 'cancelled').map((j) => utcToZoned(j.scheduled_start!, tz).day));
