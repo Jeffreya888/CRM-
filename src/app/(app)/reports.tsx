@@ -172,8 +172,8 @@ function PLScreen() {
           <Section title="Breakdown">
             <Card>
               {PL_LINES.map((l) => {
-                const cur = Number(pl[l.key]) * sign(l.key);
-                const p = prev ? Number(prev[l.key]) * sign(l.key) : null;
+                const cur = Number(pl[l.key]) * sign(l.key) || 0; // avoid -$0.00
+                const p = prev ? Number(prev[l.key]) * sign(l.key) || 0 : null;
                 const note = l.key === 'revenue' ? `${pl.paid_invoices} ${basis === 'cash' ? 'paid invoice' : 'invoice'}${Number(pl.paid_invoices) === 1 ? '' : 's'}`
                   : l.key === 'labor' ? `${duration(Number(pl.labor_minutes))} clocked${unknownLabor ? ` · ${duration(Number(pl.labor_unknown_minutes))} Unknown (no pay rate)` : ''}`
                   : l.key === 'supplies' ? 'From the supply room, used on jobs' : null;
