@@ -391,6 +391,27 @@ end $$;
 select public.decide_time_off((select id from time_off), true);
 do $$ begin assert (select status from time_off) = 'approved'; end $$;
 
+-- Requiring two-step sign-in hides company data from aal1 sessions.
+do $$ begin
+  begin
+    update organizations set require_2fa = true where id = (select v from ctx where k='alpha');
+    raise exception 'needs own aal2 first';
+  exception when raise_exception then
+    if sqlerrm not like 'Set up two-step%' then raise; end if;
+  end;
+end $$;
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+update organizations set require_2fa = true where id = (select v from ctx where k='alpha');
+select set_config('request.jwt.claims', '{"aal":"aal1"}', false);
+do $$ begin
+  assert (select count(*) from customers) = 0, '2FA required: data hidden at aal1';
+  assert (select count(*) from organizations) = 1, '2FA required: company still visible';
+  assert (select count(*) from memberships where user_id = auth.uid()) = 1, '2FA required: own membership visible';
+end $$;
+select set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+update organizations set require_2fa = false where id = (select v from ctx where k='alpha');
+select set_config('request.jwt.claims', '', false);
+
 -- Owner grants managers P&L; managers can then read it.
 select public.set_role_permissions((select v from ctx where k='alpha'),
   '{"manager": {"see_prices": true, "see_reports": true, "edit_customers": true, "approve_timesheets": true, "give_discounts": false, "delete_records": false},

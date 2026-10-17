@@ -105,7 +105,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setBranchByOrg((b) => ({ ...b, [org.id]: id }));
       AsyncStorage.setItem(`branch:${org.id}`, id ?? '').catch(() => {});
     },
-    refresh: () => load(session),
+    // Read the current session so a refresh right after sign-in isn't stale.
+    refresh: async () => load((await supabase.auth.getSession()).data.session),
     switchOrg: async (orgId) => {
       if (!session) return;
       await supabase.from('profiles').update({ current_org_id: orgId }).eq('id', session.user.id);

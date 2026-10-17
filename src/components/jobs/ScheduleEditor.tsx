@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from 'react-native';
-import { KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { crewList, EMPTY_SCHEDULE, fetchConflicts, isHardConflict, loadSchedule, localScheduleProblems, saveSchedule, conflictIcon, ask, type ScheduleValue } from '../../lib/conflicts';
 import { initials } from '../../lib/format';
