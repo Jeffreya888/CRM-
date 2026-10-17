@@ -9,7 +9,7 @@ import { PaymentsCard } from '../../components/settings/PaymentsCard';
 import { Badge, Button, Card, ErrorBanner, IconTile, KeyValue, ListRow, Row, Screen, Section, T, ToggleRow } from '../../components/ui';
 import { APP_NAME } from '../../lib/config';
 import { date } from '../../lib/format';
-import { pickImage, uploadImage } from '../../lib/files';
+import { pickImage } from '../../lib/files';
 import { canAdmin, planInfo } from '../../lib/plans';
 import { manageSubscriptionsUrl } from '../../lib/purchases';
 import { useOrg } from '../../lib/session';
@@ -114,11 +114,16 @@ export default function Settings() {
       const uri = await pickImage('library');
       if (!uri) return;
       setLogoBusy(true);
-      const path = await uploadImage(orgId, 'branding', uri);
-      // Long-lived link so quotes, invoices and the portal can show the logo.
-      const { data, error: e } = await supabase.storage.from('org-files').createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-      if (e || !data?.signedUrl) throw new Error(e?.message ?? 'Could not create a link for the logo');
-      await save({ logo_url: data.signedUrl });
+      // Public "branding" bucket: logos show on invoices, emails and the customer portal.
+      const m = /\.(png|jpe?g|webp|gif)(\?|$)/i.exec(uri);
+      const ext = (m?.[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
+      const type = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`;
+      const body = await (await fetch(uri)).arrayBuffer();
+      const path = `${orgId}/logo-${Date.now()}.${ext}`;
+      const up = await supabase.storage.from('branding').upload(path, body, { contentType: type, upsert: true });
+      if (up.error) throw new Error(up.error.message);
+      const { data } = supabase.storage.from('branding').getPublicUrl(path);
+      await save({ logo_url: data.publicUrl });
     } catch (e: any) {
       setError(friendlyError(e.message));
     } finally {

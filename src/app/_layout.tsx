@@ -17,6 +17,8 @@ import { colors } from '../lib/theme';
 
 // Where a web visitor first landed, before any guard redirect.
 const initialWebPath = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : null;
+// A web visitor arriving from a "reset password" email picks a new password first.
+if (Platform.OS === 'web' && typeof window !== 'undefined' && /type=recovery/.test(window.location.hash)) useRecovery.getState().set(true);
 // Routes anyone can open, signed in or not.
 const PUBLIC_SEGMENTS = ['(site)', 'portal', 'invite'];
 
