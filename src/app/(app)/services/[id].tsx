@@ -1,62 +1,97 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 import { notify } from '../../../components/FormSheet';
-import { categoryTone } from '../../../components/status';
 import { MediaCard } from '../../../components/MediaCard';
-import { Badge, Button, Card, ErrorBanner, IconTile, Ionicons, Loading, Row, Screen, Section, T } from '../../../components/ui';
-import { AIRCRAFT_CATEGORIES, headlinePrice, hoursLabel } from '../../../lib/pricing';
+import { loadService } from '../../../components/services/data';
+import { PriceGuideCard } from '../../../components/services/PriceGuideCard';
+import { SuppliesCard } from '../../../components/services/SuppliesCard';
+import { categoryTone } from '../../../components/status';
+import { Badge, Button, Card, EmptyState, ErrorBanner, IconTile, Ionicons, Loading, Row, Screen, Section, T } from '../../../components/ui';
+import { assetTypeLabel, durationLabel, guideForService, loadGuideLibrary, recurLabel } from '../../../lib/guides';
+import { assetTypeInfo, categoriesFor, headlinePrice } from '../../../lib/pricing';
 import { canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
 import { openMedia, thumbnails } from '../../../lib/training';
-import type { Service, TrainingMedia } from '../../../lib/types';
+import type { TrainingMedia } from '../../../lib/types';
 import { useQuery } from '../../../lib/useQuery';
 
 const usd = (n: number) => `$${Math.round(Number(n)).toLocaleString('en-US')}`;
 
 export default function ServiceDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { role, session } = useOrg();
+  const { orgId, org, role, perm, session } = useOrg();
+  const money = perm('see_prices');
   const manager = canSeeMoney(role);
-  const q = useQuery(async () => {
-    const [s, m] = await Promise.all([
-      supabase.from('services').select('*').eq('id', id).single(),
-      supabase.from('training_media').select('*, service:services(name, category)').eq('service_id', id).order('sort_order'),
-    ]);
-    if (s.error) throw s.error;
-    const media = (m.data ?? []) as TrainingMedia[];
-    return { s: s.data as Service, media, thumbs: await thumbnails(media) };
-  }, [id]);
+  const editor = money && manager;
 
-  if (q.loading) return <Loading />;
-  if (!q.data) return <Screen><ErrorBanner message={q.error ?? 'Not found'} /></Screen>;
-  const { s, media, thumbs } = q.data;
-  const hours = hoursLabel(s.est_hours, s.est_hours_max);
+  const q = useQuery(async () => {
+    const [s, lib, m] = await Promise.all([
+      loadService(id, money),
+      loadGuideLibrary(orgId).catch(() => undefined),
+      supabase.from('training_media').select('*, service:services(name, category)').eq('org_id', orgId).eq('service_id', id).order('sort_order'),
+    ]);
+    const media = (m.data ?? []) as TrainingMedia[];
+    return { s, lib, media, thumbs: await thumbnails(media) };
+  }, [id, orgId, money]);
+
+  if (q.loading && !q.data) return <Loading />;
+  const s = q.data?.s;
+  if (!s) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ title: 'Service' }} />
+        <ErrorBanner message={q.error} onRetry={q.reload} />
+        {!q.error ? <EmptyState icon="sparkles-outline" title="Service not found" body="It may have been deleted." /> : null}
+      </Screen>
+    );
+  }
+  const { media, thumbs } = q.data!;
+  const guide = guideForService(q.data?.lib, s);
+  const dur = durationLabel(s.est_hours, s.est_hours_max);
+  const recur = recurLabel(s.recur_every, s.recur_unit);
   const classPrices = s.pricing_method === 'per_category'
-    ? AIRCRAFT_CATEGORIES.filter((c) => s.category_prices?.[c.value] != null).map((c) => ({ name: c.label, detail: c.examples, price: Number(s.category_prices[c.value]) }))
+    ? categoriesFor(s.asset_type).filter((c) => s.category_prices?.[c.value] != null).map((c) => ({ name: c.label, detail: c.examples, price: Number(s.category_prices[c.value]) }))
     : [];
   const tiers = s.pricing_tiers?.length ? s.pricing_tiers : classPrices;
+  const lengthNoun = s.asset_type === 'aircraft' ? 'aircraft' : s.asset_type === 'vehicle' ? 'vehicle' : 'boat';
 
   return (
-    <Screen footer={manager ? <Button kind="secondary" icon="create-outline" title="Edit Service" onPress={() => router.push({ pathname: '/services/edit', params: { id } })} /> : undefined}>
-      <Stack.Screen options={{ title: s.name, headerRight: () => <Badge label={s.category} tone={categoryTone[s.category] ?? 'neutral'} large /> }} />
+    <Screen refreshing={q.refreshing} onRefresh={q.refresh}
+      footer={<Button icon="calendar-outline" title="Schedule a job" onPress={() => router.push({ pathname: '/jobs/new', params: { service: s.id, service_id: s.id } })} />}>
+      <Stack.Screen options={{ title: s.name }} />
+      <ErrorBanner message={q.error} />
       <Card>
-        {s.description ? <T style={{ color: colors.textMuted, lineHeight: 22 }}>{s.description}</T> : null}
-        <Row style={{ justifyContent: 'space-between', marginTop: s.description ? space.md : 0 }}>
-          {manager ? (
-            <Row gap={4}>
-              <Ionicons name="logo-usd" size={20} color={colors.success} />
-              <T style={{ color: colors.success, fontSize: 24, fontWeight: '800' }}>{headlinePrice(s)}</T>
-            </Row>
-          ) : <View />}
-          {hours ? <Row gap={4}><Ionicons name="time-outline" size={18} color={colors.textMuted} /><T variant="muted">{hours}</T></Row> : null}
+        <Row style={{ flexWrap: 'wrap', marginBottom: space.md }} gap={6}>
+          <Badge label={s.category} tone={categoryTone[s.category] ?? 'neutral'} />
+          <Row gap={4} style={{ backgroundColor: colors.cardRaised, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Ionicons name={assetTypeInfo(s.asset_type).icon} size={13} color={colors.textMuted} />
+            <T variant="small">{assetTypeLabel(s.asset_type)}</T>
+          </Row>
+          {!s.active ? <Badge label="Hidden from menu" tone="warning" raw /> : null}
+          {money && !s.taxable ? <Badge label="Not taxable" tone="neutral" raw /> : null}
         </Row>
-        {manager && s.pricing_method === 'per_foot' ? <T variant="small" style={{ marginTop: 6 }}>Priced by aircraft length{Number(s.base_price) ? `, minimum ${usd(s.base_price)}` : ''}. A 50 ft light jet is {usd(Math.max(Number(s.base_price), 50 * Number(s.price_per_foot)))}.</T> : null}
+        {s.description ? <T style={{ color: colors.textMuted, lineHeight: 22 }}>{s.description}</T> : null}
+        <Row style={{ justifyContent: 'space-between', marginTop: s.description ? space.md : 0, flexWrap: 'wrap' }}>
+          {money ? <T style={{ color: colors.success, fontSize: 24, fontWeight: '800' }}>{headlinePrice(s)}</T> : <View />}
+          {dur ? <Row gap={4}><Ionicons name="time-outline" size={18} color={colors.textMuted} /><T variant="muted">{dur}</T></Row> : null}
+        </Row>
+        {money && s.pricing_method === 'per_foot' ? (
+          <T variant="small" style={{ marginTop: 6 }}>
+            Priced by {lengthNoun} length{Number(s.base_price) ? `, minimum ${usd(s.base_price)}` : ''}.
+            {s.asset_type === 'aircraft' ? ` A 50 ft light jet is ${usd(Math.max(Number(s.base_price), 50 * Number(s.price_per_foot)))}.` : ''}
+          </T>
+        ) : null}
+        {money && s.pricing_method === 'hourly' && dur ? <T variant="small" style={{ marginTop: 6 }}>Charged by the hour; estimate {dur}.</T> : null}
+        {editor ? (
+          <Button small kind="secondary" icon="create-outline" title="Edit service" style={{ alignSelf: 'flex-start', marginTop: space.md }}
+            onPress={() => router.push({ pathname: '/services/edit', params: { id: s.id } })} />
+        ) : null}
       </Card>
 
-      {manager && tiers.length ? (
-        <Section title="Pricing Tiers">
+      {money && tiers.length ? (
+        <Section title={s.pricing_tiers?.length ? 'Pricing tiers' : 'Price by size'}>
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             {tiers.map((t, i) => (
               <Row key={t.name + i} style={{ justifyContent: 'space-between', padding: space.lg, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
@@ -71,35 +106,65 @@ export default function ServiceDetail() {
         </Section>
       ) : null}
 
-      {media.length ? (
-        <Section title="Training Media">
-          {media.map((m) => (
-            <MediaCard key={m.id} m={m} thumb={thumbs[m.id]} onPress={() => openMedia(m, session!.user.id).catch((e) => notify('Could not open', e.message))} />
-          ))}
-        </Section>
-      ) : manager ? (
-        <Section title="Training Media">
-          <Button kind="secondary" icon="add" title="Add training video or document" onPress={() => router.push({ pathname: '/training', params: { add: id } })} />
+      {recur ? (
+        <Section title="Recurring care" icon="repeat-outline" iconColor={colors.info}>
+          <Card>
+            <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
+              <IconTile icon="repeat-outline" tone="info" />
+              <View style={{ flex: 1 }}>
+                <T style={{ fontWeight: '700' }}>Recommended {recur.toLowerCase()}</T>
+                <T variant="muted" style={{ marginTop: 2 }}>
+                  When a job with this service is completed, customers who opted in to follow-up care get an automatic Tentative follow-up job for you to confirm. Everyone else gets a reminder to rebook.
+                </T>
+              </View>
+            </Row>
+          </Card>
         </Section>
       ) : null}
 
+      <Section title="Step-by-step guide" icon="book-outline">
+        {guide ? (
+          <Card onPress={() => router.push(`/guides/${guide.guide.key}`)}>
+            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <T style={{ fontWeight: '700', fontSize: 16, flex: 1 }}>{guide.guide.title}</T>
+              <Badge label={guide.isCopy ? 'Company copy' : 'Flight Ready'} tone={guide.isCopy ? 'purple' : 'success'} raw />
+            </Row>
+            <T variant="muted" numberOfLines={3} style={{ marginTop: 4 }}>{guide.guide.summary}</T>
+            <Row gap={space.lg} style={{ marginTop: space.md, flexWrap: 'wrap' }}>
+              <Row gap={4}><Ionicons name="list-outline" size={16} color={colors.textMuted} /><T variant="muted">{guide.guide.steps.length} steps</T></Row>
+              {guide.guide.crew ? <Row gap={4}><Ionicons name="people-outline" size={16} color={colors.textMuted} /><T variant="muted">{guide.guide.crew}</T></Row> : null}
+              <Row gap={4} style={{ marginLeft: 'auto' }}><T style={{ color: colors.primaryText, fontWeight: '600' }}>Open guide</T><Ionicons name="chevron-forward" size={16} color={colors.primaryText} /></Row>
+            </Row>
+          </Card>
+        ) : (
+          <Card>
+            <T variant="muted">
+              {s.guide_key ? 'The guide for this service is hidden or was removed.' : 'No guide linked to this service.'}
+              {editor ? ' Choose one in Edit service.' : ''}
+            </T>
+            <Button small kind="ghost" title="Browse guides" style={{ alignSelf: 'flex-start', marginTop: space.sm }} onPress={() => router.push('/guides')} />
+          </Card>
+        )}
+      </Section>
+
       {s.checklist.length ? (
-        <Section title="Step-by-Step Instructions" icon="list-outline">
+        <Section title="Job checklist" icon="checkbox-outline" count={`${s.checklist.length} steps`}>
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             {s.checklist.map((step, i) => (
-              <Row key={i} gap={space.md} style={{ padding: space.lg, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
-                <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+              <Row key={i} gap={space.md} style={{ padding: space.md, paddingHorizontal: space.lg, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
+                <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
                   <T variant="small" style={{ color: colors.primaryText, fontWeight: '700' }}>{i + 1}</T>
                 </View>
                 <T style={{ flex: 1 }}>{step}</T>
               </Row>
             ))}
           </Card>
+          <T variant="small" style={{ marginTop: space.sm }}>Copied onto every job that includes this service.</T>
         </Section>
       ) : null}
 
       {s.equipment?.length ? (
-        <Section title="Equipment Needed" icon="construct-outline" iconColor={colors.warning}>
+        <Section title="Equipment needed" icon="construct-outline" iconColor={colors.warning}>
           <Card>
             <Row style={{ flexWrap: 'wrap' }}>
               {s.equipment.map((e) => (
@@ -111,11 +176,22 @@ export default function ServiceDetail() {
           </Card>
         </Section>
       ) : null}
-      {s.recurring_interval_days ? (
-        <Card style={{ marginTop: space.lg }}>
-          <Row gap={space.md}><IconTile icon="repeat-outline" tone="info" /><T variant="muted" style={{ flex: 1 }}>Customers get a reminder to rebook every {s.recurring_interval_days} days after this service.</T></Row>
-        </Card>
+
+      <SuppliesCard serviceId={s.id} orgId={orgId} manager={manager} />
+
+      {media.length ? (
+        <Section title="Training videos" icon="play-circle-outline" iconColor={colors.success}>
+          {media.map((m) => (
+            <MediaCard key={m.id} m={m} thumb={thumbs[m.id]} onPress={() => openMedia(m, session!.user.id).catch((e) => notify('Could not open', e.message))} />
+          ))}
+        </Section>
+      ) : manager ? (
+        <Section title="Training videos" icon="play-circle-outline" iconColor={colors.success}>
+          <Button kind="secondary" icon="add" title="Add a training video or document" onPress={() => router.push({ pathname: '/training', params: { add: s.id } })} />
+        </Section>
       ) : null}
+
+      {money && s.asset_type === 'aircraft' ? <PriceGuideCard guideKey={s.guide_key} adjustPct={org.price_adjust_pct} /> : null}
     </Screen>
   );
 }

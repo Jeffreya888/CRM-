@@ -58,6 +58,8 @@ function itemsTable(items: LineItem[], currency: string) {
 }
 
 interface Party { name: string; company?: string | null; email?: string | null; billing_address?: string | null }
+interface DocOption { id: string; name: string; description?: string | null; subtotal: number; tax: number; total: number }
+interface DocPayment { amount: number; method?: string | null; reference?: string | null; received_at: string }
 interface DocInput {
   org: Organization;
   kind: 'quote' | 'invoice';
@@ -65,28 +67,85 @@ interface DocInput {
     number: string; status: string; issue_date: string; valid_until?: string; due_date?: string;
     subtotal: number; discount: number; tax: number; tax_rate: number; total: number; amount_paid?: number; balance?: number;
     notes?: string | null; terms?: string | null; public_token: string;
+    // Optional extras (quotes): approval deadline, packages, deposit, acceptance.
+    valid_until_at?: string | null; selected_option_id?: string | null;
+    deposit_type?: string | null; deposit_amount?: number | null; deposit_paid_at?: string | null;
+    accepted_name?: string | null; accepted_at?: string | null; signature_svg?: string | null;
+    // Optional extras (invoices).
+    late_fee_applied_at?: string | null; covered_by_plan?: boolean | null;
   };
   items: LineItem[];
   customer: Party;
-  aircraft?: { tail_number: string; manufacturer?: string | null; model?: string | null } | null;
+  aircraft?: { tail_number: string; manufacturer?: string | null; model?: string | null; asset_type?: string | null } | null;
+  /** Good / Better / Best packages; items carry option_id. */
+  options?: DocOption[];
+  /** "Enjoyed our work? Leave us a Google review" link (invoices). */
+  reviewUrl?: string | null;
+  /** Payments to list on an invoice (deposits included). */
+  payments?: DocPayment[];
+  /** Shown instead of the online pay link when the company takes payment directly. */
+  directPayment?: boolean;
 }
 
-export function documentHtml({ org, kind, doc, items, customer, aircraft }: DocInput): string {
+/**
+ * Rebuilds a customer-drawn signature SVG from its path data only, so text
+ * submitted through a public page can never inject markup into a PDF or page.
+ */
+export function safeSignatureSvg(svg: string | null | undefined): string | null {
+  if (!svg) return null;
+  const paths = [...svg.matchAll(/\bd="([MLml0-9., -]{1,20000})"/g)].map((m) => m[1]!);
+  if (!paths.length) return null;
+  const w = Number(/width="(\d{1,4})"/.exec(svg)?.[1]) || 320;
+  const h = Number(/height="(\d{1,4})"/.exec(svg)?.[1]) || 160;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${paths
+    .map((d) => `<path d="${d}" stroke="#0F172A" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`)
+    .join('')}</svg>`;
+}
+
+const assetHeading = (t?: string | null) => (t === 'vehicle' ? 'VEHICLE' : t === 'watercraft' ? 'VESSEL' : 'AIRCRAFT');
+
+function totalsBlock(cur: string, t: { subtotal: number; discount: number; tax: number; tax_rate: number; total: number }) {
+  return `<div class="totals">
+      <div><span>Subtotal</span><span>${money(t.subtotal, cur)}</span></div>
+      ${Number(t.discount) ? `<div><span>Discount</span><span>−${money(t.discount, cur)}</span></div>` : ''}
+      ${Number(t.tax) ? `<div><span>Tax (${(Number(t.tax_rate) * 100).toFixed(2)}%)</span><span>${money(t.tax, cur)}</span></div>` : ''}
+      <div class="grand"><span>Total</span><span>${money(t.total, cur)}</span></div>
+    </div>`;
+}
+
+export function documentHtml({ org, kind, doc, items, customer, aircraft, options, reviewUrl, payments, directPayment }: DocInput): string {
   const cur = org.currency;
   const isInv = kind === 'invoice';
   const link = PORTAL_URL ? `${PORTAL_URL}/portal/${kind}/${doc.public_token}` : '';
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${BASE_CSS}</style></head><body>
+  const pkgs = !isInv && options && options.length ? options : null;
+  const deadline = doc.valid_until_at ? dateTime(doc.valid_until_at) : date(doc.valid_until);
+  const lateFee = (d: string) => /late fee/i.test(d);
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${BASE_CSS}
+    .pkg { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-top: 16px; page-break-inside: avoid; }
+    .pkg.chosen { border: 2px solid #0B3D91; }
+    .review { margin-top: 24px; padding: 12px; border-radius: 8px; background: #F1F6FD; }
+    .late td { color: #B42318; }
+  </style></head><body>
     ${header(org, isInv ? 'INVOICE' : 'QUOTE', [
       [isInv ? 'Invoice #' : 'Quote #', doc.number],
       ['Date', date(doc.issue_date)],
-      isInv ? ['Due', date(doc.due_date)] : ['Valid until', date(doc.valid_until)],
+      isInv ? ['Due', date(doc.due_date)] : ['Approve by', deadline],
     ])}
     <div class="row box">
       <div><div class="muted">${isInv ? 'BILL TO' : 'PREPARED FOR'}</div>
         <b>${esc(customer.name)}</b><br/>${esc(customer.company)}<br/>${esc(customer.billing_address)}<br/>${esc(customer.email)}</div>
-      ${aircraft ? `<div style="text-align:right"><div class="muted">AIRCRAFT</div><b>${esc(aircraft.tail_number)}</b><br/>${esc([aircraft.manufacturer, aircraft.model].filter(Boolean).join(' '))}</div>` : ''}
+      ${aircraft ? `<div style="text-align:right"><div class="muted">${assetHeading(aircraft.asset_type)}</div><b>${esc(aircraft.tail_number)}</b><br/>${esc([aircraft.manufacturer, aircraft.model].filter(Boolean).join(' '))}</div>` : ''}
     </div>
-    ${itemsTable(items, cur)}
+    ${isInv && doc.covered_by_plan ? '<div class="box"><span class="pill">Covered by care plan</span></div>' : ''}
+    ${pkgs ? `<div class="box"><b>Choose one of ${pkgs.length} packages</b></div>` + pkgs.map((o) => `
+      <div class="pkg ${doc.selected_option_id === o.id ? 'chosen' : ''}">
+        <div class="row"><div><b style="font-size:14px">${esc(o.name)}</b>${doc.selected_option_id === o.id ? ' <span class="pill">Chosen</span>' : ''}
+          ${o.description ? `<div class="muted">${esc(o.description)}</div>` : ''}</div>
+          <div style="font-size:16px;font-weight:bold">${money(o.total, cur)}</div></div>
+        ${itemsTable(items.filter((i) => i.option_id === o.id), cur)}
+        ${totalsBlock(cur, { subtotal: o.subtotal, discount: Math.min(Number(doc.discount) || 0, Number(o.subtotal) || 0), tax: o.tax, tax_rate: doc.tax_rate, total: o.total })}
+      </div>`).join('') : `
+    ${itemsTable(items, cur).replace(/<tr>(\s*<td>[^<]*late fee)/gi, '<tr class="late">$1')}
     <div class="totals">
       <div><span>Subtotal</span><span>${money(doc.subtotal, cur)}</span></div>
       ${Number(doc.discount) ? `<div><span>Discount</span><span>−${money(doc.discount, cur)}</span></div>` : ''}
@@ -94,10 +153,16 @@ export function documentHtml({ org, kind, doc, items, customer, aircraft }: DocI
       <div class="grand"><span>Total</span><span>${money(doc.total, cur)}</span></div>
       ${isInv && Number(doc.amount_paid) ? `<div><span>Paid</span><span>−${money(doc.amount_paid, cur)}</span></div>
         <div class="grand"><span>Balance due</span><span>${money(doc.balance, cur)}</span></div>` : ''}
-    </div>
+    </div>`}
+    ${isInv && items.some((i) => lateFee(i.description)) ? `<div class="muted" style="margin-top:8px">Includes a late fee for payment after the due date${doc.late_fee_applied_at ? ` (added ${esc(date(doc.late_fee_applied_at))})` : ''}.</div>` : ''}
+    ${isInv && payments && payments.length ? `<div class="box"><b>Payments received</b><table>${payments.map((p) => `<tr><td>${esc(date(p.received_at))}</td><td>${esc(/^deposit/i.test(p.reference ?? '') ? 'Deposit' : (p.method ?? '').toUpperCase())}${p.reference ? ` · ${esc(p.reference)}` : ''}</td><td class="num">${money(p.amount, cur)}</td></tr>`).join('')}</table></div>` : ''}
+    ${!isInv && Number(doc.deposit_amount) > 0 ? `<div class="box"><b>Deposit:</b> ${money(doc.deposit_amount, cur)} due on acceptance${doc.deposit_paid_at ? ` · <b>paid ${esc(date(doc.deposit_paid_at))}</b>` : ''}</div>` : ''}
     ${doc.notes ? `<div class="box"><b>Notes</b><div>${esc(doc.notes).replace(/\n/g, '<br/>')}</div></div>` : ''}
     ${doc.terms ? `<div class="box"><b>Terms</b><div class="muted">${esc(doc.terms).replace(/\n/g, '<br/>')}</div></div>` : ''}
-    ${link ? `<div class="footer">${isInv ? 'Pay online' : 'Review and accept online'}: <a href="${esc(link)}">${esc(link)}</a></div>` : ''}
+    ${!isInv && doc.accepted_name ? `<div class="box"><b>Accepted</b><div>${safeSignatureSvg(doc.signature_svg) ?? ''}</div><div>${esc(doc.accepted_name)} · ${esc(dateTime(doc.accepted_at))}</div></div>` : ''}
+    ${isInv && reviewUrl ? `<div class="review"><b>Enjoyed our work?</b> Leave us a Google review: <a href="${esc(reviewUrl)}">${esc(reviewUrl)}</a></div>` : ''}
+    ${isInv && directPayment && Number(doc.balance) > 0 ? `<div class="footer">Please pay ${esc(org.name)} directly${org.phone || org.email ? ` (${esc([org.phone, org.email].filter(Boolean).join(' · '))})` : ''}.${link ? ` View online: <a href="${esc(link)}">${esc(link)}</a>` : ''}</div>`
+      : link ? `<div class="footer">${isInv ? 'Pay online' : 'Review and accept online'}: <a href="${esc(link)}">${esc(link)}</a></div>` : ''}
   </body></html>`;
 }
 

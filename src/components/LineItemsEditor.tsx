@@ -21,6 +21,8 @@ export function LineItemsEditor({
   taxRate,
   currency = 'USD',
   hideDiscount,
+  priceFor,
+  title,
 }: {
   items: LineItem[];
   onChange: (items: LineItem[]) => void;
@@ -31,6 +33,10 @@ export function LineItemsEditor({
   taxRate: number;
   currency?: string;
   hideDiscount?: boolean;
+  /** Optional price override for a service (e.g. the Flight Ready price guide for this model). Return null to use normal pricing. */
+  priceFor?: (s: Service) => number | null;
+  /** Optional label shown above the total (e.g. the package name). */
+  title?: string;
 }) {
   const [picker, setPicker] = useState(false);
   const [q, setQ] = useState('');
@@ -43,14 +49,18 @@ export function LineItemsEditor({
     setQ('');
   };
 
+  const guidePrice = (s: Service) => (priceFor ? priceFor(s) : null);
+  const suggested = (s: Service) => guidePrice(s) ?? priceService(s, aircraft);
+
   const addService = (s: Service) => {
+    const guide = guidePrice(s);
     onChange([
       ...items,
       {
         service_id: s.id,
         description: s.name,
-        quantity: s.pricing_method === 'hourly' ? Number(s.est_hours) || 1 : 1,
-        unit_price: s.pricing_method === 'hourly' ? Number(s.hourly_rate) : priceService(s, aircraft),
+        quantity: s.pricing_method === 'hourly' && guide == null ? Number(s.est_hours) || 1 : 1,
+        unit_price: guide ?? (s.pricing_method === 'hourly' ? Number(s.hourly_rate) : priceService(s, aircraft)),
         taxable: s.taxable,
       },
     ]);
@@ -61,7 +71,10 @@ export function LineItemsEditor({
   const repriceAll = () =>
     onChange(items.map((it) => {
       const s = services.find((x) => x.id === it.service_id);
-      if (!s || s.pricing_method === 'hourly') return it;
+      if (!s) return it;
+      const guide = guidePrice(s);
+      if (guide != null) return { ...it, unit_price: guide };
+      if (s.pricing_method === 'hourly') return it;
       return { ...it, unit_price: priceService(s, aircraft) };
     }));
 
@@ -97,7 +110,7 @@ export function LineItemsEditor({
           onPress={() => onChange([...items, { service_id: null, description: '', quantity: 1, unit_price: 0, taxable: true }])} />
       </Row>
       {aircraft && items.some((i) => i.service_id) ? (
-        <Button kind="ghost" small icon="refresh" title="Re-price for selected aircraft" onPress={repriceAll} />
+        <Button kind="ghost" small icon="refresh" title="Re-price for selected asset" onPress={repriceAll} />
       ) : null}
 
       <Card style={{ marginTop: space.md }}>
@@ -111,7 +124,7 @@ export function LineItemsEditor({
           <T variant="muted">Tax ({(taxRate * 100).toFixed(2)}%)</T><T>{money(totals.tax, currency)}</T>
         </Row>
         <Divider />
-        <Row style={{ justifyContent: 'space-between' }}><T variant="h3">Total</T><T variant="h3">{money(totals.total, currency)}</T></Row>
+        <Row style={{ justifyContent: 'space-between' }}><T variant="h3">{title ? `${title} total` : 'Total'}</T><T variant="h3">{money(totals.total, currency)}</T></Row>
       </Card>
 
       <Modal visible={picker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPicker(false)}>
@@ -140,13 +153,13 @@ export function LineItemsEditor({
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
                     <T style={{ fontWeight: '600' }}>{s.name}</T>
-                    <T variant="small">{pricingSummary(s)}{s.est_hours ? ` · ~${s.est_hours}h` : ''}</T>
+                    <T variant="small">{guidePrice(s) != null ? 'Price guide for this model' : pricingSummary(s)}{s.est_hours ? ` · ~${s.est_hours}h` : ''}</T>
                   </View>
-                  <T variant="money">{money(s.pricing_method === 'hourly' ? (Number(s.est_hours) || 1) * s.hourly_rate : priceService(s, aircraft), currency)}</T>
+                  <T variant="money">{money(guidePrice(s) ?? (s.pricing_method === 'hourly' ? (Number(s.est_hours) || 1) * s.hourly_rate : suggested(s)), currency)}</T>
                 </Row>
               </Card>
             ))}
-            {!aircraft ? <T variant="small">Tip: pick an aircraft first for size-based pricing.</T> : null}
+            {!aircraft ? <T variant="small">Tip: pick the aircraft, vehicle or boat first for size-based pricing.</T> : null}
           </ScrollView>
         </SafeAreaView>
       </Modal>

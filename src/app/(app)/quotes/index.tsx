@@ -1,5 +1,5 @@
-import { DocumentList } from '../../../components/DocumentList';
+import { QuoteList } from '../../../components/quotes/QuoteList';
 
 export default function Quotes() {
-  return <DocumentList kind="quote" />;
+  return <QuoteList />;
 }

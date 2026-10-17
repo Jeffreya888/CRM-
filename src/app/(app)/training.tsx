@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { confirmAction, notify } from '../../components/FormSheet';
+import { GuideLibrary } from '../../components/guides/GuideLibrary';
 import { MediaCard } from '../../components/MediaCard';
 import { Button, Card, EmptyState, ErrorBanner, Fab, Field, IconTile, Ionicons, ListRow, Row, Screen, SearchBar, Section, Segmented, Select, T } from '../../components/ui';
 import { pickImage, pickVideo, uploadFile, uploadImage } from '../../lib/files';
+import { loadGuideLibrary } from '../../lib/guides';
 import { canSeeMoney } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
@@ -16,17 +18,22 @@ import type { TrainingMedia } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 
 type Draft = { id?: string; kind: 'video' | 'document'; title: string; service_id: string | null; url: string; duration_min: string; description: string;
+  guide_key: string | null; step_index: number | null;
   file?: { uri: string; mime: string; ext: string; name: string } | null; thumb?: string | null; storage_path?: string | null; thumbnail_path?: string | null };
 
-const blank = (service_id: string | null = null): Draft => ({ kind: 'video', title: '', service_id, url: '', duration_min: '', description: '', file: null, thumb: null });
+const blank = (service_id: string | null = null, guide_key: string | null = null, step_index: number | null = null): Draft =>
+  ({ kind: 'video', title: '', service_id, url: '', duration_min: '', description: '', file: null, thumb: null, guide_key, step_index });
 
 export default function TrainingCenter() {
-  const { add } = useLocalSearchParams<{ add?: string }>();
-  const { orgId, role, session } = useOrg();
+  const { add, attach, step, tab: tabParam } = useLocalSearchParams<{ add?: string; attach?: string; step?: string; tab?: string }>();
+  const { orgId, role, session, businessTypes } = useOrg();
   const uid = session!.user.id;
   const manager = canSeeMoney(role);
+  const attachStep = step != null && step !== '' && !Number.isNaN(Number(step)) ? Number(step) : null;
+  const [tab, setTab] = useState<'guides' | 'media'>(add || attach || tabParam === 'media' ? 'media' : 'guides');
   const [search, setSearch] = useState('');
-  const [draft, setDraft] = useState<Draft | null>(() => (add && manager ? blank(add) : null));
+  const [draft, setDraft] = useState<Draft | null>(() => (manager && (add || attach) ? blank(add ?? null, attach ?? null, attach ? attachStep ?? 0 : null) : null));
+  const lib = useQuery(() => loadGuideLibrary(orgId), [orgId]);
   const [error, setError] = useState<string | null>(null);
 
   const q = useQuery(async () => {
@@ -49,6 +56,15 @@ export default function TrainingCenter() {
   const watchedCount = allVideos.filter((m) => q.data?.watched.has(m.id)).length;
   const pct = allVideos.length ? Math.round((watchedCount / allVideos.length) * 100) : 0;
 
+  const guideOptions = (lib.data?.guides ?? []).filter((r) => businessTypes.includes(r.guide.asset_type)).map((r) => ({ value: r.guide.key, label: r.guide.title, hint: `${r.guide.steps.length} steps` }));
+  const guideByKey = (key: string | null) => (lib.data?.guides ?? []).find((r) => r.guide.key === key)?.guide ?? null;
+  const stepCaption = (m: TrainingMedia) => {
+    const g = guideByKey(m.guide_key);
+    if (!g) return null;
+    return m.step_index != null && g.steps[m.step_index] ? `${g.title} · Step ${m.step_index + 1}: ${g.steps[m.step_index]!.title}` : g.title;
+  };
+  const draftGuide = guideByKey(draft?.guide_key ?? null);
+
   const save = async () => {
     if (!draft) return;
     setError(null);
@@ -61,6 +77,7 @@ export default function TrainingCenter() {
       if (draft.thumb && !draft.thumb.startsWith('http')) thumbnail_path = await uploadImage(orgId, 'training', draft.thumb);
       const row = {
         kind: draft.kind, title: draft.title.trim(), service_id: draft.service_id, description: draft.description.trim() || null,
+        guide_key: draft.guide_key, step_index: draft.guide_key ? draft.step_index : null,
         url: draft.url.trim() || null, storage_path: draft.url.trim() ? null : storage_path, thumbnail_path,
         duration_min: Number(draft.duration_min) || null,
       };
@@ -84,12 +101,24 @@ export default function TrainingCenter() {
   const edit = (m: TrainingMedia) => setDraft({
     id: m.id, kind: m.kind, title: m.title, service_id: m.service_id, url: m.url ?? '', duration_min: m.duration_min ? String(m.duration_min) : '',
     description: m.description ?? '', storage_path: m.storage_path, thumbnail_path: m.thumbnail_path, thumb: q.data?.thumbs[m.id] ?? null,
+    guide_key: m.guide_key, step_index: m.step_index,
   });
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
+      <Screen refreshing={tab === 'guides' ? lib.refreshing : q.refreshing} onRefresh={tab === 'guides' ? lib.refresh : q.refresh}>
         <Stack.Screen options={{ title: 'Training Center' }} />
+        <Segmented value={tab} onChange={setTab} options={[
+          { value: 'guides', label: 'Service guides', count: lib.data?.guides.filter((r) => businessTypes.includes(r.guide.asset_type)).length },
+          { value: 'media', label: 'Videos & documents', count: media.length },
+        ]} />
+        {tab === 'guides' ? (
+          <>
+            <ErrorBanner message={lib.error} onRetry={lib.reload} />
+            <GuideLibrary lib={lib.data} loading={lib.loading} orgId={orgId} manager={manager} businessTypes={businessTypes} onChanged={lib.reload} />
+          </>
+        ) : (
+        <>
         <ErrorBanner message={q.error} />
         <Card>
           <Row style={{ justifyContent: 'space-between' }}>
@@ -105,14 +134,14 @@ export default function TrainingCenter() {
 
         {!q.loading && media.length === 0 ? (
           <EmptyState icon="school-outline" title="No training content yet"
-            body={manager ? 'Add how-to videos and product guides so every technician details the same way.' : 'Your manager hasn\'t added training content yet.'} />
+            body={manager ? 'Add how-to videos and product documents so every technician details the same way. Attach a video to a guide step and techs see it right under that step.' : 'Your manager hasn\'t added training content yet.'} />
         ) : null}
 
         {videos.length ? (
           <Section title={`Training Videos (${videos.length})`} icon="play" iconColor={colors.success}>
             {videos.map((m) => (
               <View key={m.id}>
-                <MediaCard m={m} thumb={q.data?.thumbs[m.id]} watched={q.data?.watched.has(m.id)} onPress={() => openMedia(m, uid).then(q.reload).catch((e) => notify('Could not open', e.message))} />
+                <MediaCard m={m} thumb={q.data?.thumbs[m.id]} watched={q.data?.watched.has(m.id)} caption={stepCaption(m)} onPress={() => openMedia(m, uid).then(q.reload).catch((e) => notify('Could not open', e.message))} />
                 {manager ? <Pressable onPress={() => edit(m)} style={{ position: 'absolute', right: 8, top: 8, padding: 6 }}><Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} /></Pressable> : null}
               </View>
             ))}
@@ -123,15 +152,17 @@ export default function TrainingCenter() {
           <Section title={`Documents (${docs.length})`} icon="document-text-outline">
             <Card style={{ padding: 0, overflow: 'hidden' }}>
               {docs.map((m) => (
-                <ListRow key={m.id} icon="document-text-outline" tone="info" title={m.title} subtitle={m.service?.name ?? m.description}
+                <ListRow key={m.id} icon="document-text-outline" tone="info" title={m.title} subtitle={stepCaption(m) ?? m.service?.name ?? m.description}
                   right={manager ? <Pressable hitSlop={10} onPress={() => edit(m)}><Ionicons name="ellipsis-horizontal" size={18} color={colors.textMuted} /></Pressable> : undefined}
                   onPress={() => openMedia(m, uid).then(q.reload).catch((e) => notify('Could not open', e.message))} />
               ))}
             </Card>
           </Section>
         ) : null}
+        </>
+        )}
       </Screen>
-      {manager ? <Fab onPress={() => setDraft(blank())} label="Add training content" /> : null}
+      {manager && tab === 'media' ? <Fab onPress={() => setDraft(blank())} label="Add training content" /> : null}
 
       <Modal visible={!!draft} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setDraft(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -148,6 +179,13 @@ export default function TrainingCenter() {
                 <Field label="Title" placeholder={draft.kind === 'video' ? 'Exterior Detail Masterclass' : 'Leather Product Guide'} value={draft.title} onChangeText={(title) => setDraft({ ...draft, title })} />
                 <Select label="Service" placeholder="General (not tied to a service)" icon="sparkles-outline" iconColor={colors.success}
                   value={draft.service_id} allowClear options={(q.data?.services ?? []).map((x) => ({ value: x.id, label: x.name }))} onChange={(service_id) => setDraft({ ...draft, service_id })} />
+                <Select label="Guide step (optional)" placeholder="Not attached to a guide" icon="book-outline" allowClear searchable={guideOptions.length > 8}
+                  value={draft.guide_key} options={guideOptions} onChange={(guide_key) => setDraft({ ...draft, guide_key, step_index: guide_key ? 0 : null })} />
+                {draftGuide ? (
+                  <Select label="Show under step" placeholder="Choose a step" value={draft.step_index != null ? String(draft.step_index) : null}
+                    options={draftGuide.steps.map((st, i) => ({ value: String(i), label: `${i + 1}. ${st.title}` }))}
+                    onChange={(v) => setDraft({ ...draft, step_index: v == null ? null : Number(v) })} />
+                ) : null}
                 <Field label="Link" icon="link-outline" placeholder={draft.kind === 'video' ? 'YouTube, Vimeo or Google Drive link' : 'Link to PDF or web page'} autoCapitalize="none" keyboardType="url"
                   value={draft.url} onChangeText={(url) => setDraft({ ...draft, url })} hint="Paste a link, or upload a file below. Unlisted YouTube links work great for long videos." />
                 <Card style={{ backgroundColor: colors.cardRaised }}>
