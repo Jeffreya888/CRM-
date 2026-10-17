@@ -52,3 +52,19 @@ Old routes being replaced: `/pipeline` → `/leads`, `/locations` → `/faciliti
 | Webhooks | `stripe-webhook`, `revenuecat-webhook`, `resend-webhook`, `telnyx-webhook` | | |
 
 URLs: customer links use `PORTAL_URL` (`EXPO_PUBLIC_PORTAL_URL` in the app): `/portal/quote/<token>`, `/portal/invoice/<token>`, `/portal/c/<org.public_slug>`, `/invite/<token>`.
+
+## Portal `data` response (contract between `portal` function and `/portal/c/[slug]`)
+```ts
+{
+  org: { name: string; logo_url: string | null; phone: string | null; email: string | null; timezone: string; google_review_url: string | null; accepts_cards: boolean },
+  customer: { id: string; name: string; email: string | null; phone: string | null; company: string | null },
+  assets: { id: string; tail_number: string; asset_type: 'aircraft'|'vehicle'|'watercraft'; manufacturer: string | null; model: string | null; category: string }[],
+  services: { id: string; name: string; asset_type: string }[],                // active services customers may request
+  upcoming_jobs: { id: string; number: string; title: string | null; status: string; scheduled_start: string | null; scheduled_end: string | null; aircraft_id: string | null; tail_number: string | null; location_name: string | null }[],
+  past_jobs: { id: string; number: string; title: string | null; actual_end: string | null; tail_number: string | null; rating: number | null; photos: { path: string; kind: string; caption: string | null }[] }[],
+  quotes: { number: string; status: string; total: number; valid_until_at: string | null; token: string }[],   // non-draft
+  invoices: { number: string; status: string; total: number; balance: number; due_date: string; token: string }[],  // non-draft
+  requests: { id: string; kind: string; status: string; created_at: string; preferred: string[] }[]
+}
+```
+`verify` returns `{ token, expires_at }` (30-day session). `request_code` always returns `{ ok: true }` (never reveals whether an email exists).

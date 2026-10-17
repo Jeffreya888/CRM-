@@ -221,6 +221,13 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Until the owner's pricing file arrives: 12 standard services with size-based pricing.
 - Owner will send pricing per aircraft + services → merged into the catalog as the **Flight Ready price guide** (suggested price per model per service) for every new company. Each company can edit prices and apply a regional adjustment %.
 
+## Service levels (owner clarification)
+- Exterior **dry wash**: Level 1 = Trip Clean, Level 2 = Full Exterior (two services, two guides).
+- Exterior **wet wash**: Full Exterior only (no levels).
+- **Interior**: Level 1 = Trip Clean (quick wipe-down), Level 2 = Full Interior.
+- **Leather shampoo & conditioning**: its own step-by-step checklist.
+- Boat model catalog (like the aircraft catalog) for watercraft.
+
 ## Training library (platform defaults)
 - Default **step-by-step service guide** for every service, written by us (owner reviews): what it is, time estimate by size, crew, products, tools/equipment, prep and protection (pitot/static covers, sensors, antennas, de-ice boots, windows), numbered steps, aviation-specific do-nots, quality check, photos to take.
 - Guide steps double as the job checklist automatically.
