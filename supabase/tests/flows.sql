@@ -3,40 +3,72 @@
 \set ON_ERROR_STOP on
 set client_min_messages = warning;
 
--- Two users in two separate detailing companies, plus a technician.
-insert into auth.users (id, email, raw_user_meta_data) values
-  ('00000000-0000-0000-0000-00000000000a', 'owner@alpha.test', '{"full_name":"Alice Owner"}'),
-  ('00000000-0000-0000-0000-00000000000b', 'owner@bravo.test', '{"full_name":"Bob Owner"}'),
-  ('00000000-0000-0000-0000-00000000000c', 'tech@alpha.test',  '{"full_name":"Tina Tech"}');
+-- Two companies, a technician, a manager and a not-yet-verified invitee.
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-00000000000a', 'owner@alpha.test', '{"full_name":"Alice Owner"}', now()),
+  ('00000000-0000-0000-0000-00000000000b', 'owner@bravo.test', '{"full_name":"Bob Owner"}', now()),
+  ('00000000-0000-0000-0000-00000000000c', 'tech@alpha.test',  '{"full_name":"Tina Tech"}', now()),
+  ('00000000-0000-0000-0000-00000000000d', 'mgr@alpha.test',   '{"full_name":"Max Manager"}', now()),
+  ('00000000-0000-0000-0000-00000000000e', 'demo@anon.test',   '{"demo":true}', null);
 
 create temp table ctx (k text primary key, v uuid);
-grant all on ctx to authenticated;
+-- Test helper: the outbox is service-only, so count it with definer rights.
+create function public.test_outbox(p_kind text) returns bigint language sql security definer as $$
+  select count(*) from public.notification_outbox where kind = p_kind;
+$$;
+grant all on ctx to authenticated, anon;
 
--- ---------- Alice creates an org (seeds price book) -------------------------
+-- Catalog & guides are loaded.
+do $$ begin
+  assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
+  assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
+  assert (select count(*) from service_guides where org_id is null) = 24, 'platform guides loaded';
+end $$;
+
+-- ---------- Alice creates an org with aircraft + vehicles ------------------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
-insert into ctx select 'alpha', public.create_organization('Alpha Aero Detailing');
+insert into ctx select 'alpha', public.create_organization('Alpha Aero Detailing', true, array['aircraft','vehicle']);
 do $$ begin
-  assert (select count(*) from services) = 12, 'seeded services';
+  assert (select count(*) from services where asset_type = 'aircraft') = 12, 'aircraft services seeded';
+  assert (select count(*) from services where asset_type = 'vehicle') = 6, 'vehicle services seeded';
+  assert (select count(*) from services where asset_type = 'watercraft') = 0, 'no watercraft yet';
   assert (select plan from organizations) = 'trial', 'starts on trial';
-  assert public.effective_plan((select v from ctx where k='alpha')) = 'trial';
-  assert (select est_hours_max from services where name = 'Interior Detail') = 6, 'service extras seeded';
-  assert jsonb_array_length((select pricing_tiers from services where name = 'Interior Detail')) = 3, 'interior tiers seeded';
-  assert array_length((select equipment from services where name = 'Exterior Wash'), 1) = 5, 'equipment seeded';
-end $$;
-insert into training_media (org_id, service_id, kind, title, url, duration_min)
-  select org_id, id, 'video', 'Interior Cleaning Guide', 'https://example.com/v.mp4', 30 from services where name = 'Interior Detail';
-do $$ begin
+  assert (select cardinality(checklist) from services where name = 'Exterior Wash')
+       = (select jsonb_array_length(steps) from service_guides where key = 'exterior_wash' and org_id is null), 'checklist from guide steps';
+  assert (select recur_every || ' ' || recur_unit from services where name = 'Ceramic Coating' and asset_type = 'aircraft') = '12 month', 'recurring in months';
+  assert (select count(*) from automations) = 8, 'automations seeded';
+  assert (select count(*) from automations where enabled and key in ('job_reminder','invoice_reminders')) = 2, 'smart defaults on';
+  assert (select count(*) from crew_hours) = 5, 'default crew hours';
   assert (public.dashboard_stats((select v from ctx where k='alpha')) ? 'revenue_week'), 'weekly revenue stat';
 end $$;
 
--- Customer, aircraft, quote with items → totals computed by trigger.
+-- Business types can be added (seeding services) but not removed.
+update organizations set business_types = array['aircraft','vehicle','watercraft'];
+do $$ begin
+  assert (select count(*) from services where asset_type = 'watercraft') = 6, 'watercraft services seeded on add';
+  begin
+    update organizations set business_types = array['aircraft'];
+    raise exception 'removing a business type should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'Business types can be added%' then raise; end if;
+  end;
+end $$;
+
+insert into training_media (org_id, service_id, kind, title, url, duration_min, guide_key, step_index)
+  select org_id, id, 'video', 'Interior Cleaning Guide', 'https://example.com/v.mp4', 30, 'interior_detail', 2 from services where name = 'Interior Detail' and asset_type = 'aircraft';
+
+-- Customer, aircraft (from the catalog), quote with items → totals by trigger.
 insert into customers (org_id, name, email, discount_pct) select v, 'Skyway Charter', 'ops@skyway.test', 10 from ctx where k='alpha';
 insert into ctx select 'cust', id from customers;
-insert into aircraft (org_id, customer_id, tail_number, manufacturer, model, category, length_ft)
-  select (select v from ctx where k='alpha'), (select v from ctx where k='cust'), 'N123AB', 'Cessna', 'Citation CJ3', 'light_jet', 51.2;
+insert into locations (org_id, name, airport_code, hangar_capacity) select v, 'Teterboro', 'KTEB', 1 from ctx where k='alpha';
+insert into ctx select 'loc', id from locations;
+insert into location_secrets (location_id, org_id, gate_code) select v, (select v from ctx where k='alpha'), '1234#' from ctx where k='loc';
+insert into aircraft (org_id, customer_id, tail_number, manufacturer, model, category, length_ft, model_id, home_location_id)
+  select (select v from ctx where k='alpha'), (select v from ctx where k='cust'), 'N123AB', 'Cessna', 'Citation CJ3', 'light_jet', 51.2,
+         (select id from aircraft_models where model like 'Citation CJ3%' limit 1), (select v from ctx where k='loc');
 insert into ctx select 'ac', id from aircraft;
-update organizations set tax_rate = 0.07;  -- allowed column
+update organizations set tax_rate = 0.07;
 
 insert into quotes (org_id, number, customer_id, aircraft_id, tax_rate, discount)
   select (select v from ctx where k='alpha'), public.next_number((select v from ctx where k='alpha'), 'quote'),
@@ -45,123 +77,421 @@ insert into ctx select 'quote', id from quotes;
 insert into quote_items (org_id, quote_id, service_id, description, quantity, unit_price, taxable, sort_order)
   select s.org_id, (select v from ctx where k='quote'), s.id, s.name, 1, p.price, p.taxable, p.ord
   from (values ('Exterior Wash', 610.80, true, 1), ('Interior Detail', 455.00, false, 2)) p(name, price, taxable, ord)
-  join services s on s.name = p.name;
+  join services s on s.name = p.name and s.asset_type = 'aircraft';
 do $$ declare q quotes; begin
   select * into q from quotes;
   assert q.number = 'Q-1001', 'quote numbering: ' || q.number;
   assert q.subtotal = 1065.80, 'quote subtotal ' || q.subtotal;
-  assert q.tax = 42.76, 'quote tax only on taxable lines ' || q.tax;   -- 610.80 * 0.07
+  assert q.tax = 42.76, 'quote tax only on taxable lines ' || q.tax;
   assert q.total = 1108.56, 'quote total ' || q.total;
 end $$;
-update quotes set discount = 100;
+update quotes set discount = 100, deposit_type = 'percent', deposit_value = 25;
 do $$ declare q quotes; begin
   select * into q from quotes;
-  -- taxable share after proportional discount: 610.80 - 100*610.80/1065.80 = 553.4917 → tax 38.74
   assert q.tax = 38.74, 'discounted tax ' || q.tax;
   assert q.total = 1004.54, 'discounted total ' || q.total;
+  assert q.deposit_amount = 251.14, 'deposit 25% ' || q.deposit_amount;
 end $$;
 
--- Quote → job (items + checklist copied) → complete → invoice.
-insert into ctx select 'job', public.convert_quote_to_job((select v from ctx where k='quote'), now());
+-- Sent quotes are locked; revising creates version 2 and supersedes v1.
+update quotes set status = 'sent';
 do $$ begin
-  assert (select status from quotes) = 'accepted';
-  assert (select count(*) from job_items) = 2, 'job items copied';
-  assert (select count(*) from job_checklist_items) = 14, 'checklists copied: ' || (select count(*) from job_checklist_items);
-  assert (select number from jobs) = 'WO-1001';
+  assert (select sent_at is not null from quotes), 'sent_at stamped';
+  begin
+    update quote_items set unit_price = 1 where description = 'Exterior Wash';
+    raise exception 'sent quote items should be locked';
+  exception when raise_exception then
+    if sqlerrm not like 'QUOTE_LOCKED%' then raise; end if;
+  end;
 end $$;
+insert into ctx select 'quote2', public.revise_quote((select v from ctx where k='quote'));
+do $$ begin
+  assert (select version from quotes where id = (select v from ctx where k='quote2')) = 2, 'version 2';
+  assert (select status from quotes where id = (select v from ctx where k='quote2')) = 'draft', 'v2 is a draft';
+  assert (select superseded_by from quotes where id = (select v from ctx where k='quote')) = (select v from ctx where k='quote2'), 'v1 superseded';
+  assert (select count(*) from quote_items where quote_id = (select v from ctx where k='quote2')) = 2, 'items copied to v2';
+  assert (select total from quotes where id = (select v from ctx where k='quote2')) = 1004.54, 'v2 totals';
+end $$;
+update quote_items set unit_price = 650 where quote_id = (select v from ctx where k='quote2') and description = 'Exterior Wash';
+update quotes set discount = 0 where id = (select v from ctx where k='quote2');
+
+-- Quote → job (items + guide checklist copied) → photos → complete → invoice.
+insert into ctx select 'job', public.convert_quote_to_job((select v from ctx where k='quote2'), now() + interval '1 day');
+do $$ begin
+  assert (select status from quotes where id = (select v from ctx where k='quote2')) = 'accepted';
+  assert (select count(*) from job_items) = 2, 'job items copied';
+  assert (select count(*) from job_checklist_items) =
+         (select cardinality(checklist) from services where name = 'Exterior Wash' and asset_type = 'aircraft')
+       + (select cardinality(checklist) from services where name = 'Interior Detail' and asset_type = 'aircraft'), 'checklists copied';
+  assert (select count(*) from job_checklist_items where guide_key is not null and step_index is not null) = (select count(*) from job_checklist_items), 'checklist linked to guide steps';
+  assert (select number from jobs) = 'WO-1001';
+  assert (select status from jobs) = 'scheduled';
+end $$;
+do $$ begin
+  begin
+    update jobs set status = 'in_progress';
+    raise exception 'starting without before photos should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'BEFORE_PHOTOS_REQUIRED%' then raise; end if;
+  end;
+end $$;
+insert into job_photos (org_id, job_id, kind, storage_path) select org_id, id, 'before', org_id || '/jobs/b.jpg' from jobs;
 update jobs set status = 'in_progress';
+insert into time_entries (org_id, user_id, job_id, started_at) select org_id, auth.uid(), id, now() - interval '3 hours' from jobs;
+-- Supplies: each wash uses 1 concentrate (auto-deducted once on completion).
+insert into inventory_items (org_id, name, quantity, par_level, unit_cost) select v, 'Aero Wash Concentrate', 10, 9, 20 from ctx where k='alpha';
+insert into service_supplies (service_id, item_id, org_id)
+  select s.id, i.id, s.org_id from services s, inventory_items i where s.name = 'Exterior Wash' and s.asset_type = 'aircraft';
+do $$ begin
+  begin
+    update jobs set status = 'completed';
+    raise exception 'completing without after photos should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'AFTER_PHOTOS_REQUIRED%' then raise; end if;
+  end;
+end $$;
+insert into job_photos (org_id, job_id, kind, storage_path) select org_id, id, 'after', org_id || '/jobs/a.jpg' from jobs;
 update jobs set status = 'completed';
 do $$ begin
   assert (select actual_start is not null and actual_end is not null from jobs), 'actual times stamped';
-  assert (select count(*) from service_reminders) = 2, 'recurring reminders created';
+  assert (select count(*) from time_entries where ended_at is null) = 0, 'clocks stopped on completion';
+  assert (select count(*) from service_reminders) = 2, 'recurring reminders created (not opted in)';
+  assert (select quantity from inventory_items) = 9, 'supplies auto-deducted';
+  assert public.test_outbox('low_stock') = 1, 'low stock alert queued';
+end $$;
+-- Completing again (e.g. after an edit) does not deduct twice.
+update jobs set status = 'in_progress';
+update jobs set status = 'completed';
+do $$ begin assert (select quantity from inventory_items) = 9, 'auto-deduct is idempotent'; end $$;
+
+-- Job profitability: revenue excl. tax − labor − supplies. No pay rate yet → Unknown.
+do $$ declare p jsonb; begin
+  p := public.job_profitability((select v from ctx where k='job'));
+  assert (p->>'revenue')::numeric = 1105.00, 'job revenue ' || (p->>'revenue');
+  assert p->>'labor' is null and p->>'gross' is null, 'labor unknown without pay rate';
+  assert (p->>'supplies')::numeric = 20, 'supply cost';
+end $$;
+insert into member_pay (org_id, user_id, hourly_rate) select v, auth.uid(), 40 from ctx where k='alpha';
+do $$ declare p jsonb; begin
+  p := public.job_profitability((select v from ctx where k='job'));
+  assert (p->>'labor')::numeric = 120, 'labor 3h × $40 = ' || (p->>'labor');
+  assert (p->>'gross')::numeric = 965, 'gross ' || (p->>'gross');
 end $$;
 
 insert into ctx select 'inv', public.create_invoice_from_job((select v from ctx where k='job'));
 do $$ declare i invoices; begin
   select * into i from invoices;
   assert i.number = 'INV-1001';
-  assert i.subtotal = 1065.80;
-  assert i.discount = 106.58, 'customer 10% discount ' || i.discount;
-  assert i.tax_rate = 0.07;
+  assert i.subtotal = 1105.00, 'invoice subtotal ' || i.subtotal;
+  assert i.discount = 110.50, 'customer 10% standing discount ' || i.discount;
   assert i.status = 'draft';
+  assert i.org_snapshot is null, 'no snapshot while draft';
   assert (select status from jobs) = 'invoiced';
 end $$;
 update invoices set status = 'sent';
+do $$ begin assert (select org_snapshot->>'name' from invoices) = 'Alpha Aero Detailing', 'company snapshot on send'; end $$;
+update organizations set name = 'Alpha Renamed';
+do $$ begin assert (select org_snapshot->>'name' from invoices) = 'Alpha Aero Detailing', 'snapshot keeps sent details'; end $$;
 insert into payments (org_id, invoice_id, amount, method) select org_id, id, 500, 'check' from invoices;
-do $$ declare i invoices; begin
-  select * into i from invoices;
-  assert i.status = 'partial', 'partial status ' || i.status;
-  assert i.amount_paid = 500;
-end $$;
+do $$ begin assert (select status from invoices) = 'partial'; end $$;
 insert into payments (org_id, invoice_id, amount, method) select org_id, id, balance, 'card' from invoices;
 do $$ begin
   assert (select status from invoices) = 'paid';
   assert (select balance from invoices) = 0;
 end $$;
 
--- Inventory movements adjust stock.
-insert into inventory_items (org_id, name, quantity, reorder_level) select v, 'Aero Wash Concentrate', 10, 2 from ctx where k='alpha';
-insert into inventory_movements (org_id, item_id, delta, reason) select org_id, id, -3, 'job_use' from inventory_items;
-do $$ begin assert (select quantity from inventory_items) = 7; end $$;
+-- Cash-basis P&L: revenue excludes the tax collected.
+do $$ declare pl jsonb; i invoices; begin
+  select * into i from invoices;
+  pl := public.profit_loss((select v from ctx where k='alpha'), current_date - 1, current_date + 1);
+  assert (pl->>'revenue')::numeric = i.total - i.tax, 'cash revenue excl tax ' || (pl->>'revenue') || ' vs ' || (i.total - i.tax);
+  assert (pl->>'sales_tax_collected')::numeric = i.tax, 'tax shown separately';
+  assert (pl->>'supplies')::numeric = 20 and (pl->>'labor')::numeric = 120, 'costs';
+  assert (pl->>'net')::numeric = i.total - i.tax - 140, 'net';
+  pl := public.profit_loss((select v from ctx where k='alpha'), current_date - 1, current_date + 1, 'accrual');
+  assert (pl->>'revenue')::numeric = i.subtotal - i.discount, 'accrual revenue';
+end $$;
 
--- Protected columns: cannot self-upgrade plan.
+-- Count mode logs the correction.
+select public.record_count((select id from inventory_items), 7);
+do $$ begin
+  assert (select quantity from inventory_items) = 7, 'count sets quantity';
+  assert (select count(*) from inventory_movements where reason = 'count') = 1, 'count logged';
+end $$;
+
+-- Equipment: logging a paid service books an expense; a problem report flags it.
+insert into equipment (org_id, name, bookable) select v, 'Pressure washer', true from ctx where k='alpha';
+insert into equipment_service_log (org_id, equipment_id, cost, vendor, notes) select org_id, id, 85, 'Pump Shop', 'Seal kit' from equipment;
+do $$ begin
+  assert (select count(*) from expenses where category = 'repairs' and amount = 85) = 1, 'service cost booked as expense';
+end $$;
+
+-- Protected columns: cannot self-upgrade plan or mark demo.
 do $$ begin
   begin
     update organizations set plan = 'fleet';
     raise exception 'should not be able to change plan';
   exception when insufficient_privilege then null;
   end;
+  begin
+    update organizations set role_permissions = '{}';
+    raise exception 'permissions only via RPC';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
 
--- Dashboard & reports run.
+-- Reports & dashboard.
 do $$ declare d jsonb; r jsonb; begin
   d := public.dashboard_stats((select v from ctx where k='alpha'));
   assert (d->>'revenue_mtd')::numeric > 0, 'revenue mtd';
+  assert (d->>'total_paid')::numeric > 0, 'total paid';
+  assert d ? 'profit_month', 'profitability overview';
   r := public.report_summary((select v from ctx where k='alpha'), current_date - 30, current_date);
   assert jsonb_array_length(r->'by_service') = 2;
 end $$;
 
--- Invite the technician.
-create temp table invite_code as select public.invite_member((select v from ctx where k='alpha'), 'tech@alpha.test', 'technician') as code;
-grant select on invite_code to authenticated;
+-- Invitations: manager and technician.
+create temp table invites (who text, inv jsonb);
+grant select on invites to authenticated;
+insert into invites values ('tech', public.invite_member((select v from ctx where k='alpha'), 'tech@alpha.test', 'technician'));
+insert into invites values ('tech2', public.invite_member((select v from ctx where k='alpha'), 'tech@alpha.test', 'technician'));
+insert into invites values ('mgr', public.invite_member((select v from ctx where k='alpha'), 'mgr@alpha.test', 'manager'));
+do $$ begin
+  assert (select count(*) from invitations where email = 'tech@alpha.test' and revoked_at is not null) = 1, 'newer invite revokes older';
+end $$;
 
 -- ---------- Tech joins, sees work but not money -----------------------------
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
-select public.accept_invitation((select code from invite_code));
+do $$ begin
+  begin
+    perform public.accept_invitation((select inv->>'code' from invites where who = 'tech'));
+    raise exception 'revoked invite should fail';
+  exception when raise_exception then
+    if sqlerrm not like '%cancelled%' then raise; end if;
+  end;
+  begin
+    perform public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
+    raise exception 'invite for another email should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'This invitation is for%' then raise; end if;
+  end;
+end $$;
+select public.accept_invitation((select inv->>'token' from invites where who = 'tech2'));
 do $$ begin
   assert (select count(*) from jobs) = 1, 'tech sees jobs';
   assert (select count(*) from invoices) = 0, 'tech cannot see invoices';
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
   assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
-  assert (select title from jobs) is not null, 'tech still sees what services the job includes';
-  assert (select count(*) from services) = 12, 'tech can read service menu';
+  assert (select count(*) from services) = 0, 'tech cannot read service prices';
+  assert (select count(*) from service_menu) = 24, 'tech reads the service menu without prices';
+  assert (select count(*) from member_pay) = 0, 'tech cannot see pay rates';
+  assert (select count(*) from location_secrets) = 0, 'tech cannot see gate codes';
+  assert (select count(*) from crew_hours where user_id = auth.uid()) = 5, 'new member gets default hours';
   assert (public.dashboard_stats((select v from ctx where k='alpha'))->>'revenue_mtd') is null, 'no revenue for tech';
+  assert (public.dashboard_stats((select v from ctx where k='alpha'))->>'profit_month') is null, 'no profit for tech';
+  begin
+    insert into customers (org_id, name) values ((select v from ctx where k='alpha'), 'Tech customer');
+    raise exception 'tech cannot add customers by default';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.profit_loss((select v from ctx where k='alpha'), current_date - 30, current_date);
+    raise exception 'tech cannot read P&L';
+  exception when raise_exception then
+    if sqlerrm not like 'Not allowed%' then raise; end if;
+  end;
 end $$;
 update job_checklist_items set done = true where sort_order = 101;
 select public.set_my_display_name('Tina T.');
 insert into training_progress (media_id, user_id, org_id) select id, auth.uid(), org_id from training_media;
+insert into equipment_issues (org_id, equipment_id, description) select org_id, id, 'Hose leaking at the wand' from equipment;
+insert into time_off (org_id, user_id, starts_on, ends_on, reason) select v, auth.uid(), current_date + 10, current_date + 11, 'Dentist' from ctx where k='alpha';
 do $$ begin
-  assert (select count(*) from training_media) = 1, 'tech sees training';
   assert (select count(*) from training_progress) = 1, 'tech records own progress';
-  begin
-    insert into training_media (org_id, kind, title, url) select org_id, 'video', 'Sneaky', 'https://x' from training_media;
-    raise exception 'tech should not add training media';
-  exception when insufficient_privilege then null;
-  end;
-end $$;
-do $$ begin
-  assert (select display_name from memberships where user_id = auth.uid()) = 'Tina T.';
+  assert (select status from equipment) = 'needs_service', 'problem report flags equipment';
   assert (select role from memberships where user_id = auth.uid()) = 'technician';
   update memberships set role = 'owner' where user_id = auth.uid();
   assert (select role from memberships where user_id = auth.uid()) = 'technician', 'tech cannot self-promote';
+  begin
+    insert into time_off (org_id, user_id, starts_on, ends_on, status) select org_id, auth.uid(), current_date, current_date, 'approved' from memberships where user_id = auth.uid();
+    raise exception 'tech cannot self-approve time off';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
-insert into time_entries (org_id, user_id, job_id) select org_id, auth.uid(), id from jobs;
+insert into time_entries (org_id, user_id, started_at, ended_at)
+  select org_id, auth.uid(), now() - interval '9 hours', now() - interval '1 hour' from memberships where user_id = auth.uid();
 do $$ begin
   begin
-    insert into time_entries (org_id, user_id) select org_id, auth.uid() from jobs;
-    raise exception 'second open clock should fail';
-  exception when unique_violation then null;
+    update time_entries set approved = true where user_id = auth.uid();
+    raise exception 'tech cannot approve own time';
+  exception when raise_exception then
+    if sqlerrm not like 'PERMISSION%' then raise; end if;
   end;
+end $$;
+
+-- ---------- Manager: money yes, P&L and deletes no (defaults) ---------------
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d', false);
+select public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
+do $$ begin
+  assert (select count(*) from invoices) = 1, 'manager sees invoices';
+  assert (select count(*) from services) = 24, 'manager sees prices';
+  assert (select count(*) from member_pay) = 0, 'manager cannot see pay rates';
+  assert (select count(*) from location_secrets) = 1, 'manager sees gate codes';
+  begin
+    perform public.profit_loss((select v from ctx where k='alpha'), current_date - 30, current_date);
+    raise exception 'manager cannot read P&L by default';
+  exception when raise_exception then
+    if sqlerrm not like 'Not allowed%' then raise; end if;
+  end;
+  delete from customers;
+  assert (select count(*) from customers) = 1, 'manager cannot delete customers by default';
+end $$;
+select public.approve_time((select v from ctx where k='alpha'), current_date - 1, current_date + 1);
+do $$ begin
+  assert (select count(*) from time_entries where approved and approved_by = auth.uid()) >= 1, 'manager approves time';
+end $$;
+
+-- Scheduling: conflicts block managers; the owner can override.
+insert into jobs (org_id, number, title, customer_id, aircraft_id, location_id, status)
+  select (select v from ctx where k='alpha'), public.next_number((select v from ctx where k='alpha'), 'job'), 'Second wash',
+         (select v from ctx where k='cust'), (select v from ctx where k='ac'), (select v from ctx where k='loc'), 'tentative';
+insert into ctx select 'job2', id from jobs where title = 'Second wash';
+insert into jobs (org_id, number, title, customer_id, status, scheduled_start, scheduled_end)
+  select (select v from ctx where k='alpha'), public.next_number((select v from ctx where k='alpha'), 'job'), 'Busy job',
+         (select v from ctx where k='cust'), 'scheduled',
+         date_trunc('day', now() + interval '7 days') + interval '14 hours', date_trunc('day', now() + interval '7 days') + interval '16 hours';
+insert into job_assignments (job_id, user_id, org_id) select id, '00000000-0000-0000-0000-00000000000c', org_id from jobs where title = 'Busy job';
+insert into facility_requirements (org_id, location_id, name, kind) select v, (select v from ctx where k='loc'), 'KTEB ramp badge', 'badge' from ctx where k='alpha';
+do $$ declare c jsonb; s timestamptz := date_trunc('day', now() + interval '7 days') + interval '15 hours'; begin
+  c := public.schedule_conflicts((select v from ctx where k='alpha'), (select v from ctx where k='job2'), s, s + interval '2 hours',
+        array['00000000-0000-0000-0000-00000000000c']::uuid[], '{}', null, 30, 0, (select v from ctx where k='loc'));
+  assert exists (select 1 from jsonb_array_elements(c) x where x->>'type' = 'double_booked'), 'double booking detected';
+  assert exists (select 1 from jsonb_array_elements(c) x where x->>'type' = 'missing_requirement'), 'missing badge detected';
+  c := public.schedule_conflicts((select v from ctx where k='alpha'), null, s, s + interval '30 hours', '{}', '{}', null);
+  assert exists (select 1 from jsonb_array_elements(c) x where x->>'type' = 'too_long'), '24h limit';
+  begin
+    perform public.schedule_job((select v from ctx where k='job2'), s, s + interval '2 hours', array['00000000-0000-0000-0000-00000000000c']::uuid[],
+      '00000000-0000-0000-0000-00000000000c', '{}', null, 0, 0, true);
+    raise exception 'manager override should be refused';
+  exception when raise_exception then
+    if sqlerrm not like 'SCHEDULE_CONFLICT%' then raise; end if;
+  end;
+end $$;
+
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select public.schedule_job((select v from ctx where k='job2'), date_trunc('day', now() + interval '7 days') + interval '15 hours',
+  date_trunc('day', now() + interval '7 days') + interval '17 hours', array['00000000-0000-0000-0000-00000000000c']::uuid[],
+  '00000000-0000-0000-0000-00000000000c', array[(select id from equipment)], (select v from ctx where k='loc'), 0, 0, true, true);
+do $$ begin
+  assert (select status from jobs where id = (select v from ctx where k='job2')) = 'scheduled', 'owner override confirms tentative job';
+  assert (select count(*) from resource_holds where job_id = (select v from ctx where k='job2')) = 2, 'equipment + hangar reserved';
+  assert (select is_primary from job_assignments where job_id = (select v from ctx where k='job2')), 'primary tech set';
+  assert (select count(*) from activities where body like 'Schedule conflict overridden%') = 1, 'override recorded';
+end $$;
+select public.decide_time_off((select id from time_off), true);
+do $$ begin assert (select status from time_off) = 'approved'; end $$;
+
+-- Owner grants managers P&L; managers can then read it.
+select public.set_role_permissions((select v from ctx where k='alpha'),
+  '{"manager": {"see_prices": true, "see_reports": true, "edit_customers": true, "approve_timesheets": true, "give_discounts": false, "delete_records": false},
+    "technician": {}}');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d', false);
+do $$ begin
+  perform public.profit_loss((select v from ctx where k='alpha'), current_date - 30, current_date);
+  begin
+    update quotes set discount = 5 where id = (select v from ctx where k='quote2');
+    raise exception 'discount permission enforced';
+  exception when raise_exception then
+    if sqlerrm not like 'PERMISSION%' then raise; end if;
+  end;
+end $$;
+
+-- Pay periods: closing locks entries; only the owner reopens.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+insert into ctx select 'pp', public.close_pay_period((select v from ctx where k='alpha'), current_date - 3, current_date + 3);
+do $$ begin
+  begin
+    update time_entries set notes = 'edit' where user_id = '00000000-0000-0000-0000-00000000000c';
+    raise exception 'closed period should lock';
+  exception when raise_exception then
+    if sqlerrm not like 'PERIOD_CLOSED%' then raise; end if;
+  end;
+end $$;
+select public.reopen_pay_period((select v from ctx where k='pp'), 'Fix a missed clock-out');
+update time_entries set notes = 'edit' where user_id = '00000000-0000-0000-0000-00000000000c';
+do $$ begin
+  assert (select count(*) from audit_log where entity = 'pay_periods' and action = 'reopened') = 1, 'reopen audited';
+  assert jsonb_array_length(public.timesheet_summary((select v from ctx where k='alpha'), current_date - 3, current_date + 3)) = 3, 'timesheet per person';
+end $$;
+
+-- Recurring care: local time kept across DST, month-end clamp, nth weekday.
+do $$ declare t timestamptz[]; begin
+  select array_agg(x) into t from public.recurring_preview('2026-01-31 14:00:00+00', 'America/New_York', 1, 'month', null, 4) x;
+  assert (t[1] at time zone 'America/New_York')::text = '2026-01-31 09:00:00', 'first ' || t[1];
+  assert (t[2] at time zone 'America/New_York')::text = '2026-02-28 09:00:00', 'clamped to Feb 28: ' || (t[2] at time zone 'America/New_York');
+  assert (t[3] at time zone 'America/New_York')::text = '2026-03-31 09:00:00', '9 AM kept after DST: ' || (t[3] at time zone 'America/New_York');
+  select array_agg(x) into t from public.recurring_preview('2026-11-10 15:00:00+00', 'America/New_York', 1, 'month', '{"nth": 2, "weekday": 2}', 3) x;
+  assert (t[1] at time zone 'America/New_York')::date = '2026-11-10', '2nd Tuesday of Nov';
+  assert (t[2] at time zone 'America/New_York')::date = '2026-12-08', '2nd Tuesday of Dec';
+  select array_agg(x) into t from public.recurring_preview('2026-11-10 15:00:00+00', 'America/New_York', 2, 'week', null, 6, 'after', null, 3) x;
+  assert array_length(t, 1) = 3, 'end after 3 visits';
+end $$;
+insert into recurring_schedules (org_id, customer_id, aircraft_id, service_id, price, first_at, timezone, every, unit, default_user_id, lead_days, annual_increase_pct)
+  select (select v from ctx where k='alpha'), (select v from ctx where k='cust'), (select v from ctx where k='ac'), s.id, 500,
+         date_trunc('day', now() + interval '2 days') + interval '15 hours', 'America/New_York', 1, 'week',
+         '00000000-0000-0000-0000-00000000000c', 15, 5
+  from services s where s.name = 'Exterior Wash' and s.asset_type = 'aircraft';
+select public.generate_recurring_jobs((select v from ctx where k='alpha'));
+do $$ begin
+  assert (select count(*) from jobs where recurring_schedule_id is not null) = 2, 'two weekly visits inside 15-day window: ' || (select count(*) from jobs where recurring_schedule_id is not null);
+  assert (select bool_and(status = 'tentative') from jobs where recurring_schedule_id is not null), 'created as tentative';
+  assert (select count(*) from job_items ji join jobs j on j.id = ji.job_id where j.recurring_schedule_id is not null and ji.unit_price = 500) = 2, 'priced';
+  assert (select count(*) from job_checklist_items c join jobs j on j.id = c.job_id where j.recurring_schedule_id is not null) > 0, 'checklist on visits';
+end $$;
+select public.generate_recurring_jobs((select v from ctx where k='alpha'));
+do $$ begin assert (select count(*) from jobs where recurring_schedule_id is not null) = 2, 'generation is idempotent'; end $$;
+select public.skip_occurrence((select id from recurring_schedules), (select (min(scheduled_start) at time zone 'America/New_York')::date from jobs where recurring_schedule_id is not null));
+do $$ begin assert (select count(*) from jobs where recurring_schedule_id is not null and status = 'cancelled') = 1, 'skip cancels that visit'; end $$;
+
+-- Care opt-in: completing creates a Tentative follow-up instead of a reminder.
+insert into job_photos (org_id, job_id, kind, storage_path) select org_id, id, k, org_id || '/x.jpg' from jobs, (values ('before'::photo_kind), ('after'::photo_kind)) v(k) where id = (select v from ctx where k='job2');
+insert into job_items (org_id, job_id, service_id, description, unit_price)
+  select org_id, (select v from ctx where k='job2'), id, name, 700 from services where name = 'Wax / Sealant' and asset_type = 'aircraft';
+update jobs set care_opt_in = true, status = 'in_progress' where id = (select v from ctx where k='job2');
+update jobs set status = 'completed' where id = (select v from ctx where k='job2');
+do $$ begin
+  assert (select count(*) from jobs where follow_up_of = (select v from ctx where k='job2') and status = 'tentative') = 1, 'tentative follow-up created';
+end $$;
+
+-- Low rating flags the job and alerts the owner.
+update jobs set rating = 2, feedback = 'Streaks on the windshield' where id = (select v from ctx where k='job2');
+do $$ begin
+  assert (select flagged from jobs where id = (select v from ctx where k='job2')), 'low rating flags job';
+  assert public.test_outbox('low_rating') = 1, 'owner alerted';
+end $$;
+
+-- Good/Better/Best quote: customer accepts an option → tentative job.
+insert into quotes (org_id, number, customer_id, aircraft_id, tax_rate)
+  select (select v from ctx where k='alpha'), public.next_number((select v from ctx where k='alpha'), 'quote'), (select v from ctx where k='cust'), (select v from ctx where k='ac'), 0;
+insert into ctx select 'gbb', id from quotes where version = 1 and superseded_by is null and status = 'draft';
+insert into quote_options (org_id, quote_id, name, sort_order)
+  select (select v from ctx where k='alpha'), (select v from ctx where k='gbb'), n, o from (values ('Good', 0), ('Better', 1), ('Best', 2)) x(n, o);
+insert into quote_items (org_id, quote_id, option_id, description, unit_price)
+  select org_id, quote_id, id, name || ' package', 100 * (sort_order + 1) from quote_options;
+do $$ begin
+  assert (select total from quote_options where name = 'Best') = 300, 'option totals';
+  assert (select total from quotes where id = (select v from ctx where k='gbb')) = 100, 'header shows first option';
+end $$;
+update quotes set status = 'sent' where id = (select v from ctx where k='gbb');
+
+-- Quote templates.
+insert into quote_templates (org_id, name, content) select v, 'Light jet full detail',
+  '{"options":[{"name":"Standard","items":[{"description":"Exterior Wash","unit_price":800},{"description":"Interior Detail","unit_price":600}]}],"notes":"Hangar required"}'
+  from ctx where k='alpha';
+do $$ declare q uuid; begin
+  q := public.quote_from_template((select id from quote_templates), (select v from ctx where k='cust'), (select v from ctx where k='ac'));
+  assert (select subtotal from quotes where id = q) = 1400, 'template quote subtotal';
+  assert (select notes from quotes where id = q) = 'Hangar required';
 end $$;
 
 -- ---------- Bob (other company) is fully isolated ---------------------------
@@ -172,8 +502,10 @@ do $$ begin
   assert (select count(*) from jobs) = 0, 'isolation: jobs';
   assert (select count(*) from organizations) = 1, 'isolation: orgs';
   assert (select count(*) from training_media) = 0, 'isolation: training';
+  assert (select count(*) from messages) = 0, 'isolation: messages';
+  assert (select count(*) from audit_log) = 0, 'isolation: audit log';
+  assert (select count(*) from service_guides) = 24, 'platform guides visible to all';
   begin
-    -- Try to attach an aircraft in my org to Alpha's customer id.
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');
     raise exception 'cross-org reference should fail';
@@ -186,26 +518,91 @@ do $$ begin
   exception when raise_exception then
     if sqlerrm not like 'Not a member%' then raise; end if;
   end;
+  begin
+    insert into branches (org_id, name) values ((select v from ctx where k='bravo'), 'Second base');
+  exception when raise_exception then raise exception 'trial allows branches: %', sqlerrm;
+  end;
 end $$;
 
--- ---------- Public document access by token (anon) --------------------------
+-- ---------- Public documents & customer actions (anon) ----------------------
 reset role;
 create temp table tok as select public_token from invoices;
-create temp table qtok as select public_token from quotes;
+create temp table qtok as select id, public_token from quotes;
 grant select on tok, qtok to anon;
 set role anon;
-do $$ declare d jsonb; begin
+do $$ declare d jsonb; r jsonb; begin
   d := public.get_public_document('invoice', (select public_token from tok));
   assert d->'doc'->>'number' = 'INV-1001';
   assert d->'doc' ? 'public_token' = false;
+  assert d->'org'->>'name' = 'Alpha Aero Detailing', 'public invoice uses the sent snapshot';
   assert public.get_public_document('invoice', 'nope') is null;
-  assert public.accept_public_quote((select public_token from qtok), 'Pat Pilot') = false, 'already-accepted quote cannot be re-accepted';
+  -- Superseded v1 cannot be accepted.
+  r := public.accept_public_quote((select public_token from qtok where id = (select v from ctx where k='quote')), 'Pat Pilot');
+  assert (r->>'ok')::boolean = false, 'superseded quote cannot be accepted';
+  -- GBB: viewing marks viewed; accepting requires a choice.
+  d := public.get_public_document('quote', (select public_token from qtok where id = (select v from ctx where k='gbb')));
+  assert jsonb_array_length(d->'options') = 3, 'options shown';
+  begin
+    perform public.accept_public_quote((select public_token from qtok where id = (select v from ctx where k='gbb')), 'Pat Pilot');
+    raise exception 'must choose an option';
+  exception when raise_exception then
+    if sqlerrm not like 'Please choose%' then raise; end if;
+  end;
+  r := public.accept_public_quote((select public_token from qtok where id = (select v from ctx where k='gbb')), 'Pat Pilot',
+        (select (o->>'id')::uuid from jsonb_array_elements(d->'options') o where o->>'name' = 'Best'));
+  assert (r->>'ok')::boolean, 'accepted';
+  assert public.request_quote_dates((select public_token from qtok where id = (select v from ctx where k='gbb')),
+        array[now() + interval '10 days', now() + interval '11 days'], 'Mornings please'), 'dates requested';
+end $$;
+reset role;
+do $$ begin
+  assert (select view_count from quotes where id = (select v from ctx where k='gbb')) = 1, 'view tracked';
+  assert (select status from quotes where id = (select v from ctx where k='gbb')) = 'accepted';
+  assert (select total from quotes where id = (select v from ctx where k='gbb')) = 300, 'header follows chosen option';
+  assert (select status from jobs where quote_id = (select v from ctx where k='gbb')) = 'tentative', 'tentative job on accept';
+  assert (select sum(unit_price) from job_items ji join jobs j on j.id = ji.job_id where j.quote_id = (select v from ctx where k='gbb')) = 300, 'only the chosen option';
+  assert (select count(*) from booking_requests where kind = 'quote_dates') = 1, 'date request stored';
+  assert public.test_outbox('quote_viewed') + public.test_outbox('quote_accepted') + public.test_outbox('booking_request') = 3, 'managers notified';
+end $$;
+
+-- Support messages from the public website.
+set role anon;
+select public.submit_support_message('Sam Detailer', 'sam@example.com', 'Sam Co', 'pricing', 'How does the yearly plan work?');
+reset role;
+do $$ begin assert (select count(*) from support_messages) = 1; end $$;
+
+-- ---------- Demo workspace --------------------------------------------------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000e', false);
+insert into ctx select 'demo', public.create_demo_workspace();
+do $$ begin
+  assert (select is_demo and plan = 'fleet' from organizations), 'demo is Fleet';
+  assert (select count(*) from branches) = 2, 'demo branches';
+  assert (select count(*) from jobs) >= 3, 'demo jobs';
+  assert (select count(*) from services) = 24, 'demo has all business types';
+  assert public.create_demo_workspace() = (select v from ctx where k='demo'), 'demo is reused';
+  begin
+    perform public.invite_member((select v from ctx where k='demo'), 'x@example.com', 'technician');
+    raise exception 'demo cannot invite';
+  exception when raise_exception then
+    if sqlerrm not like 'DEMO%' then raise; end if;
+  end;
+end $$;
+insert into messages (org_id, channel, to_address, body) select v, 'email', 'x@example.com', 'Hi' from ctx where k='demo';
+do $$ begin assert (select status from messages) = 'blocked', 'demo messages are blocked'; end $$;
+reset role;
+update organizations set demo_expires_at = now() - interval '1 minute' where is_demo;
+select set_config('request.jwt.claim.sub', '', false);  -- the worker runs without a user
+select public.cleanup_demo_workspaces();
+do $$ begin
+  assert (select count(*) from organizations where is_demo) = 0, 'expired demo removed';
+  assert (select count(*) from auth.users where email = 'demo@anon.test') = 0, 'demo user removed';
 end $$;
 
 -- ---------- Paywall: expired trial blocks new records -----------------------
-reset role;
 update organizations set trial_ends_at = now() - interval '1 day' where name = 'Bravo Jet Care';
 set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
 do $$ begin
   begin
     insert into customers (org_id, name) values ((select v from ctx where k='bravo'), 'Blocked');
@@ -221,11 +618,16 @@ reset role;
 do $$ begin
   assert (select count(*) from organizations where name = 'Bravo Jet Care') = 0, 'org deleted with sole owner';
   assert (select count(*) from auth.users where email = 'owner@bravo.test') = 0, 'user deleted';
-  assert (select count(*) from organizations where name = 'Alpha Aero Detailing') = 1, 'other org untouched';
+  assert (select count(*) from organizations where name = 'Alpha Renamed') = 1, 'other org untouched';
 end $$;
 
+-- Server-side generators run without a user.
+select set_config('request.jwt.claim.sub', '', false);
+select public.generate_recurring_jobs();
+select public.generate_recurring_expenses();
+
 -- Deleting an org with full history must cascade cleanly.
-delete from organizations where name = 'Alpha Aero Detailing';
+delete from organizations where name = 'Alpha Renamed';
 do $$ begin assert (select count(*) from invoices) = 0; end $$;
 
 \echo ALL FLOW TESTS PASSED
