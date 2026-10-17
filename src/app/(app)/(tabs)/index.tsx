@@ -1,20 +1,29 @@
-import { router, type Href } from 'expo-router';
+import { format } from 'date-fns';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useSetupCardDismissed, useSetupSteps } from '../../../components/dashboard/useSetupSteps';
+import { BranchSwitcher, GettingStartedCard, NeedsAttention, ProfitCard, QuickAction, type AttentionItem, type ProfitMonth } from '../../../components/dashboard/widgets';
 import { notify } from '../../../components/FormSheet';
 import { jobTone } from '../../../components/status';
 import { Badge, Button, Card, ErrorBanner, IconTile, Ionicons, ListRow, Row, Screen, Section, StatTile, T, type IconName } from '../../../components/ui';
-import { duration, money } from '../../../lib/format';
-import { canSeeMoney } from '../../../lib/plans';
+import { duration, money, time, titleCase } from '../../../lib/format';
+import { assetTypeInfo } from '../../../lib/pricing';
+import { canAdmin, canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
-import { colors, radius, space, type Tone } from '../../../lib/theme';
+import type { AssetType, Branch } from '../../../lib/types';
+import { colors, space, type Tone } from '../../../lib/theme';
 import { useQuery } from '../../../lib/useQuery';
 
-type Stats = Record<string, number | null>;
-type JobRow = { id: string; title: string | null; status: string; customer: { name: string } | null; aircraft: { tail_number: string } | null };
+type Stats = Record<string, any>;
+type JobRow = {
+  id: string; title: string | null; status: string; scheduled_start: string | null; updated_at?: string;
+  customer: { name: string } | null; aircraft: { tail_number: string; asset_type: AssetType | null } | null;
+};
 
 const ACTIVITY_ICON: Record<string, [IconName, Tone]> = {
+  tentative: ['help-circle-outline', 'warning'],
   scheduled: ['calendar-outline', 'info'],
   in_progress: ['time-outline', 'warning'],
   on_hold: ['pause-outline', 'neutral'],
@@ -23,38 +32,49 @@ const ACTIVITY_ICON: Record<string, [IconName, Tone]> = {
   cancelled: ['close-circle-outline', 'danger'],
 };
 
-function QuickAction({ icon, label, onPress, primary }: { icon: IconName; label: string; onPress: () => void; primary?: boolean }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [{
-      flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 18, borderRadius: radius.md, gap: 8,
-      backgroundColor: primary ? colors.primary : colors.cardRaised, borderWidth: 1, borderColor: primary ? colors.primary : colors.borderStrong,
-    }, pressed && { opacity: 0.8 }]}>
-      <Ionicons name={icon} size={26} color={primary ? colors.white : colors.textMuted} />
-      <T style={{ fontSize: 14, fontWeight: '600', color: primary ? colors.white : colors.text }} numberOfLines={1}>{label}</T>
-    </Pressable>
-  );
-}
+const plural = (n: number, one: string, many = one + 's') => `${n} ${n === 1 ? one : many}`;
+const short = (n: unknown) => money(Number(n ?? 0)).replace(/\.00$/, '');
 
 export default function Dashboard() {
-  const { orgId, org, role, plan, trialDays, session } = useOrg();
-  const manager = canSeeMoney(role);
+  const { orgId, org, role, plan, trialDays, session, profile, perm, can, branchId, setBranchId } = useOrg();
   const uid = session!.user.id;
+  const seePrices = perm('see_prices');
+  const seeReports = perm('see_reports');
+  const manager = canSeeMoney(role);
+  const admin = canAdmin(role);
+  const branchesAllowed = can('branches');
+
+  const branchQ = useQuery(async () => {
+    if (!branchesAllowed) return [] as Branch[];
+    const { data } = await supabase.from('branches').select('*').eq('org_id', orgId).eq('active', true).order('name');
+    return (data ?? []) as Branch[];
+  }, [orgId, branchesAllowed]);
+  const branches = branchQ.data ?? [];
+  // A remembered location that was deactivated (or a downgrade) falls back to all locations.
+  const branch = branchesAllowed ? branches.find((b) => b.id === branchId)?.id ?? null : null;
 
   const q = useQuery(async () => {
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const end = new Date(start); end.setDate(end.getDate() + 1);
-    const jobCols = 'id, title, status, customer:customers(name), aircraft:aircraft(tail_number)';
+    const jobCols = 'id, title, status, scheduled_start, updated_at, customer:customers(name), aircraft:aircraft(tail_number, asset_type)';
+    let todayQ = supabase.from('jobs').select(jobCols).eq('org_id', orgId)
+      .gte('scheduled_start', start.toISOString()).lt('scheduled_start', end.toISOString())
+      .neq('status', 'cancelled').order('scheduled_start');
+    let recentQ = supabase.from('jobs').select(jobCols).eq('org_id', orgId).order('updated_at', { ascending: false }).limit(6);
+    if (branch) { todayQ = todayQ.eq('branch_id', branch); recentQ = recentQ.eq('branch_id', branch); }
     const [stats, today, recent, clock] = await Promise.all([
-      supabase.rpc('dashboard_stats', { p_org: orgId }),
-      supabase.from('jobs').select(jobCols).eq('org_id', orgId)
-        .gte('scheduled_start', start.toISOString()).lt('scheduled_start', end.toISOString())
-        .neq('status', 'cancelled').order('scheduled_start'),
-      supabase.from('jobs').select(jobCols).eq('org_id', orgId).order('updated_at', { ascending: false }).limit(5),
+      supabase.rpc('dashboard_stats', { p_org: orgId, p_branch: branch }),
+      todayQ,
+      recentQ,
       supabase.from('time_entries').select('id, started_at').eq('org_id', orgId).eq('user_id', uid).is('ended_at', null).maybeSingle(),
     ]);
     if (stats.error) throw stats.error;
-    return { stats: stats.data as Stats, today: (today.data ?? []) as unknown as JobRow[], recent: (recent.data ?? []) as unknown as JobRow[], clock: clock.data };
-  }, [orgId]);
+    if (today.error) throw today.error;
+    return { stats: (stats.data ?? {}) as Stats, today: (today.data ?? []) as unknown as JobRow[], recent: (recent.data ?? []) as unknown as JobRow[], clock: clock.data };
+  }, [orgId, branch]);
+
+  const setup = useSetupSteps();
+  const setupCard = useSetupCardDismissed(orgId);
 
   const s = q.data?.stats ?? {};
   const clock = q.data?.clock;
@@ -77,11 +97,30 @@ export default function Dashboard() {
     }
   };
 
+  const refresh = async () => { await Promise.all([q.refresh(), branchQ.reload(), setup.refresh()]); };
+
   const today = q.data?.today ?? [];
   const n = (k: string) => (s[k] == null ? '—' : String(s[k]));
+  const num = (k: string) => Number(s[k]) || 0;
+
+  const attention: AttentionItem[] = [];
+  if (num('jobs_tentative')) attention.push({ key: 'tentative', icon: 'help-circle-outline', tone: 'warning', title: `${plural(num('jobs_tentative'), 'tentative job')} to confirm`, href: '/jobs?filter=tentative' });
+  if (num('jobs_flagged')) attention.push({ key: 'flagged', icon: 'flag-outline', tone: 'danger', title: `${plural(num('jobs_flagged'), 'flagged job')}`, subtitle: 'Low ratings or issues to follow up', href: '/jobs?filter=flagged' });
+  if (num('booking_requests')) attention.push({ key: 'requests', icon: 'mail-unread-outline', tone: 'info', title: `${plural(num('booking_requests'), 'booking request')} waiting`, href: '/requests' });
+  if (seePrices && num('outstanding')) attention.push({ key: 'outstanding', icon: 'receipt-outline', tone: num('overdue') ? 'danger' : 'info', title: `${money(s.outstanding)} outstanding`, subtitle: num('overdue') ? `${money(s.overdue)} overdue` : null, href: '/invoices' });
+  if (num('reminders_due')) attention.push({ key: 'reminders', icon: 'notifications-outline', tone: 'warning', title: `${plural(num('reminders_due'), 'service reminder')} due soon`, href: '/reminders' });
+  if (num('leads_due')) attention.push({ key: 'leads', icon: 'funnel-outline', tone: 'purple', title: `${plural(num('leads_due'), 'lead')} due for follow-up`, href: '/leads' });
+  if (manager && num('time_off_requests')) attention.push({ key: 'timeoff', icon: 'airplane-outline', tone: 'info', title: `${plural(num('time_off_requests'), 'time-off request')} to review`, href: '/scheduling' });
+  if (num('low_stock')) attention.push({ key: 'stock', icon: 'cube-outline', tone: 'danger', title: `${plural(num('low_stock'), 'supply item')} low on stock`, href: '/inventory' });
+  if (num('equipment_issues')) attention.push({ key: 'equipment', icon: 'construct-outline', tone: 'warning', title: `${plural(num('equipment_issues'), 'equipment issue')} open`, href: '/equipment' });
+
+  const name = profile?.full_name?.trim() || session?.user.email || 'there';
+  const branchName = branch ? branches.find((b) => b.id === branch)?.name : null;
+  const showSetup = admin && !setup.loading && !setup.allDone && !setupCard.dismissed;
 
   return (
-    <Screen refreshing={q.refreshing} onRefresh={q.refresh} kicker="Welcome back to" title={org.name}>
+    <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name}
+      subtitle={`${name} · ${titleCase(role)} · ${format(new Date(), 'EEEE, MMMM d')}`}>
       <ErrorBanner message={q.error} onRetry={q.refresh} />
 
       {plan === 'trial' || plan === 'expired' ? (
@@ -89,45 +128,56 @@ export default function Dashboard() {
           <Row>
             <Ionicons name={plan === 'expired' ? 'alert-circle' : 'time-outline'} size={20} color={plan === 'expired' ? colors.danger : colors.warning} />
             <T style={{ flex: 1, fontWeight: '600', color: plan === 'expired' ? colors.danger : colors.warning }}>
-              {plan === 'expired' ? 'Your plan has ended. Tap to choose a plan.' : `${trialDays} day${trialDays === 1 ? '' : 's'} left in your free trial`}
+              {plan === 'expired' ? 'Your plan has ended. Tap to choose a plan.' : `${plural(trialDays, 'day')} left in your free trial`}
             </T>
             <Ionicons name="chevron-forward" size={18} color={plan === 'expired' ? colors.danger : colors.warning} />
           </Row>
         </Card>
       ) : null}
 
+      {branchesAllowed && branches.length > 0 ? (
+        <BranchSwitcher branches={branches} value={branch} onChange={setBranchId} />
+      ) : null}
+
+      {showSetup ? <GettingStartedCard steps={setup.steps} doneCount={setup.doneCount} onDismiss={setupCard.dismiss} /> : null}
+
       <Card>
         <Row style={{ justifyContent: 'space-between', marginBottom: today.length ? space.sm : 0 }}>
-          <T variant="h3">Today&apos;s Schedule</T>
-          <Badge large raw label={`${today.length} job${today.length === 1 ? '' : 's'}`} tone="info" />
+          <View style={{ flex: 1 }}>
+            <T variant="h3">Today&apos;s schedule</T>
+            {branchName ? <T variant="small">{branchName}</T> : null}
+          </View>
+          <Badge large raw label={plural(today.length, 'job')} tone="info" />
         </Row>
-        {today.length === 0 ? <T variant="muted" style={{ marginTop: space.sm }}>Nothing scheduled today.</T> : null}
+        {q.loading && !q.data ? <T variant="muted" style={{ marginTop: space.sm }}>Loading…</T> : null}
+        {!q.loading && today.length === 0 ? <T variant="muted" style={{ marginTop: space.sm }}>Nothing scheduled today.</T> : null}
         {today.map((j, i) => (
           <Pressable key={j.id} onPress={() => router.push(`/jobs/${j.id}`)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
-            <IconTile icon="airplane-outline" tone="info" round size={40} />
+            style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }, pressed && { opacity: 0.7 }]}>
+            <IconTile icon={assetTypeInfo(j.aircraft?.asset_type).icon} tone={j.status === 'tentative' ? 'warning' : 'info'} round size={40} />
             <View style={{ flex: 1 }}>
               <T style={{ fontWeight: '600' }} numberOfLines={1}>{j.customer?.name ?? '—'}</T>
-              <T variant="muted" numberOfLines={1}>{j.title ?? j.aircraft?.tail_number}</T>
+              <T variant="muted" numberOfLines={1}>{[time(j.scheduled_start), j.title ?? j.aircraft?.tail_number].filter(Boolean).join(' · ')}</T>
             </View>
-            <Badge label={j.status} tone={jobTone[j.status]} />
+            <Badge label={j.status} tone={j.status === 'tentative' ? 'warning' : jobTone[j.status]} />
           </Pressable>
         ))}
       </Card>
 
-      <Section title="Quick Actions">
-        <Row gap={space.md}>
-          {manager ? <QuickAction primary icon="add" label="New Job" onPress={() => router.push('/jobs/new')} /> : null}
-          {manager ? <QuickAction icon="person-add-outline" label="New Customer" onPress={() => router.push('/customers/new')} /> : null}
+      <Section title="Quick actions">
+        <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
+          {manager ? <QuickAction primary icon="add" label="New job" onPress={() => router.push('/jobs/new')} /> : null}
+          {perm('edit_customers') ? <QuickAction icon="person-add-outline" label="Customer" onPress={() => router.push('/customers/new')} /> : null}
+          {seePrices ? <QuickAction icon="document-text-outline" label="Quote" onPress={() => router.push('/quotes/new')} /> : null}
           <QuickAction icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} primary={!manager} />
         </Row>
       </Section>
 
       <Card style={{ marginTop: space.md, backgroundColor: clock ? colors.successSoft : colors.card }}>
         <Row style={{ justifyContent: 'space-between' }}>
-          <Row gap={space.md}>
+          <Row gap={space.md} style={{ flex: 1 }}>
             <IconTile icon="stopwatch-outline" tone={clock ? 'success' : 'neutral'} />
-            <View>
+            <View style={{ flex: 1 }}>
               <T variant="muted">Time clock</T>
               <T style={{ fontWeight: '700' }}>{clock ? `On the clock · ${duration((now - new Date(clock.started_at).getTime()) / 60000)}` : 'Off the clock'}</T>
             </View>
@@ -136,45 +186,53 @@ export default function Dashboard() {
         </Row>
       </Card>
 
-      {manager ? (
-        <Section title="Revenue">
-          <Row gap={space.md}>
-            <StatTile label="This Week" value={money(s.revenue_week).replace(/\.00$/, '')} icon="logo-usd" tone="info" onPress={() => router.push('/reports')} />
-            <StatTile label="This Month" value={money(s.revenue_mtd).replace(/\.00$/, '')} icon="trending-up" tone="success" onPress={() => router.push('/reports')} />
-          </Row>
+      {seeReports && q.data ? (
+        <Section title="Profitability overview">
+          <ProfitCard data={(s.profit_month ?? null) as ProfitMonth} monthLabel={format(new Date(), 'MMMM')} />
         </Section>
       ) : null}
 
-      <Section title="Overview">
-        <Row gap={space.md} style={{ marginBottom: space.md }}>
-          <StatTile label="In Progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push({ pathname: '/jobs', params: { filter: 'in_progress' } })} />
-          <StatTile label="Scheduled" value={n('jobs_scheduled')} icon="calendar-outline" tone="info" onPress={() => router.push({ pathname: '/jobs', params: { filter: 'scheduled' } })} />
-        </Row>
-        <Row gap={space.md}>
-          <StatTile label="Completed" value={n('jobs_completed')} icon="checkmark-circle-outline" tone="success" onPress={() => router.push({ pathname: '/jobs', params: { filter: 'completed' } })} />
-          <StatTile label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />
-        </Row>
-      </Section>
-
-      {(Number(s.reminders_due) || Number(s.low_stock) || (manager && Number(s.outstanding))) ? (
-        <Section title="Needs Attention">
-          <Card style={{ padding: 0, overflow: 'hidden' }}>
-            {Number(s.reminders_due) ? <ListRow icon="notifications-outline" tone="warning" title={`${s.reminders_due} service reminder${Number(s.reminders_due) === 1 ? '' : 's'} due soon`} onPress={() => router.push('/reminders' as Href)} /> : null}
-            {manager && Number(s.outstanding) ? <ListRow icon="receipt-outline" tone={Number(s.overdue) ? 'danger' : 'info'} title={`${money(s.outstanding)} outstanding`} subtitle={Number(s.overdue) ? `${money(s.overdue)} overdue` : null} onPress={() => router.push('/invoices')} /> : null}
-            {Number(s.low_stock) ? <ListRow icon="cube-outline" tone="danger" title={`${s.low_stock} supply item${Number(s.low_stock) === 1 ? '' : 's'} low on stock`} onPress={() => router.push('/inventory')} /> : null}
+      {seePrices && q.data ? (
+        <Section title="Revenue" count={branchName ?? undefined}>
+          <Row gap={space.md} style={{ flexWrap: 'wrap', marginBottom: space.md }}>
+            <StatTile label="Total paid" value={short(s.total_paid)} icon="wallet-outline" tone="primary" onPress={() => router.push('/invoices')} />
+            <StatTile label="Paid this month" value={short(s.revenue_mtd)} icon="trending-up" tone="success" onPress={() => router.push('/invoices')} />
+          </Row>
+          <Card style={{ paddingVertical: space.md }}>
+            <Row style={{ justifyContent: 'space-between' }}>
+              <Row gap={space.sm}><Ionicons name="calendar-outline" size={18} color={colors.textMuted} /><T variant="muted">Paid this week</T></Row>
+              <T variant="money">{short(s.revenue_week)}</T>
+            </Row>
           </Card>
         </Section>
       ) : null}
 
-      <Section title="Recent Activity">
+      <Section title="Overview">
+        <Row gap={space.md} style={{ marginBottom: space.md, flexWrap: 'wrap' }}>
+          <StatTile label="In progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push('/jobs?filter=in_progress')} />
+          <StatTile label="Scheduled" value={n('jobs_scheduled')} icon="calendar-outline" tone="info" onPress={() => router.push('/jobs?filter=scheduled')} />
+        </Row>
+        <Row gap={space.md} style={{ flexWrap: 'wrap' }}>
+          <StatTile label="Completed" value={n('jobs_completed')} icon="checkmark-circle-outline" tone="success" onPress={() => router.push('/jobs?filter=completed')} />
+          <StatTile label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />
+        </Row>
+      </Section>
+
+      {q.data ? (
+        <Section title="Needs attention" count={attention.length ? String(attention.length) : undefined}>
+          <NeedsAttention items={attention} />
+        </Section>
+      ) : null}
+
+      <Section title="Recent activity">
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          {(q.data?.recent ?? []).length === 0 ? <T variant="muted" style={{ padding: space.lg }}>No jobs yet.</T> : null}
+          {q.data && (q.data.recent ?? []).length === 0 ? <T variant="muted" style={{ padding: space.lg }}>No jobs yet. Create your first job to see activity here.</T> : null}
           {(q.data?.recent ?? []).map((j) => {
             const [icon, tone] = ACTIVITY_ICON[j.status] ?? ['ellipse-outline', 'neutral'];
             return (
               <ListRow key={j.id} icon={icon} tone={tone} title={j.title ?? 'Job'}
-                subtitle={[j.customer?.name, j.aircraft?.tail_number].filter(Boolean).join(' - ')}
-                right={<T variant="small">{j.status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</T>}
+                subtitle={[j.customer?.name, j.aircraft?.tail_number].filter(Boolean).join(' · ')}
+                right={<T variant="small">{titleCase(j.status)}</T>}
                 onPress={() => router.push(`/jobs/${j.id}`)} />
             );
           })}
