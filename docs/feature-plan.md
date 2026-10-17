@@ -1,8 +1,7 @@
 # Flight Ready — feature plan (from the original app walkthrough)
 
 Decisions agreed with the owner while reviewing screenshots of the original
-Flight Ready app. Status: **collecting; not built yet** (owner will say
-"sending complete").
+Flight Ready app. Status: **built** (owner said "sending complete"). See README for the feature summary.
 
 ## Plans & pricing
 | Plan | Price | Notes |
