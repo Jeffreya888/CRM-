@@ -121,8 +121,20 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 4. Tax-friendly categories + accountant export.
 5. Branch tagging (Fleet) for per-location P&L.
 
+## Profit & loss (cash basis + all seven)
+- Cash-basis report: paid invoice revenue − recorded expenses − job supply costs − labor costs = net operating result; unpaid invoices excluded. Breakdown with counts (paid invoices, labor minutes).
+- Reporting period From/Through + Apply; timesheets & labor rates panel (hourly rate per member); refresh button.
+- Exports: P&L PDF, P&L CSV, Expenses CSV, Timesheets CSV, Inventory CSV.
+1. Cash / accrual toggle.
+2. Compare to previous period ($ and % change per line).
+3. Profit by service, customer and branch (Fleet).
+4. Tax set-aside estimate (owner-set % of net profit).
+5. Email to accountant (saved email; P&L PDF + all CSVs for the period).
+6. Date presets: this month, last month, this quarter, year to date, last year, custom.
+7. Sales tax collected shown separately (not revenue).
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
 ## Still to review
-Profit & loss, Flight Ready website & plan info, Reminders & delivery readiness, Account & security, Launch & setup guide, and anything else the owner sends.
+Flight Ready website & plan info, Reminders & delivery readiness, Account & security, Launch & setup guide, and anything else the owner sends.
