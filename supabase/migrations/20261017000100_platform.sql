@@ -280,7 +280,7 @@ update public.services set
     else greatest(1, round(recurring_interval_days / 7.0)::int) end
   where recurring_interval_days is not null;
 update public.services s set guide_key = x.k from (values
-  ('Exterior Wash','exterior_wash'), ('Dry Wash (Waterless)','dry_wash'), ('Belly & Gear Degrease','belly_gear_degrease'),
+  ('Exterior Wash','exterior_wash'), ('Dry Wash (Waterless)','dry_wash_l2'), ('Belly & Gear Degrease','belly_gear_degrease'),
   ('Brightwork Polish','brightwork_polish'), ('Wax / Sealant','wax_sealant'), ('Ceramic Coating','ceramic_coating'),
   ('Paint Correction','paint_correction'), ('Interior Detail','interior_detail'), ('Carpet Extraction','carpet_extraction'),
   ('Leather Deep Clean & Condition','leather_care'), ('De-Ice Boot Treatment','deice_boot_treatment'),
@@ -366,10 +366,12 @@ returns void language plpgsql security definer set search_path = public as $$
 begin
   insert into services (org_id, name, guide_key, category, pricing_method, base_price, price_per_foot, est_hours, est_hours_max,
                         recur_every, recur_unit, sort_order, description, equipment) values
-  (p_org, 'Exterior Wash', 'exterior_wash', 'exterior', 'per_foot', 150, 9, 2, 3, 1, 'month', 1,
+  (p_org, 'Exterior Wet Wash (Full Exterior)', 'exterior_wash', 'exterior', 'per_foot', 150, 9, 2, 3, 1, 'month', 1,
      'Full hand wash of fuselage, wings, empennage and belly.', array['Pressure washer','Foam cannon','Aviation-safe soap','Microfiber towels','Pitot covers']),
-  (p_org, 'Dry Wash (Waterless)', 'dry_wash', 'exterior', 'per_foot', 125, 8, 2, 3, 1, 'month', 2,
-     'Waterless wash for ramps without water access.', array['Waterless wash product','Microfiber towels','Spray bottles']),
+  (p_org, 'Dry Wash — Level 1 (Trip Clean)', 'dry_wash_l1', 'exterior', 'per_foot', 95, 5, 1, 2, 2, 'week', 2,
+     'Quick waterless exterior refresh between trips: leading edges, windows, visible soil.', array['Waterless wash product','Bug remover','Microfiber towels','Spray bottles']),
+  (p_org, 'Dry Wash — Level 2 (Full Exterior)', 'dry_wash_l2', 'exterior', 'per_foot', 125, 8, 2, 3, 1, 'month', 3,
+     'Complete waterless wash of the whole airframe for ramps without water access.', array['Waterless wash product','Microfiber towels','Spray bottles']),
   (p_org, 'Belly & Gear Degrease', 'belly_gear_degrease', 'exterior', 'per_foot', 100, 4, 1.5, 2, null, null, 3,
      'Remove exhaust soot, hydraulic fluid and grime from belly and gear wells.', array['Approved degreaser','Soft brushes','Masking tape']),
   (p_org, 'Brightwork Polish', 'brightwork_polish', 'brightwork', 'per_category', 300, 0, 4, 6, 3, 'month', 4,
@@ -380,11 +382,13 @@ begin
      'Multi-year ceramic coating for gloss and easier cleaning.', array['Ceramic coating kit','Clay bar','Iron remover','IPA panel wipe','Applicators','Inspection light']),
   (p_org, 'Paint Correction', 'paint_correction', 'paint_correction', 'hourly', 0, 0, 12, 20, null, null, 7,
      'Machine compound and polish to remove oxidation and swirls.', array['Dual-action polisher','Compound','Polish','Pads','Paint depth gauge','Inspection light']),
-  (p_org, 'Interior Detail', 'interior_detail', 'interior', 'per_category', 350, 0, 4, 6, 1, 'month', 8,
+  (p_org, 'Interior — Level 1 (Trip Clean)', 'interior_l1', 'interior', 'per_category', 150, 0, 0.5, 1.5, 2, 'week', 8,
+     'Quick cabin wipe-down between trips: trash, touch points, traffic-area vacuum, lav and galley refresh.', array['Vacuum','Surface cleaner','Microfiber towels','Trash bags']),
+  (p_org, 'Interior — Level 2 (Full Interior)', 'interior_detail', 'interior', 'per_category', 350, 0, 4, 6, 1, 'month', 9,
      'Full cabin clean including leather, carpet, galley and lav.', array['Commercial vacuum','Leather conditioner','Microfiber towels','Surface sanitizer']),
   (p_org, 'Carpet Extraction', 'carpet_extraction', 'interior', 'per_category', 250, 0, 3, 4, 6, 'month', 9,
      'Hot-water extraction of cabin carpets and runners.', array['Hot-water extractor','Pre-spray','Carpet groomer']),
-  (p_org, 'Leather Deep Clean & Condition', 'leather_care', 'interior', 'per_category', 200, 0, 2, 3, 3, 'month', 10,
+  (p_org, 'Leather Shampoo & Conditioning', 'leather_care', 'interior', 'per_category', 200, 0, 2, 3, 3, 'month', 10,
      'Deep clean and condition all leather surfaces.', array['Leather cleaner','Leather conditioner','Soft brushes','Microfiber towels']),
   (p_org, 'De-Ice Boot Treatment', 'deice_boot_treatment', 'specialty', 'per_category', 150, 0, 1, 2, 6, 'month', 11,
      'Clean and treat pneumatic de-ice boots.', array['Approved boot treatment','Microfiber towels']),
@@ -402,7 +406,7 @@ begin
     jsonb_build_object('name', 'Small Interior', 'detail', '4-6 seats', 'price', round(base_price * 0.75)),
     jsonb_build_object('name', 'Medium Interior', 'detail', '6-10 seats', 'price', round(base_price * 1.3)),
     jsonb_build_object('name', 'Large Interior', 'detail', '10+ seats', 'price', round(base_price * 2.2)))
-  where org_id = p_org and name = 'Interior Detail';
+  where org_id = p_org and guide_key = 'interior_detail';
   perform public.apply_guide_checklists(p_org);
 end;
 $$;

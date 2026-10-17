@@ -379,7 +379,7 @@ begin
             v_today - interval '6 days', v_today - interval '6 days' + interval '6 hours', v_today - interval '6 days', v_today - interval '6 days' + interval '6 hours', 5)
     returning id into v_job;
   insert into job_items (org_id, job_id, service_id, description, quantity, unit_price, taxable)
-    select v_org, v_job, id, name, 1, case name when 'Exterior Wash' then 1048 else 1050 end, true from services where org_id = v_org and name in ('Exterior Wash','Interior Detail') and asset_type = 'aircraft';
+    select v_org, v_job, id, name, 1, case guide_key when 'exterior_wash' then 1048 else 1050 end, true from services where org_id = v_org and guide_key in ('exterior_wash','interior_detail');
   insert into job_photos (org_id, job_id, kind, storage_path) values (v_org, v_job, 'before', v_org || '/demo/before.jpg'), (v_org, v_job, 'after', v_org || '/demo/after.jpg');
   insert into job_assignments (job_id, user_id, org_id, is_primary, confirmed) values (v_job, v_uid, v_org, true, true);
   insert into time_entries (org_id, user_id, job_id, started_at, ended_at, approved)
@@ -394,11 +394,11 @@ begin
     values (v_org, public._next_number(v_org, 'job'), 'Exterior Wash', v_c2, v_a2, v_l2, v_b2, 'scheduled', v_today + interval '1 hour', v_today + interval '4 hours')
     returning id into v_job;
   insert into job_items (org_id, job_id, service_id, description, quantity, unit_price, taxable)
-    select v_org, v_job, id, name, 1, 768, true from services where org_id = v_org and name = 'Exterior Wash' and asset_type = 'aircraft';
+    select v_org, v_job, id, name, 1, 768, true from services where org_id = v_org and guide_key = 'exterior_wash';
   insert into job_checklist_items (org_id, job_id, label, sort_order, guide_key, step_index)
     select v_org, v_job, step, ord::int, 'exterior_wash', (ord - 1)::int
     from services s cross join lateral unnest(s.checklist) with ordinality as x(step, ord)
-    where s.org_id = v_org and s.name = 'Exterior Wash' and s.asset_type = 'aircraft';
+    where s.org_id = v_org and s.guide_key = 'exterior_wash';
   insert into job_assignments (job_id, user_id, org_id, is_primary) values (v_job, v_uid, v_org, true);
 
   insert into jobs (org_id, number, title, customer_id, aircraft_id, location_id, status, scheduled_start, scheduled_end)
@@ -413,15 +413,15 @@ begin
   end loop;
   insert into quote_items (org_id, quote_id, option_id, service_id, description, quantity, unit_price, sort_order)
     select v_org, v_q, o.id, s.id, s.name, 1, p.price, p.ord
-    from (values ('Good', 'Exterior Wash', 1048, 0), ('Better', 'Exterior Wash', 1048, 0), ('Better', 'Wax / Sealant', 1450, 1),
-                 ('Best', 'Exterior Wash', 1048, 0), ('Best', 'Ceramic Coating', 7488, 1)) p(opt, svc, price, ord)
+    from (values ('Good', 'exterior_wash', 1048, 0), ('Better', 'exterior_wash', 1048, 0), ('Better', 'wax_sealant', 1450, 1),
+                 ('Best', 'exterior_wash', 1048, 0), ('Best', 'ceramic_coating', 7488, 1)) p(opt, svc, price, ord)
     join quote_options o on o.quote_id = v_q and o.name = p.opt
-    join services s on s.org_id = v_org and s.name = p.svc and s.asset_type = 'aircraft';
+    join services s on s.org_id = v_org and s.guide_key = p.svc;
   update quotes set status = 'sent' where id = v_q;
 
   insert into recurring_schedules (org_id, customer_id, aircraft_id, service_id, title, price, first_at, timezone, every, unit, default_user_id, create_as, heads_up_days)
     select v_org, v_c1, v_a1, id, 'Monthly exterior wash', 1048, v_today + interval '14 days', 'America/New_York', 1, 'month', v_uid, 'tentative', 3
-    from services where org_id = v_org and name = 'Exterior Wash' and asset_type = 'aircraft';
+    from services where org_id = v_org and guide_key = 'exterior_wash';
 
   insert into opportunities (org_id, title, stage, value, probability, follow_up_on, contact_name, contact_email, asset_description)
     values (v_org, 'Fleet wash contract — 4 jets', 'contacted', 48000, 40, current_date, 'Avery Kim', 'avery@example.com', '2× Global 6000, 2× Challenger 650');

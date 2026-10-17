@@ -42,7 +42,7 @@ function planOf(id: string): StorePackage['planId'] {
 export async function loadPackages(): Promise<StorePackage[]> {
   if (!ensure()) return [];
   const offerings = await Purchases.getOfferings();
-  const pkgs = offerings.current?.availablePackages ?? [];
+  const pkgs = (offerings.current?.availablePackages ?? []).filter((p) => !p.product.identifier.toLowerCase().includes('texts'));
   return pkgs.map((p) => {
     const intro = p.product.introPrice;
     return {
@@ -55,6 +55,50 @@ export async function loadPackages(): Promise<StorePackage[]> {
       raw: p,
     };
   });
+}
+
+export interface TextPack {
+  identifier: string;
+  productId: string;
+  texts: number | null;
+  priceString: string;
+  title: string;
+  raw: PurchasesPackage;
+}
+
+/**
+ * Extra text packs: consumable products whose id contains "texts", e.g.
+ * flightready_texts_500. Looks through every offering so the packs can live in
+ * their own offering. Returns [] when none are configured.
+ */
+export async function loadTextPacks(): Promise<TextPack[]> {
+  if (!ensure()) return [];
+  const offerings = await Purchases.getOfferings();
+  const seen = new Set<string>();
+  const out: TextPack[] = [];
+  const all = [offerings.current, ...Object.values(offerings.all ?? {})].filter(Boolean);
+  for (const o of all) {
+    for (const p of o!.availablePackages) {
+      const id = p.product.identifier;
+      if (!id.toLowerCase().includes('texts') || seen.has(id)) continue;
+      seen.add(id);
+      const n = /(\d[\d,]*)/.exec(id.replace(/^\D+/, ''))?.[1];
+      out.push({ identifier: p.identifier, productId: id, texts: n ? Number(n.replace(/,/g, '')) : null, priceString: p.product.priceString, title: p.product.title, raw: p });
+    }
+  }
+  return out.sort((a, b) => (a.texts ?? 0) - (b.texts ?? 0));
+}
+
+/** Buys a text pack; the revenuecat-webhook adds the credits to the company. */
+export async function buyTextPack(pack: TextPack): Promise<CustomerInfo | null> {
+  if (!ensure()) return null;
+  try {
+    const { customerInfo } = await Purchases.purchasePackage(pack.raw);
+    return customerInfo;
+  } catch (e: any) {
+    if (e?.userCancelled) return null;
+    throw e;
+  }
 }
 
 export async function buy(pkg: StorePackage): Promise<CustomerInfo | null> {

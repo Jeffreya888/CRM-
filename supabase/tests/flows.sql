@@ -22,7 +22,7 @@ grant all on ctx to authenticated, anon;
 do $$ begin
   assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
   assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
-  assert (select count(*) from service_guides where org_id is null) = 24, 'platform guides loaded';
+  assert (select count(*) from service_guides where org_id is null) = 26, 'platform guides loaded';
 end $$;
 
 -- ---------- Alice creates an org with aircraft + vehicles ------------------
@@ -30,13 +30,13 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 insert into ctx select 'alpha', public.create_organization('Alpha Aero Detailing', true, array['aircraft','vehicle']);
 do $$ begin
-  assert (select count(*) from services where asset_type = 'aircraft') = 12, 'aircraft services seeded';
+  assert (select count(*) from services where asset_type = 'aircraft') = 14, 'aircraft services seeded';
   assert (select count(*) from services where asset_type = 'vehicle') = 6, 'vehicle services seeded';
   assert (select count(*) from services where asset_type = 'watercraft') = 0, 'no watercraft yet';
   assert (select plan from organizations) = 'trial', 'starts on trial';
-  assert (select cardinality(checklist) from services where name = 'Exterior Wash')
+  assert (select cardinality(checklist) from services where guide_key = 'exterior_wash')
        = (select jsonb_array_length(steps) from service_guides where key = 'exterior_wash' and org_id is null), 'checklist from guide steps';
-  assert (select recur_every || ' ' || recur_unit from services where name = 'Ceramic Coating' and asset_type = 'aircraft') = '12 month', 'recurring in months';
+  assert (select recur_every || ' ' || recur_unit from services where guide_key = 'ceramic_coating') = '12 month', 'recurring in months';
   assert (select count(*) from automations) = 8, 'automations seeded';
   assert (select count(*) from automations where enabled and key in ('job_reminder','invoice_reminders')) = 2, 'smart defaults on';
   assert (select count(*) from crew_hours) = 5, 'default crew hours';
@@ -56,7 +56,7 @@ do $$ begin
 end $$;
 
 insert into training_media (org_id, service_id, kind, title, url, duration_min, guide_key, step_index)
-  select org_id, id, 'video', 'Interior Cleaning Guide', 'https://example.com/v.mp4', 30, 'interior_detail', 2 from services where name = 'Interior Detail' and asset_type = 'aircraft';
+  select org_id, id, 'video', 'Interior Cleaning Guide', 'https://example.com/v.mp4', 30, 'interior_detail', 2 from services where guide_key = 'interior_detail';
 
 -- Customer, aircraft (from the catalog), quote with items → totals by trigger.
 insert into customers (org_id, name, email, discount_pct) select v, 'Skyway Charter', 'ops@skyway.test', 10 from ctx where k='alpha';
@@ -76,8 +76,8 @@ insert into quotes (org_id, number, customer_id, aircraft_id, tax_rate, discount
 insert into ctx select 'quote', id from quotes;
 insert into quote_items (org_id, quote_id, service_id, description, quantity, unit_price, taxable, sort_order)
   select s.org_id, (select v from ctx where k='quote'), s.id, s.name, 1, p.price, p.taxable, p.ord
-  from (values ('Exterior Wash', 610.80, true, 1), ('Interior Detail', 455.00, false, 2)) p(name, price, taxable, ord)
-  join services s on s.name = p.name and s.asset_type = 'aircraft';
+  from (values ('exterior_wash', 610.80, true, 1), ('interior_detail', 455.00, false, 2)) p(name, price, taxable, ord)
+  join services s on s.guide_key = p.name;
 do $$ declare q quotes; begin
   select * into q from quotes;
   assert q.number = 'Q-1001', 'quote numbering: ' || q.number;
@@ -98,7 +98,7 @@ update quotes set status = 'sent';
 do $$ begin
   assert (select sent_at is not null from quotes), 'sent_at stamped';
   begin
-    update quote_items set unit_price = 1 where description = 'Exterior Wash';
+    update quote_items set unit_price = 1 where service_id in (select id from services where guide_key = 'exterior_wash');
     raise exception 'sent quote items should be locked';
   exception when raise_exception then
     if sqlerrm not like 'QUOTE_LOCKED%' then raise; end if;
@@ -112,7 +112,7 @@ do $$ begin
   assert (select count(*) from quote_items where quote_id = (select v from ctx where k='quote2')) = 2, 'items copied to v2';
   assert (select total from quotes where id = (select v from ctx where k='quote2')) = 1004.54, 'v2 totals';
 end $$;
-update quote_items set unit_price = 650 where quote_id = (select v from ctx where k='quote2') and description = 'Exterior Wash';
+update quote_items set unit_price = 650 where quote_id = (select v from ctx where k='quote2') and service_id in (select id from services where guide_key = 'exterior_wash');
 update quotes set discount = 0 where id = (select v from ctx where k='quote2');
 
 -- Quote → job (items + guide checklist copied) → photos → complete → invoice.
@@ -121,8 +121,8 @@ do $$ begin
   assert (select status from quotes where id = (select v from ctx where k='quote2')) = 'accepted';
   assert (select count(*) from job_items) = 2, 'job items copied';
   assert (select count(*) from job_checklist_items) =
-         (select cardinality(checklist) from services where name = 'Exterior Wash' and asset_type = 'aircraft')
-       + (select cardinality(checklist) from services where name = 'Interior Detail' and asset_type = 'aircraft'), 'checklists copied';
+         (select cardinality(checklist) from services where guide_key = 'exterior_wash')
+       + (select cardinality(checklist) from services where guide_key = 'interior_detail'), 'checklists copied';
   assert (select count(*) from job_checklist_items where guide_key is not null and step_index is not null) = (select count(*) from job_checklist_items), 'checklist linked to guide steps';
   assert (select number from jobs) = 'WO-1001';
   assert (select status from jobs) = 'scheduled';
@@ -141,7 +141,7 @@ insert into time_entries (org_id, user_id, job_id, started_at) select org_id, au
 -- Supplies: each wash uses 1 concentrate (auto-deducted once on completion).
 insert into inventory_items (org_id, name, quantity, par_level, unit_cost) select v, 'Aero Wash Concentrate', 10, 9, 20 from ctx where k='alpha';
 insert into service_supplies (service_id, item_id, org_id)
-  select s.id, i.id, s.org_id from services s, inventory_items i where s.name = 'Exterior Wash' and s.asset_type = 'aircraft';
+  select s.id, i.id, s.org_id from services s, inventory_items i where s.guide_key = 'exterior_wash';
 do $$ begin
   begin
     update jobs set status = 'completed';
@@ -283,7 +283,7 @@ do $$ begin
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
   assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
   assert (select count(*) from services) = 0, 'tech cannot read service prices';
-  assert (select count(*) from service_menu) = 24, 'tech reads the service menu without prices';
+  assert (select count(*) from service_menu) = 26, 'tech reads the service menu without prices';
   assert (select count(*) from member_pay) = 0, 'tech cannot see pay rates';
   assert (select count(*) from location_secrets) = 0, 'tech cannot see gate codes';
   assert (select count(*) from crew_hours where user_id = auth.uid()) = 5, 'new member gets default hours';
@@ -334,7 +334,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d
 select public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
 do $$ begin
   assert (select count(*) from invoices) = 1, 'manager sees invoices';
-  assert (select count(*) from services) = 24, 'manager sees prices';
+  assert (select count(*) from services) = 26, 'manager sees prices';
   assert (select count(*) from member_pay) = 0, 'manager cannot see pay rates';
   assert (select count(*) from location_secrets) = 1, 'manager sees gate codes';
   begin
@@ -440,7 +440,7 @@ insert into recurring_schedules (org_id, customer_id, aircraft_id, service_id, p
   select (select v from ctx where k='alpha'), (select v from ctx where k='cust'), (select v from ctx where k='ac'), s.id, 500,
          date_trunc('day', now() + interval '2 days') + interval '15 hours', 'America/New_York', 1, 'week',
          '00000000-0000-0000-0000-00000000000c', 15, 5
-  from services s where s.name = 'Exterior Wash' and s.asset_type = 'aircraft';
+  from services s where s.guide_key = 'exterior_wash';
 select public.generate_recurring_jobs((select v from ctx where k='alpha'));
 do $$ begin
   assert (select count(*) from jobs where recurring_schedule_id is not null) = 2, 'two weekly visits inside 15-day window: ' || (select count(*) from jobs where recurring_schedule_id is not null);
@@ -456,7 +456,7 @@ do $$ begin assert (select count(*) from jobs where recurring_schedule_id is not
 -- Care opt-in: completing creates a Tentative follow-up instead of a reminder.
 insert into job_photos (org_id, job_id, kind, storage_path) select org_id, id, k, org_id || '/x.jpg' from jobs, (values ('before'::photo_kind), ('after'::photo_kind)) v(k) where id = (select v from ctx where k='job2');
 insert into job_items (org_id, job_id, service_id, description, unit_price)
-  select org_id, (select v from ctx where k='job2'), id, name, 700 from services where name = 'Wax / Sealant' and asset_type = 'aircraft';
+  select org_id, (select v from ctx where k='job2'), id, name, 700 from services where guide_key = 'wax_sealant';
 update jobs set care_opt_in = true, status = 'in_progress' where id = (select v from ctx where k='job2');
 update jobs set status = 'completed' where id = (select v from ctx where k='job2');
 do $$ begin
@@ -504,7 +504,7 @@ do $$ begin
   assert (select count(*) from training_media) = 0, 'isolation: training';
   assert (select count(*) from messages) = 0, 'isolation: messages';
   assert (select count(*) from audit_log) = 0, 'isolation: audit log';
-  assert (select count(*) from service_guides) = 24, 'platform guides visible to all';
+  assert (select count(*) from service_guides) = 26, 'platform guides visible to all';
   begin
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');
@@ -579,7 +579,7 @@ do $$ begin
   assert (select is_demo and plan = 'fleet' from organizations), 'demo is Fleet';
   assert (select count(*) from branches) = 2, 'demo branches';
   assert (select count(*) from jobs) >= 3, 'demo jobs';
-  assert (select count(*) from services) = 24, 'demo has all business types';
+  assert (select count(*) from services) = 26, 'demo has all business types';
   assert public.create_demo_workspace() = (select v from ctx where k='demo'), 'demo is reused';
   begin
     perform public.invite_member((select v from ctx where k='demo'), 'x@example.com', 'technician');
