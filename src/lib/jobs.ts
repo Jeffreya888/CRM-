@@ -178,3 +178,8 @@ export function serviceReportHtml(r: {
   </div>`;
   return base.replace('</body>', `${block}</body>`);
 }
+
+/** Badge tones per status (adds Tentative to the shared map). */
+export const statusTone: Record<string, 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info' | 'purple'> = {
+  tentative: 'neutral', scheduled: 'info', in_progress: 'warning', on_hold: 'neutral', completed: 'success', invoiced: 'purple', cancelled: 'danger',
+};

@@ -70,7 +70,7 @@ function BranchList() {
         initial={editing ?? undefined}
         onClose={() => setEditing(null)}
         onSubmit={async (v) => {
-          const values = { ...v, timezone: v.timezone || null };
+          const values: Record<string, any> = { ...v, timezone: v.timezone || null };
           const { error } = editing?.id
             ? await supabase.from('branches').update(values).eq('id', editing.id)
             : await supabase.from('branches').insert({ ...values, org_id: org.id });
