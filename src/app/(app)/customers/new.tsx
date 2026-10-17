@@ -1,113 +1,123 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
-import { Button, Card, ErrorBanner, Field, IconButton, Ionicons, Row, Screen, Section, T } from '../../../components/ui';
-import { AIRCRAFT_CATEGORIES, categoryLabel, guessCategory } from '../../../lib/pricing';
-import { PLANS } from '../../../lib/plans';
+import { View } from 'react-native';
+import { notify } from '../../../components/FormSheet';
+import { AssetDraftFields } from '../../../components/assets/AssetDraftFields';
+import { Button, Card, ErrorBanner, Field, IconButton, Ionicons, Row, Screen, Section, Segmented, T } from '../../../components/ui';
+import { assetIcon, draftIdentifier, draftToRow, emptyDraft, validateDraft, type AssetDraft } from '../../../lib/assets';
+import { assetTypeInfo, categoryLabel } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
 import { colors, radius, space } from '../../../lib/theme';
-import type { AircraftCategory } from '../../../lib/types';
+import type { AssetType } from '../../../lib/types';
 
-type NewAircraft = { type: string; tail: string; category: AircraftCategory };
-
-/** Quick customer creation with their aircraft (full details live in /customers/edit). */
+/** Quick customer creation with their assets (more details live in /customers/edit). */
 export default function NewCustomer() {
-  const { orgId, plan, session } = useOrg();
+  const { orgId, session, businessTypes, perm } = useOrg();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
   const [address, setAddress] = useState('');
-  const [type, setType] = useState('');
-  const [tail, setTail] = useState('');
-  const [planes, setPlanes] = useState<NewAircraft[]>([]);
+  const [assets, setAssets] = useState<AssetDraft[]>([]);
+  const [draft, setDraft] = useState<AssetDraft>(emptyDraft(businessTypes[0] ?? 'aircraft'));
+  const [draftKey, setDraftKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
-  const addPlane = () => {
-    if (!tail.trim()) return setError('Enter the registration (tail number) to add an aircraft');
+  const draftStarted = !!draftIdentifier(draft);
+
+  const addAsset = () => {
+    const msg = validateDraft(draft);
+    if (msg) return setError(msg);
+    const ident = draftIdentifier(draft).toLowerCase();
+    if (assets.some((a) => draftIdentifier(a).toLowerCase() === ident)) return setError('You already added that one.');
     setError(null);
-    setPlanes((p) => [...p, { type: type.trim(), tail: tail.trim().toUpperCase().replace(/\s/g, ''), category: guessCategory(type) }]);
-    setType('');
-    setTail('');
+    setAssets((a) => [...a, draft]);
+    setDraft(emptyDraft(draft.asset_type));
+    setDraftKey((k) => k + 1);
   };
-  // Cycle the guessed class if it's wrong.
-  const cycleClass = (i: number) => setPlanes((ps) => ps.map((p, j) => {
-    if (j !== i) return p;
-    const idx = AIRCRAFT_CATEGORIES.findIndex((c) => c.value === p.category);
-    return { ...p, category: AIRCRAFT_CATEGORIES[(idx + 1) % AIRCRAFT_CATEGORIES.length]!.value };
-  }));
 
-  const valid = name.trim().length > 1 && /\S+@\S+\.\S+/.test(email.trim()) && phone.replace(/\D/g, '').length >= 7;
+  const switchType = (t: AssetType) => {
+    setDraft(emptyDraft(t));
+    setDraftKey((k) => k + 1);
+  };
+
+  const emailOk = !email.trim() || /\S+@\S+\.\S+/.test(email.trim());
+  const valid = name.trim().length > 1 && emailOk && (!!email.trim() || phone.replace(/\D/g, '').length >= 7);
 
   const create = async () => {
     setError(null);
-    // An aircraft typed but not yet added counts too.
-    const all = tail.trim() ? [...planes, { type: type.trim(), tail: tail.trim().toUpperCase().replace(/\s/g, ''), category: guessCategory(type) }] : planes;
+    // An asset typed but not yet added counts too.
+    const all = draftStarted ? [...assets, draft] : assets;
+    for (const a of all) {
+      const msg = validateDraft(a);
+      if (msg) return setError(msg);
+    }
+    setSaving(true);
     try {
-      const limit = PLANS.find((p) => p.id === plan)?.customerLimit;
-      if (limit) {
-        const { count } = await supabase.from('customers').select('id', { count: 'exact', head: true }).eq('org_id', orgId);
-        if ((count ?? 0) >= limit) {
-          setError(`Your plan includes ${limit} customers. Upgrade for unlimited.`);
-          router.push('/paywall');
-          return;
-        }
-      }
-      const { data: c, error } = await supabase.from('customers').insert({
-        org_id: orgId, name: name.trim(), email: email.trim(), phone: phone.trim(),
+      const { data: c, error: cErr } = await supabase.from('customers').insert({
+        org_id: orgId, name: name.trim(), email: email.trim() || null, phone: phone.trim() || null,
         company: company.trim() || null, billing_address: address.trim() || null, created_by: session!.user.id,
       }).select('id').single();
-      if (error) throw error;
+      if (cErr) throw cErr;
       if (all.length) {
-        const { error: aErr } = await supabase.from('aircraft').insert(all.map((p) => {
-          const [manufacturer, ...rest] = p.type.split(/\s+/);
-          return { org_id: orgId, customer_id: c.id, tail_number: p.tail, manufacturer: rest.length ? manufacturer : null, model: rest.length ? rest.join(' ') : p.type || null, category: p.category };
-        }));
-        if (aErr) throw aErr;
+        const { error: aErr } = await supabase.from('aircraft').insert(all.map((a) => ({ ...draftToRow(a), org_id: orgId, customer_id: c.id })));
+        if (aErr) {
+          // The customer is saved; say which part failed.
+          notify('Customer saved, assets not added', friendlyError(aErr.message));
+        }
       }
       router.replace(`/customers/${c.id}`);
     } catch (e: any) {
       setError(friendlyError(e.message));
+    } finally {
+      setSaving(false);
     }
   };
 
-  const small = { backgroundColor: colors.cardRaised, borderRadius: 10, paddingHorizontal: space.lg, paddingVertical: 13, fontSize: 16, color: colors.text, marginBottom: space.sm };
+  if (!perm('edit_customers')) {
+    return (
+      <Screen>
+        <Stack.Screen options={{ title: 'New customer' }} />
+        <ErrorBanner message="You don't have permission to add customers. Ask your company owner." />
+      </Screen>
+    );
+  }
 
   return (
-    <Screen footer={<Button title="Create Customer" onPress={create} disabled={!valid} />}>
-      <Stack.Screen options={{ title: 'New Customer' }} />
+    <Screen footer={<Button title="Create customer" onPress={create} disabled={!valid} loading={saving} />}>
+      <Stack.Screen options={{ title: 'New customer' }} />
       <ErrorBanner message={error} />
       <Field label="Name *" icon="person-outline" placeholder="Full name" value={name} onChangeText={setName} autoCapitalize="words" textContentType="name" />
-      <Field label="Email *" icon="mail-outline" placeholder="email@example.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" textContentType="emailAddress" />
-      <Field label="Phone *" icon="call-outline" placeholder="(555) 123-4567" value={phone} onChangeText={setPhone} keyboardType="phone-pad" textContentType="telephoneNumber" />
-      <Field label="Company (Optional)" icon="business-outline" placeholder="Company name" value={company} onChangeText={setCompany} />
-      <Field label="Address (Optional)" icon="location-outline" placeholder="Full address" value={address} onChangeText={setAddress} />
+      <Field label="Email" icon="mail-outline" placeholder="email@example.com" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" textContentType="emailAddress"
+        error={emailOk ? null : 'Check the email address'} />
+      <Field label="Phone" icon="call-outline" placeholder="(555) 123-4567" value={phone} onChangeText={setPhone} keyboardType="phone-pad" textContentType="telephoneNumber"
+        hint="Add an email or a phone number so you can reach them." />
+      <Field label="Company (optional)" icon="business-outline" placeholder="Company name" value={company} onChangeText={setCompany} />
+      <Field label="Address (optional)" icon="location-outline" placeholder="Billing address" value={address} onChangeText={setAddress} />
 
-      <Section title="Aircraft">
+      <Section title="Assets" count={assets.length ? `${assets.length} added` : undefined}>
+        {assets.map((a, i) => (
+          <Row key={i} style={{ marginBottom: space.sm, backgroundColor: colors.card, borderRadius: radius.md, padding: space.md, borderWidth: 1, borderColor: colors.border }}>
+            <Ionicons name={assetIcon(a.asset_type)} size={20} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <T style={{ fontWeight: '600' }}>{draftIdentifier(a)}</T>
+              <T variant="small">{[a.year, a.manufacturer, a.model].filter(Boolean).join(' ') || assetTypeInfo(a.asset_type).label} · {categoryLabel(a.category)}</T>
+            </View>
+            <IconButton icon="close" color={colors.textMuted} label="Remove" onPress={() => setAssets((xs) => xs.filter((_, j) => j !== i))} />
+          </Row>
+        ))}
         <Card>
-          {planes.map((p, i) => (
-            <Row key={i} style={{ marginBottom: space.sm, backgroundColor: colors.cardRaised, borderRadius: 10, padding: space.md }}>
-              <Ionicons name="airplane" size={18} color={colors.warning} />
-              <View style={{ flex: 1 }}>
-                <T style={{ fontWeight: '600' }}>{p.tail}</T>
-                <T variant="small">{p.type || 'Type not set'}</T>
-              </View>
-              <Pressable onPress={() => cycleClass(i)} style={{ backgroundColor: colors.primarySoft, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4 }}>
-                <T variant="small" style={{ color: colors.primaryText }}>{categoryLabel(p.category)}</T>
-              </Pressable>
-              <IconButton icon="close" color={colors.textMuted} label="Remove aircraft" onPress={() => setPlanes((ps) => ps.filter((_, j) => j !== i))} />
-            </Row>
-          ))}
-          {planes.length ? <T variant="small" style={{ marginBottom: space.md }}>Tap the class to change it. It&apos;s used for size-based pricing.</T> : null}
-          <T variant="muted" style={{ marginBottom: space.sm }}>Add Aircraft</T>
-          <TextInput style={small} placeholder="Aircraft type (e.g., Cessna 172)" placeholderTextColor={colors.textFaint} value={type} onChangeText={setType} />
-          <TextInput style={small} placeholder="Registration (e.g., N12345)" placeholderTextColor={colors.textFaint} value={tail} onChangeText={setTail} autoCapitalize="characters" />
-          <Pressable onPress={addPlane} style={({ pressed }) => [{ ...small, marginBottom: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 }, pressed && { opacity: 0.7 }]}>
-            <Ionicons name="add" size={20} color={colors.textMuted} />
-            <T style={{ color: colors.textMuted }}>Add Aircraft</T>
-          </Pressable>
+          <T variant="h3" style={{ marginBottom: space.md }}>Add {assets.length ? 'another' : 'an'} asset</T>
+          {businessTypes.length > 1 ? (
+            <Segmented value={draft.asset_type} onChange={switchType}
+              options={businessTypes.map((t) => ({ value: t, label: assetTypeInfo(t).label }))} />
+          ) : null}
+          <AssetDraftFields key={draftKey} draft={draft} onChange={setDraft} />
+          <Button kind="secondary" icon="add" title={`Add ${assetTypeInfo(draft.asset_type).label.toLowerCase()}`} onPress={addAsset} />
         </Card>
+        <T variant="small" style={{ marginTop: space.xs }}>Size class and length are used for size-based pricing. You can add photos and more details later.</T>
       </Section>
     </Screen>
   );

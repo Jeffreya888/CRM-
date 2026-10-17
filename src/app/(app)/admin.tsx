@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { FormSheet, notify, type FieldDef } from '../../components/FormSheet';
-import { Badge, Button, Card, EmptyState, ErrorBanner, Ionicons, Loading, Row, Screen, Section, Segmented, StatTile, T } from '../../components/ui';
+import { notify } from '../../components/FormSheet';
+import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Ionicons, Loading, Row, Screen, Section, Segmented, StatTile, T } from '../../components/ui';
 import { dateTime, relative, titleCase } from '../../lib/format';
 import { useSession } from '../../lib/session';
 import { callFunction, friendlyError, must, supabase } from '../../lib/supabase';
@@ -17,17 +17,10 @@ type Health = {
   support_open: number;
   last_worker_runs: { worker: string; ran_at: string; ok: boolean; details: unknown }[];
 };
+type PendingTexting = { id: string; name: string; email: string | null; phone: string | null; sms_status: string; sms_number: string | null };
+type PendingIntegration = { id: string; provider: string; management_company: string; contact_name: string | null; contact_email: string | null; status: string; created_at: string; company: string };
+type Pending = { texting: PendingTexting[]; integrations: PendingIntegration[] };
 type SupportMessage = { id: string; name: string; email: string; company: string | null; topic: string | null; message: string; handled: boolean; created_at: string };
-
-const SMS_FIELDS: FieldDef[] = [
-  { key: 'org_id', label: 'Company ID', type: 'text', required: true, hint: 'From the texting request email or the Supabase dashboard.' },
-  { key: 'status', label: 'Status', type: 'select', required: true, options: ['pending', 'active', 'suspended', 'not_requested'].map((s) => ({ value: s, label: titleCase(s) })) },
-  { key: 'number', label: 'Texting number', type: 'phone', placeholder: '+15551234567' },
-];
-const INTEGRATION_FIELDS: FieldDef[] = [
-  { key: 'id', label: 'Integration request ID', type: 'text', required: true },
-  { key: 'status', label: 'Status', type: 'select', required: true, options: ['prepared', 'sent_to_vendor', 'approved', 'live', 'declined'].map((s) => ({ value: s, label: titleCase(s) })) },
-];
 
 const CHECKLIST: [string, string][] = [
   ['Domain & support email', 'Buy the domain, set up the support inbox, set EXPO_PUBLIC_PORTAL_URL and EXPO_PUBLIC_SUPPORT_EMAIL.'],
@@ -68,7 +61,6 @@ export default function PlatformAdmin() {
 function AdminBody() {
   const [tab, setTab] = useState<'health' | 'support' | 'actions' | 'launch'>('health');
   const [showHandled, setShowHandled] = useState(false);
-  const [sheet, setSheet] = useState<'sms' | 'integration' | null>(null);
 
   const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
   const support = useQuery(async () => {
@@ -77,6 +69,7 @@ function AdminBody() {
     return (await must(q)) as SupportMessage[];
   }, [showHandled]);
 
+  const pending = useQuery(async () => (await must(supabase.rpc('platform_pending'))) as Pending, []);
   const h = health.data;
   const plans = h?.companies_by_plan ?? {};
   const paying = (plans.solo ?? 0) + (plans.team ?? 0) + (plans.fleet ?? 0);
@@ -91,7 +84,7 @@ function AdminBody() {
   };
 
   return (
-    <Screen refreshing={health.refreshing || support.refreshing} onRefresh={() => { health.refresh(); support.refresh(); }}>
+    <Screen refreshing={health.refreshing || support.refreshing} onRefresh={() => { health.refresh(); support.refresh(); pending.refresh(); }}>
       <Stack.Screen options={{ title: 'Platform admin' }} />
       <Segmented value={tab} onChange={setTab} options={[
         { value: 'health', label: 'Health' },
@@ -172,18 +165,19 @@ function AdminBody() {
 
       {tab === 'actions' ? (
         <>
-          <Card>
-            <T variant="h3">Customer texting</T>
-            <T variant="muted" style={{ marginTop: 4 }}>{h ? `${h.texting_pending} compan${h.texting_pending === 1 ? 'y is' : 'ies are'} waiting for a texting number.` : ''}</T>
-            <T variant="small" style={{ marginTop: 4 }}>After carrier registration is approved, set the company to Active with its number.</T>
-            <Button small icon="chatbubbles-outline" title="Set texting status" style={{ alignSelf: 'flex-start', marginTop: space.md }} onPress={() => setSheet('sms')} />
-          </Card>
-          <Card>
-            <T variant="h3">Scheduling integrations</T>
-            <T variant="small" style={{ marginTop: 4 }}>When a vendor grants partner access, mark the company&apos;s request Approved, then Live once syncing works.</T>
-            <Button small icon="sync-outline" title="Update integration request" style={{ alignSelf: 'flex-start', marginTop: space.md }} onPress={() => setSheet('integration')} />
-          </Card>
-          <T variant="small">Company and request IDs come from the request notification or the Supabase dashboard; company records stay private to each company in the app.</T>
+          <ErrorBanner message={pending.error} onRetry={pending.refresh} />
+          <Section title="Waiting for a texting number" count={pending.data ? String(pending.data.texting.length) : undefined}>
+            {pending.data && pending.data.texting.length === 0 ? <Card><T variant="muted">No companies are waiting for texting.</T></Card> : null}
+            {(pending.data?.texting ?? []).map((o) => (
+              <TextingRow key={o.id} org={o} onDone={() => Promise.all([pending.reload(), health.reload()])} />
+            ))}
+          </Section>
+          <Section title="Scheduling integration requests" count={pending.data ? String(pending.data.integrations.length) : undefined}>
+            {pending.data && pending.data.integrations.length === 0 ? <Card><T variant="muted">No open integration requests.</T></Card> : null}
+            {(pending.data?.integrations ?? []).map((r) => (
+              <IntegrationRow key={r.id} req={r} onDone={pending.reload} />
+            ))}
+          </Section>
         </>
       ) : null}
 
@@ -204,19 +198,60 @@ function AdminBody() {
         </>
       ) : null}
 
-      <FormSheet visible={sheet === 'sms'} title="Texting status" fields={SMS_FIELDS} initial={{ status: 'active' }}
-        onClose={() => setSheet(null)}
-        onSubmit={async (v) => {
-          await callFunction('admin-action', { action: 'set_sms', org_id: v.org_id, status: v.status, number: v.number ?? undefined });
-          await health.reload();
-          notify('Saved', 'Texting status updated.');
-        }} />
-      <FormSheet visible={sheet === 'integration'} title="Integration request" fields={INTEGRATION_FIELDS} initial={{ status: 'approved' }}
-        onClose={() => setSheet(null)}
-        onSubmit={async (v) => {
-          await callFunction('admin-action', { action: 'set_integration', id: v.id, status: v.status });
-          notify('Saved', 'Integration request updated.');
-        }} />
     </Screen>
+  );
+}
+
+function TextingRow({ org, onDone }: { org: PendingTexting; onDone: () => Promise<unknown> }) {
+  const [number, setNumber] = useState(org.sms_number ?? '');
+  const set = async (status: 'active' | 'suspended') => {
+    const n = number.trim();
+    if (status === 'active' && !/^\+?[0-9 ()-]{10,}$/.test(n)) return notify('Texting number needed', 'Enter the company’s texting number, e.g. +15551234567.');
+    try {
+      await callFunction('admin-action', { action: 'set_sms', org_id: org.id, status, number: n || undefined });
+      await onDone();
+    } catch (e: any) {
+      notify('Could not update', friendlyError(e.message));
+    }
+  };
+  return (
+    <Card>
+      <T style={{ fontWeight: '700' }}>{org.name}</T>
+      <T variant="small" style={{ marginBottom: space.md }}>{[org.email, org.phone].filter(Boolean).join(' · ') || 'No contact details'}</T>
+      <Field label="Texting number" icon="call-outline" placeholder="+15551234567" value={number} onChangeText={setNumber} keyboardType="phone-pad" autoCapitalize="none" />
+      <Row style={{ flexWrap: 'wrap' }}>
+        <Button small icon="checkmark" title="Activate texting" onPress={() => set('active')} />
+        <Button small kind="ghost" title="Suspend" onPress={() => set('suspended')} />
+      </Row>
+    </Card>
+  );
+}
+
+const INTEGRATION_STATUSES = ['prepared', 'sent_to_vendor', 'approved', 'live', 'declined'] as const;
+
+function IntegrationRow({ req, onDone }: { req: PendingIntegration; onDone: () => Promise<unknown> }) {
+  const set = async (status: string) => {
+    if (status === req.status) return;
+    try {
+      await callFunction('admin-action', { action: 'set_integration', id: req.id, status });
+      await onDone();
+    } catch (e: any) {
+      notify('Could not update', friendlyError(e.message));
+    }
+  };
+  return (
+    <Card>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <View style={{ flex: 1 }}>
+          <T style={{ fontWeight: '700' }}>{req.company}</T>
+          <T variant="small">{titleCase(req.provider)} · {req.management_company} · {relative(req.created_at)}</T>
+          {req.contact_name || req.contact_email ? <T variant="small">{[req.contact_name, req.contact_email].filter(Boolean).join(' · ')}</T> : null}
+        </View>
+        <Badge label={req.status} tone={req.status === 'approved' ? 'success' : 'info'} />
+      </Row>
+      <View style={{ marginTop: space.md }}>
+        <Segmented value={req.status} onChange={set} options={INTEGRATION_STATUSES.map((s) => ({ value: s, label: titleCase(s) }))} />
+      </View>
+    </Card>
   );
 }
