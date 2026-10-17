@@ -209,8 +209,13 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 9. My companies: switch / leave.
 10. Owner data export: one-tap ZIP (CSVs, PDFs, photos).
 
+## Launch & setup guide (owner-only)
+- Not shown to subscribers. Rewrite as a private founder launch checklist for this stack: domain + support email, Supabase production project (daily backups / point-in-time restore, tested restore), Resend domain verification, Apple Developer + App Store Connect products, Google Play products, RevenueCat entitlements/offerings + webhook, Stripe Connect (Express) + webhook, Telnyx texting registration, EAS build/submit, legal pages, pilot company test, go/no-go list.
+- Subscribers get the in-app "Getting started" guide instead (first 7 steps).
+- Stripe stays Connect **Express** (simpler onboarding than the old app's Standard OAuth).
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
 ## Still to review
-Launch & setup guide, and anything else the owner sends.
+Anything else the owner sends.
