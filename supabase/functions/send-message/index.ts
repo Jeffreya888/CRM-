@@ -20,7 +20,10 @@ Deno.serve(async (req) => {
     if (m.direction !== "out") return error("Only outgoing messages can be sent");
 
     const r = await deliverMessage(db, message_id);
-    if (r.status === "failed") return json({ status: r.status, error: r.error ?? "Could not send" }, 200);
+    // Failed / blocked come back as errors so the app shows the reason; the row keeps it too.
+    if (r.status === "failed" || r.status === "blocked" || r.status === "missing") {
+      return json({ status: r.status, error: r.error ?? "Could not send this message" }, 422);
+    }
     return json(r);
   } catch (e) {
     console.error(e);
