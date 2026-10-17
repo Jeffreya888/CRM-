@@ -178,6 +178,24 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 7. Per-customer exceptions (e.g. disable invoice reminders for net-60 accounts).
 8. Smart defaults: job reminders + invoice reminders ON for new companies.
 
+## Team roles & access (all eight)
+- Email invitations: link + code, 7-day expiry, new invite to same email revokes old; resend/revoke; pending list. Owner must verify own email first.
+- Role change/removal → reassignment step for open jobs + recurring schedules (no silent unassign).
+- Default permissions (owner can change any toggle):
+  - Owner: everything.
+  - Admin: everything except subscription/plan, ownership transfer, deleting the company.
+  - Manager: customers, assets, services, jobs, scheduling, quotes, invoices + prices, record payments, approve timesheets. **Not**: P&L/profitability, pay rates, company subscription, Stripe payout settings, team management.
+  - Technician: assigned work, photos, checklists, own time and hours; no prices.
+  - Viewer: read-only, no money.
+1. Custom permission toggles per role (see prices, invoices, reports/P&L, edit customers, approve timesheets, give discounts, delete records).
+2. Better invites (above).
+3. Member profile: phone, photo, hourly rate + pay type (owner-only; feeds labor cost/P&L), default branch (Fleet).
+4. Certifications with expirations (airport badges, ramp safety, coating-brand) + alerts; scheduler warns if tech lacks a facility's required badge.
+5. Skill tags (ceramic, interior, brightwork, paint correction); scheduler suggests qualified techs first.
+6. Deactivate instead of delete (history kept, seat freed) + reassignment.
+7. Activity log per member (owner-only).
+8. Seat usage meter + upgrade prompt.
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
