@@ -104,7 +104,7 @@ export default function Support() {
         <SectionIntro eyebrow="FAQ" title="Frequently asked questions." />
         <Faq items={SUPPORT_FAQ} />
         <View style={{ alignItems: 'center', marginTop: 40 }}>
-          <CTAButton href="/pricing" label="See plans & pricing" variant="outline" icon="arrow-forward" />
+          <CTAButton center href="/pricing" label="See plans & pricing" variant="outline" icon="arrow-forward" />
         </View>
       </Section>
     </SitePage>

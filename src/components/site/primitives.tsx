@@ -1,7 +1,7 @@
 // Building blocks for the public website (react-native-web friendly).
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link, type Href } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { colors } from '../../lib/theme';
@@ -61,7 +61,7 @@ export function Section({ children, style, id, tint }: { children: ReactNode; st
 /** Semantic heading: role="heading" + aria-level on web, header role on native. */
 export function Heading({ level = 2, children, style, center }: { level?: 1 | 2 | 3 | 4; children: ReactNode; style?: StyleProp<TextStyle>; center?: boolean }) {
   const { isMobile } = useBreakpoint();
-  const size = { 1: isMobile ? 40 : 68, 2: isMobile ? 30 : 46, 3: isMobile ? 20 : 22, 4: 17 }[level];
+  const size = { 1: isMobile ? 40 : 62, 2: isMobile ? 30 : 46, 3: isMobile ? 20 : 22, 4: 17 }[level];
   const a11y = WEB ? ({ role: 'heading', 'aria-level': level } as object) : { accessibilityRole: 'header' as const };
   return (
     <Text
@@ -112,13 +112,28 @@ export function SectionIntro({ eyebrow, title, body, center = true, style }: { e
   );
 }
 
-/** Wraps children in an expo-router Link (renders an <a> on web). */
+/** Wraps children in an expo-router Link (renders an <a> on web). Hover/focus state is tracked here
+ *  because Link's Slot does not resolve Pressable's function styles. */
 export function SiteLink({ href, children, style, label, external }: { href: string; children: ReactNode | ((s: PressState) => ReactNode); style?: (s: PressState) => StyleProp<ViewStyle>; label?: string; external?: boolean }) {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pressed, setPressed] = useState(false);
+  const state: PressState = { hovered, focused, pressed };
   const ext = external || /^(https?:|mailto:|tel:)/.test(href);
   return (
     <Link href={href as Href} asChild {...(ext && WEB ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-      <Pressable accessibilityRole="link" accessibilityLabel={label} style={style as never}>
-        {children as never}
+      <Pressable
+        accessibilityRole="link"
+        accessibilityLabel={label}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onPressIn={() => setPressed(true)}
+        onPressOut={() => setPressed(false)}
+        style={StyleSheet.flatten(style?.(state))}
+      >
+        {typeof children === 'function' ? children(state) : children}
       </Pressable>
     </Link>
   );
@@ -134,8 +149,8 @@ export function TextLink({ href, children, color = site.muted, hoverColor = site
 
 type BtnVariant = 'primary' | 'gold' | 'ghost' | 'outline';
 
-export function CTAButton({ href, onPress, label, icon, variant = 'primary', size = 'md', full, disabled }: {
-  href?: string; onPress?: () => void; label: string; icon?: IconName; variant?: BtnVariant; size?: 'md' | 'lg' | 'sm'; full?: boolean; disabled?: boolean;
+export function CTAButton({ href, onPress, label, icon, variant = 'primary', size = 'md', full, disabled, center }: {
+  href?: string; onPress?: () => void; label: string; icon?: IconName; variant?: BtnVariant; size?: 'md' | 'lg' | 'sm'; full?: boolean; disabled?: boolean; center?: boolean;
 }) {
   const pad = size === 'lg' ? { paddingVertical: 17, paddingHorizontal: 28 } : size === 'sm' ? { paddingVertical: 9, paddingHorizontal: 16 } : { paddingVertical: 13, paddingHorizontal: 22 };
   const fs = size === 'lg' ? 16.5 : size === 'sm' ? 14 : 15;
@@ -153,7 +168,7 @@ export function CTAButton({ href, onPress, label, icon, variant = 'primary', siz
       borderWidth: 1,
       borderColor: variant === 'outline' ? site.lineStrong : variant === 'ghost' ? 'transparent' : 'rgba(255,255,255,0.18)',
       opacity: disabled ? 0.55 : s.pressed ? 0.85 : 1,
-      alignSelf: full ? ('stretch' as const) : ('flex-start' as const),
+      alignSelf: full ? ('stretch' as const) : center ? ('center' as const) : ('flex-start' as const),
       transform: [{ translateY: s.hovered && !disabled ? -1 : 0 }],
     },
     webStyle({

@@ -74,7 +74,7 @@ export default function Pricing() {
         <SectionIntro eyebrow="FAQ" title="Billing questions, answered." />
         <Faq items={PRICING_FAQ} />
         <View style={{ alignItems: 'center', marginTop: 48, gap: 14 }}>
-          <CTAButton href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" variant="gold" />
+          <CTAButton center href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" variant="gold" />
           <P size="sm" center>Subscriptions are purchased in the app and billed by Apple or Google.</P>
         </View>
       </Section>

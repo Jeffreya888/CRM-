@@ -264,5 +264,16 @@ export async function deliverMessage(db: SupabaseClient, id: string, opts: Deliv
   }
 }
 
+/** Plain-text body of the email that delivers an invoice (manual or auto-sent). */
+export function invoiceEmailText(org: Org, c: Row | null, inv: Row, reviewUrl: string | null | undefined): string {
+  return [
+    `Hi ${c?.name ?? "there"},`,
+    `Your invoice ${inv.number} for ${money(inv.balance ?? inv.total, org.currency)} is ready${inv.due_date ? ` (due ${fmtYmd(inv.due_date)})` : ""}.`,
+    `View and pay online: ${links.invoice(inv.public_token)}`,
+    reviewUrl ? `Happy with our work? A quick Google review means a lot: ${reviewUrl}` : "",
+    `Thank you,\n${inv.org_snapshot?.name ?? org.name}`,
+  ].filter(Boolean).join("\n\n");
+}
+
 /** Escaped helper re-export for HTML emails built by functions. */
 export { esc };

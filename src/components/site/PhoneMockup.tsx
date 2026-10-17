@@ -176,7 +176,7 @@ export function FloatCard({ icon, title, body, tone = 'green', style }: { icon: 
   return (
     <View
       style={[
-        { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 16, backgroundColor: 'rgba(22,28,42,0.85)', borderWidth: 1, borderColor: site.lineStrong, width: 228 },
+        { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11, paddingHorizontal: 14, borderRadius: 16, backgroundColor: 'rgba(22,28,42,0.85)', borderWidth: 1, borderColor: site.lineStrong, width: 220, zIndex: 2 },
         webStyle({ backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 20px 50px -20px rgba(0,0,0,0.8)' }),
         style,
       ]}

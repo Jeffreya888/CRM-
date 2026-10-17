@@ -9,10 +9,10 @@ import { CTAButton, Glass, Heading, Ionicons, P, fontFamily, site, useBreakpoint
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-function Input({ label, error, optional, ...props }: TextInputProps & { label: string; error?: string | null; optional?: boolean }) {
+function Input({ label, error, optional, grow, ...props }: TextInputProps & { label: string; error?: string | null; optional?: boolean; grow?: boolean }) {
   const [focus, setFocus] = useState(false);
   return (
-    <View style={{ gap: 7, flex: 1 }}>
+    <View style={grow ? { gap: 7, flex: 1 } : { gap: 7 }}>
       <Text style={{ fontFamily, color: site.text, fontSize: 14, fontWeight: '700' }}>
         {label}
         {optional ? <Text style={{ color: site.faint, fontWeight: '500' }}> (optional)</Text> : null}
@@ -96,7 +96,7 @@ export function SupportForm() {
             Thanks, {name.trim().split(' ')[0]}. We’ll reply to {email.trim()} by email. If it’s urgent, you can also write to {SUPPORT_EMAIL}.
           </P>
           <View style={{ marginTop: 22 }}>
-            <CTAButton label="Send another message" variant="outline" onPress={reset} />
+            <CTAButton center label="Send another message" variant="outline" onPress={reset} />
           </View>
         </View>
       </Glass>
@@ -109,8 +109,8 @@ export function SupportForm() {
       <P size="sm" style={{ marginTop: 4, marginBottom: 22 }}>Please don’t include passwords, verification codes, card numbers or customer records.</P>
       <View style={{ gap: 18 }}>
         <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 18 }}>
-          <Input label="Your name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" error={errors.name} placeholder="Alex Rivera" />
-          <Input label="Email" value={email} onChangeText={setEmail} autoComplete="email" textContentType="emailAddress" keyboardType="email-address" autoCapitalize="none" error={errors.email} placeholder="you@company.com" />
+          <Input grow={!isMobile} label="Your name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" error={errors.name} placeholder="Alex Rivera" />
+          <Input grow={!isMobile} label="Email" value={email} onChangeText={setEmail} autoComplete="email" textContentType="emailAddress" keyboardType="email-address" autoCapitalize="none" error={errors.email} placeholder="you@company.com" />
         </View>
         <Input label="Company" optional value={company} onChangeText={setCompany} autoComplete="organization" textContentType="organizationName" placeholder="Rivera Aviation Detailing" />
         <View style={{ gap: 9 }}>

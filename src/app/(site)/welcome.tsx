@@ -70,14 +70,16 @@ function Hero() {
             </View>
           </View>
           <View style={{ flex: isDesktop ? 1 : undefined, alignItems: 'center', justifyContent: 'center', minHeight: isMobile ? undefined : 640 }}>
-            <PhoneMockup style={isDesktop ? webStyle({ transform: 'rotate(-2deg)' }) : undefined} />
-            {!isMobile ? (
-              <>
-                <FloatCard icon="checkmark-done" title="Invoice paid" body="INV-2207 · $2,350.00 by card" tone="green" style={{ top: 70, left: isDesktop ? -30 : -10 }} />
-                <FloatCard icon="images" title="12 after photos" body="Attached to N512FR · signed off" tone="blue" style={{ bottom: 120, right: isDesktop ? -40 : -10 }} />
-                <FloatCard icon="repeat" title="Care plan renewed" body="Monthly wash · next visit Nov 11" tone="gold" style={{ bottom: 18, left: isDesktop ? 0 : 10 }} />
-              </>
-            ) : null}
+            <View style={{ width: 300 }}>
+              <PhoneMockup style={isDesktop ? webStyle({ transform: 'rotate(-2deg)' }) : undefined} />
+              {!isMobile ? (
+                <>
+                  <FloatCard icon="checkmark-done" title="Invoice paid" body="INV-2207 · $2,350.00 by card" tone="green" style={{ top: 120, left: -196 }} />
+                  <FloatCard icon="images" title="12 after photos" body="N512FR · condition signed" tone="blue" style={{ top: 330, right: -196 }} />
+                  <FloatCard icon="repeat" title="Care plan renewed" body="Monthly wash · next visit Nov 11" tone="gold" style={{ bottom: 36, left: -196 }} />
+                </>
+              ) : null}
+            </View>
           </View>
         </View>
       </Container>
@@ -319,7 +321,7 @@ function PlansTeaser() {
         })}
       </Grid>
       <View style={{ alignItems: 'center', marginTop: 36 }}>
-        <CTAButton href="/pricing" label="Compare plans & yearly pricing" icon="arrow-forward" variant="outline" />
+        <CTAButton center href="/pricing" label="Compare plans & yearly pricing" icon="arrow-forward" variant="outline" />
       </View>
     </Section>
   );
