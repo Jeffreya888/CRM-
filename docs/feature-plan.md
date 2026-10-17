@@ -154,6 +154,19 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 8. Accepted → Tentative job automatically; customer requests preferred dates; owner confirms (conflict-checked).
 9. List filters (Draft / Sent / Viewed / Accepted / Declined / Expired) + open quote value and win rate.
 
+## Recurring care schedules (all nine)
+- Two sources, one list: (a) per-service interval on job completion (above); (b) standalone schedule: customer + asset + service + price + first occurrence + interval + default tech + notes.
+- Intervals in weeks or months in the company time zone (local time stays fixed across DST); not fixed UTC days.
+1. Day-of-week patterns ("every 2nd Tuesday", "first Monday of the month").
+2. Pause / resume / skip one occurrence.
+3. End rule: never / on date / after N visits.
+4. Lead time: create visits X days ahead as Tentative or Scheduled (per schedule), conflict-checked, default tech assigned.
+5. Customer heads-up X days before, with reschedule link → portal request flow.
+6. Preview of next 6 dates before saving; timeline of past/future visits.
+7. Billing per schedule: invoice per visit, or monthly care plan auto-charged to card on file via Stripe (platform fee applies).
+8. Optional annual price increase (X% on anniversary, with customer notice).
+9. Plan health: active schedules, monthly recurring revenue, visits this month, unassigned schedules.
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
