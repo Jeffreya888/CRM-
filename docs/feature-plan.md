@@ -140,6 +140,20 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Hosted on the same web build as the customer portal.
 - Launch checklist / launch guide = owner-only (project docs + platform-admin area), not shown to subscribers.
 
+## Quotes & customer approvals (all nine)
+- Approval deadline (date + time); expired quotes can't be accepted.
+- Sent quotes are locked; edits create a new version (customer sees exactly what they approve).
+- Customer can approve or decline from the private link.
+1. Good / Better / Best: up to 3 packages per quote; customer picks one and signs.
+2. Optional deposit on acceptance (% or fixed), paid by card via Stripe (platform fee applies).
+3. Viewed tracking (open count, last viewed) + push when opened.
+4. Automatic follow-ups after X days unanswered + 24h before deadline; stop on response.
+5. Decline reason (price / timing / went elsewhere / other + note) → win/loss report.
+6. Quote templates.
+7. Photos attached to quotes.
+8. Accepted → Tentative job automatically; customer requests preferred dates; owner confirms (conflict-checked).
+9. List filters (Draft / Sent / Viewed / Accepted / Declined / Expired) + open quote value and win rate.
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
