@@ -5,7 +5,7 @@
 //
 // POST { invoice_id } | { public_token }, optional { success_url, cancel_url }
 // Card + ACH availability is configured in Stripe Dashboard → Payment methods.
-import { adminClient, callerRole, effectivePlan, platformFeeBps, stripe } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole, effectivePlan, platformFeeBps, stripe } from "../_shared/clients.ts";
 import { corsHeaders, error, json, portalUrl } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     if (!body.public_token) {
       const caller = await callerRole(req, inv.org_id);
-      if (!caller || !["owner", "admin", "manager"].includes(caller.role)) return error("Not allowed", 403);
+      if (!caller || !["owner", "admin", "manager"].includes(caller.role) || !(await callerCanMoney(req, inv.org_id))) return error("Not allowed", 403);
     }
 
     // deno-lint-ignore no-explicit-any
@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
     const fee = Math.round((amountCents * platformFeeBps(await effectivePlan(db, inv.org_id))) / 10000);
     const portal = portalUrl();
     const docUrl = `${portal}/portal/invoice/${inv.public_token}`;
+    // Only our own pages as return URLs (no open redirect through Stripe Checkout).
+    const ours = (u: unknown) => typeof u === "string" && (u === portal || u.startsWith(`${portal}/`)) ? u : null;
 
     const session = await stripe().checkout.sessions.create({
       mode: "payment",
@@ -59,8 +61,8 @@ Deno.serve(async (req) => {
         metadata: { invoice_id: inv.id, org_id: inv.org_id },
       },
       metadata: { invoice_id: inv.id, org_id: inv.org_id, platform_fee_cents: String(fee) },
-      success_url: body.success_url ?? `${docUrl}?paid=1`,
-      cancel_url: body.cancel_url ?? docUrl,
+      success_url: ours(body.success_url) ?? `${docUrl}?paid=1`,
+      cancel_url: ours(body.cancel_url) ?? docUrl,
     });
     return json({ url: session.url });
   } catch (e) {

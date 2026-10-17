@@ -269,7 +269,8 @@ async function bookingRequest(db: SupabaseClient, s: Session, body: Row) {
 
 async function files(db: SupabaseClient, s: Session, paths: unknown) {
   if (!Array.isArray(paths)) return error("paths required");
-  const wanted = [...new Set(paths.filter((p): p is string => typeof p === "string" && p.length > 0 && p.length < 500))].slice(0, 100);
+  const inOrg = (p: string) => p.startsWith(`${s.org_id}/`) && !p.includes("..");
+  const wanted = [...new Set(paths.filter((p): p is string => typeof p === "string" && p.length > 0 && p.length < 500 && inOrg(p)))].slice(0, 100);
   if (!wanted.length) return json({ urls: {} });
 
   const allowed = new Set<string>();
@@ -294,10 +295,11 @@ async function files(db: SupabaseClient, s: Session, paths: unknown) {
 
 async function quotePhotos(db: SupabaseClient, token: unknown) {
   if (typeof token !== "string" || token.length < 10 || token.length > 200) return error("Quote not found", 404);
-  const { data: q } = await db.from("quotes").select("id, status").eq("public_token", token).maybeSingle();
+  const { data: q } = await db.from("quotes").select("id, org_id, status").eq("public_token", token).maybeSingle();
   if (!q || q.status === "draft") return error("Quote not found", 404);
-  const { data: photos } = await db.from("quote_photos").select("storage_path").eq("quote_id", q.id).order("created_at");
-  const paths = (photos ?? []).map((p) => p.storage_path).filter(Boolean);
+  const { data: photos } = await db.from("quote_photos").select("storage_path").eq("quote_id", q.id).eq("org_id", q.org_id).order("created_at");
+  const paths = (photos ?? []).map((p) => p.storage_path as string)
+    .filter((p) => !!p && p.startsWith(`${q.org_id}/`) && !p.includes(".."));
   if (!paths.length) return json({ urls: [] });
   const { data, error: e } = await db.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_S);
   if (e) throw e;

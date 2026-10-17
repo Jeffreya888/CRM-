@@ -9,7 +9,7 @@
 // Caller must be an owner/admin/manager of the schedule's company.
 // Subscription events arrive on the Connect webhook (see stripe-webhook).
 import { Stripe } from "../_shared/deps.ts";
-import { adminClient, callerRole, MANAGER_ROLES, orgFeeBps, stripe } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole, MANAGER_ROLES, orgFeeBps, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
@@ -26,7 +26,9 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (!s) return error("Schedule not found", 404);
     const caller = await callerRole(req, s.org_id);
-    if (!caller || !MANAGER_ROLES.includes(caller.role)) return error("Only owners, admins and managers can manage care plans", 403);
+    if (!caller || !MANAGER_ROLES.includes(caller.role) || !(await callerCanMoney(req, s.org_id))) {
+      return error("Only owners, admins and managers who can see prices can manage care plans", 403);
+    }
 
     // deno-lint-ignore no-explicit-any
     const org = s.org as any;

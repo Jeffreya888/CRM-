@@ -72,10 +72,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const org = current?.organization ?? null;
   const plan: Plan = org ? effectivePlan(org) : 'expired';
 
-  // Subscriptions belong to the organization, not the device user.
+  // Subscriptions belong to the organization, not the device user. Only the
+  // owner buys and manages the plan, so only the owner's device identifies as
+  // the company in RevenueCat (the webhook trusts that id).
+  const isOrgOwner = current?.role === 'owner';
   useEffect(() => {
-    if (org?.id) identifyOrg(org.id).catch(() => {});
-  }, [org?.id]);
+    if (org?.id && isOrgOwner) identifyOrg(org.id).catch(() => {});
+  }, [org?.id, isOrgOwner]);
 
   // Remember the chosen company location per company on this device.
   useEffect(() => {

@@ -651,4 +651,104 @@ select public.generate_recurring_expenses();
 delete from organizations where name = 'Alpha Renamed';
 do $$ begin assert (select count(*) from invoices) = 0; end $$;
 
+-- ---------- Security regressions (20261017001100_security_fixes) ----------
+reset role;
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f1', 'sec-owner@sec.test', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f2', 'sec-admin@sec.test', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f3', 'sec-tech@sec.test', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000f4', 'sec-other@sec.test', '{}', now());
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f4', false);
+insert into ctx select 'sec_other', public.create_organization('Sec Other Co', false);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', false);
+insert into ctx select 'sec', public.create_organization('Sec Co', false);
+reset role;
+insert into memberships (org_id, user_id, role) select v, '00000000-0000-0000-0000-0000000000f2', 'admin' from ctx where k = 'sec';
+insert into memberships (org_id, user_id, role) select v, '00000000-0000-0000-0000-0000000000f3', 'technician' from ctx where k = 'sec';
+insert into customers (org_id, name) select v, n from ctx, (values ('Sec Cust A'), ('Sec Cust B')) x(n) where k = 'sec';
+insert into jobs (org_id, number, title, customer_id, status)
+  select org_id, 'SEC-1', 'Sec job', id, 'scheduled' from customers where name = 'Sec Cust A';
+insert into locations (org_id, name) select v, 'Sec other loc' from ctx where k = 'sec_other';
+insert into ctx select 'sec_other_loc', id from locations where name = 'Sec other loc';
+insert into storage.objects (bucket_id, name) select 'org-files', v || p from ctx, (values ('/exports/flight-ready-export.zip'), ('/receipts/r.jpg'), ('/jobs/j/p.jpg')) x(p) where k = 'sec';
+grant usage on schema storage to authenticated;  -- test stub only (Supabase grants this)
+grant select on storage.objects to authenticated;
+
+-- Technician
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f3', false);
+do $$ begin
+  begin
+    insert into service_menu (org_id, name) values ((select v from ctx where k = 'sec_other'), 'Injected');
+    raise exception 'service_menu must not be writable';
+  exception when insufficient_privilege then null;
+  end;
+  assert (select count(*) from storage.objects) = 1, 'technician sees job photos only, not exports or receipts';
+  begin
+    insert into job_assignments (job_id, user_id, org_id) select id, auth.uid(), org_id from jobs where number = 'SEC-1';
+    raise exception 'technician cannot assign crew';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update jobs set customer_id = (select id from customers where name = 'Sec Cust B') where number = 'SEC-1';
+    raise exception 'technician cannot re-point a job';
+  exception when raise_exception then
+    if sqlerrm not like 'PERMISSION%' then raise; end if;
+  end;
+end $$;
+insert into time_entries (org_id, user_id, started_at, ended_at, approved)
+  select v, auth.uid(), now() - interval '2 hours', now() - interval '1 hour', true from ctx where k = 'sec';
+do $$ begin
+  assert (select not approved from time_entries where user_id = auth.uid()), 'technician cannot insert approved time';
+end $$;
+
+-- Admin
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f2', false);
+do $$ begin
+  begin
+    insert into invitations (org_id, email, role) select v, 'second-owner@sec.test', 'owner' from ctx where k = 'sec';
+    raise exception 'admin cannot write invitations directly';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update memberships set role = 'admin' where user_id = '00000000-0000-0000-0000-0000000000f3';
+    raise exception 'admin cannot change roles directly';
+  exception when raise_exception then
+    if sqlerrm not like 'PERMISSION%' then raise; end if;
+  end;
+  assert (select count(*) from storage.objects) = 2, 'admin reads receipts but not the owner export';
+end $$;
+
+-- Owner
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', false);
+do $$ begin
+  assert (select count(*) from storage.objects) = 3, 'owner reads the export';
+  begin
+    insert into job_photos (org_id, job_id, kind, storage_path)
+      select org_id, id, 'before', (select v from ctx where k = 'sec_other') || '/exports/x.zip' from jobs where number = 'SEC-1';
+    raise exception 'photo path must stay inside the company folder';
+  exception when raise_exception then
+    if sqlerrm not like 'File path%' then raise; end if;
+  end;
+  begin
+    update jobs set location_id = (select v from ctx where k = 'sec_other_loc') where number = 'SEC-1';
+    raise exception 'job location must belong to the company';
+  exception when raise_exception then
+    if sqlerrm not like 'Cross-organization%' then raise; end if;
+  end;
+  assert public.guide_for((select v from ctx where k = 'sec_other'), 'exterior_wash') is null, 'no guides from other companies';
+end $$;
+reset role;
+set role anon;
+do $$ begin
+  begin
+    perform public.generate_recurring_jobs();
+    raise exception 'anon cannot run generators';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
+
 \echo ALL FLOW TESTS PASSED

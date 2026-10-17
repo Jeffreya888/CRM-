@@ -41,7 +41,17 @@ export async function callerRole(req: Request, orgId: string) {
     .eq("user_id", user.id)
     .eq("active", true)
     .maybeSingle();
-  return data ? { userId: user.id, role: data.role as string } : null;
+  if (!data) return null;
+  // Companies that require two-step sign-in: an aal1 session is not a member (same rule as RLS).
+  const { data: aalOk } = await sb.rpc("session_aal_ok", { p_org: orgId });
+  if (aalOk !== true) return null;
+  return { userId: user.id, role: data.role as string };
+}
+
+/** True when the caller may see prices and money in the org (RLS-aware). */
+export async function callerCanMoney(req: Request, orgId: string): Promise<boolean> {
+  const { data } = await userClient(req).rpc("can_money", { p_org: orgId });
+  return data === true;
 }
 
 export const MANAGER_ROLES = ["owner", "admin", "manager"];

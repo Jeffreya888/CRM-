@@ -235,6 +235,8 @@ export async function deliverMessage(db: SupabaseClient, id: string, opts: Deliv
     if (!customer.sms_consent) return stop("blocked", "This customer has not agreed to receive texts");
     const to = toE164(m.to_address ?? customer.phone);
     if (!to) return stop("failed", "No valid mobile number");
+    // Consent belongs to the customer's own number: never text a different number on their record.
+    if (to !== toE164(customer.phone)) return stop("blocked", "Texts can only go to the customer's mobile number on file");
     const from = toE164(org.sms_number);
     if (!from) return stop("failed", "The company texting number is not valid");
 

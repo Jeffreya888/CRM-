@@ -7,6 +7,7 @@ import { emailLayout, isEmail, sendEmail, textToHtml } from "../_shared/email.ts
 import { loadOrg, queueMessage } from "../_shared/automation.ts";
 
 const MAX_BYTES = 10 * 1024 * 1024;
+const REPORT_TYPES: Record<string, string> = { pdf: "application/pdf", csv: "text/csv", html: "text/html" };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -36,7 +37,12 @@ Deno.serve(async (req) => {
       const clean = f.content_base64.replace(/^data:[^,]+,/, "").replace(/\s/g, "");
       total += Math.floor(clean.length * 3 / 4);
       if (total > MAX_BYTES) return error("Attachments are larger than 10 MB in total. Pick a shorter period.");
-      out.push({ filename: f.filename.replace(/[\r\n/\\]/g, " ").slice(0, 120), content: clean, content_type: typeof f.type === "string" ? f.type : undefined });
+      // Reports only: PDF, CSV (and the HTML fallback when a PDF can't be made). No executables or other files.
+      const filename = f.filename.replace(/[\r\n/\\]/g, " ").slice(0, 120);
+      const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+      const content_type = REPORT_TYPES[ext];
+      if (!content_type) return error("Attachments must be PDF or CSV files");
+      out.push({ filename, content: clean, content_type });
     }
 
     const text = String(body ?? "").slice(0, 20000);

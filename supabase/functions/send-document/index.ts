@@ -4,7 +4,7 @@
 // link when the company has one. Demo companies never send real email.
 //
 // POST { kind: "quote" | "invoice", id, to?, message? } → { sent: true, link }
-import { adminClient, callerRole } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, textToHtml } from "../_shared/email.ts";
 import { DEMO_BLOCKED, deliverMessage, fmtYmd, invoiceEmailText, links, loadOrg, money, queueMessage, type Row } from "../_shared/automation.ts";
@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     const doc = data as Row | null;
     if (!doc) return error("Not found", 404);
     const caller = await callerRole(req, doc.org_id);
-    if (!caller || !["owner", "admin", "manager"].includes(caller.role)) return error("Not found", 404);
+    if (!caller || !["owner", "admin", "manager"].includes(caller.role) || !(await callerCanMoney(req, doc.org_id))) return error("Not found", 404);
     if (doc.status === "void") return error("This invoice was voided");
 
     const org = await loadOrg(db, doc.org_id);
