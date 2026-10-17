@@ -26,7 +26,16 @@ export function DateTimeField({
   const display = current && isValid(current) ? format(current, mode === 'date' ? 'EEE, MMM d, yyyy' : 'EEE, MMM d, yyyy · h:mm a') : 'Not set';
   const emit = (d: Date) => onChange(mode === 'date' ? format(d, 'yyyy-MM-dd') : d.toISOString());
   const [iosOpen, setIosOpen] = useState(false);
-  const [webText, setWebText] = useState(current ? format(current, mode === 'date' ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm") : '');
+  const webFormat = (d: Date | null) => (d && isValid(d) ? format(d, mode === 'date' ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm") : '');
+  const [webText, setWebText] = useState(webFormat(current));
+  // Keep the web input in sync when the value is changed from outside (e.g. a "2 h" shortcut).
+  const [seenValue, setSeenValue] = useState(value ?? null);
+  if ((value ?? null) !== seenValue) {
+    setSeenValue(value ?? null);
+    const parsed = webText ? parse(webText, mode === 'date' ? 'yyyy-MM-dd' : "yyyy-MM-dd'T'HH:mm", new Date()) : null;
+    const same = parsed && isValid(parsed) && current && isValid(current) && webFormat(parsed) === webFormat(current);
+    if (!same && !(value == null && !isValid(parsed ?? new Date(NaN)))) setWebText(webFormat(current));
+  }
 
   const box = { backgroundColor: colors.input, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: space.lg, paddingVertical: 14, flexDirection: 'row' as const, alignItems: 'center' as const };
 
