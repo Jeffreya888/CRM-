@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 import { Avatar, Button, ErrorBanner, Row, T } from '../ui';
 import { initials, money } from '../../lib/format';
 import { friendlyError, must, supabase } from '../../lib/supabase';
@@ -51,7 +51,7 @@ export function PayRatesPanel({ orgId, onChanged }: { orgId: string; onChanged?:
           <Row key={m.user_id} style={{ paddingVertical: 6 }} gap={space.md}>
             <Avatar label={initials(m.display_name)} color={m.color ?? undefined} size={32} />
             <View style={{ flex: 1 }}>
-              <T numberOfLines={1} onPress={() => router.push(`/team/${m.user_id}`)}>{m.display_name ?? 'Team member'}</T>
+              <Pressable onPress={() => router.push(`/team/${m.user_id}`)}><T numberOfLines={1}>{m.display_name ?? 'Team member'}</T></Pressable>
               <T variant="small">{pay?.pay_type && pay.pay_type !== 'hourly' ? pay.pay_type.replace('_', ' ') : m.role}{savedId === m.user_id && !dirty ? ' · saved' : ''}</T>
             </View>
             <Row gap={4} style={{ backgroundColor: colors.input, borderRadius: radius.md, borderWidth: 1, borderColor: val ? colors.border : colors.warning, paddingHorizontal: 10 }}>

@@ -43,3 +43,39 @@ export async function callerRole(req: Request, orgId: string) {
     .maybeSingle();
   return data ? { userId: user.id, role: data.role as string } : null;
 }
+
+export const MANAGER_ROLES = ["owner", "admin", "manager"];
+
+/** The org's plan right now (trial/solo/team/fleet/expired), as the database computes it. */
+export async function effectivePlan(db: SupabaseClient, orgId: string): Promise<string> {
+  const { data } = await db.rpc("effective_plan", { p_org: orgId });
+  return typeof data === "string" ? data : "solo";
+}
+
+/** Platform fee in basis points for the org's current plan. */
+export async function orgFeeBps(db: SupabaseClient, orgId: string): Promise<number> {
+  return platformFeeBps(await effectivePlan(db, orgId));
+}
+
+/** Queues a push for the org's managers (sent by the automation worker). */
+export async function notifyManagers(
+  db: SupabaseClient,
+  orgId: string,
+  kind: string,
+  title: string,
+  body: string | null,
+  url: string | null,
+  audience: "managers" | "owners" = "managers",
+) {
+  const { error } = await db.from("notification_outbox").insert({ org_id: orgId, audience, kind, title, body, url });
+  if (error) console.error("notification_outbox insert failed", error);
+}
+
+/** Formats an amount in the org's currency, e.g. "$1,250.00". */
+export function money(amount: number, currency = "USD"): string {
+  try {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(amount);
+  } catch {
+    return `$${amount.toFixed(2)}`;
+  }
+}

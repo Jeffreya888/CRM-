@@ -30,3 +30,22 @@ export function safeEqual(a: string, b: string): boolean {
   for (let i = 0; i < ea.length; i++) diff |= ea[i] ^ eb[i];
   return diff === 0;
 }
+
+/** Parses a JSON request body; returns {} for an empty or invalid body. */
+export async function readJson<T = Record<string, unknown>>(req: Request): Promise<T> {
+  try {
+    return (await req.json()) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
+/** Base URL for customer-facing links (no trailing slash). */
+export function portalUrl(): string {
+  return (Deno.env.get("PORTAL_URL") ?? "https://example.com").replace(/\/+$/, "");
+}
+
+/** Preflight response for browser callers. */
+export function preflight(req: Request): Response | null {
+  return req.method === "OPTIONS" ? new Response("ok", { headers: corsHeaders }) : null;
+}

@@ -137,7 +137,11 @@ function PLScreen() {
 
   return (
     <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
-      <Stack.Screen options={{ title: 'Profit & loss', headerRight: () => <IconButton icon="refresh" label="Refresh" onPress={q.refresh} /> }} />
+      <Stack.Screen options={{ title: 'Profit & loss' }} />
+      <Row style={{ justifyContent: 'space-between', marginBottom: space.sm }}>
+        <T variant="muted" style={{ flex: 1 }}>{rangeLabel(range.from, range.to)}</T>
+        <IconButton icon="refresh" label="Refresh" onPress={q.refresh} />
+      </Row>
       <Segmented value={preset} onChange={setPreset} options={PRESETS} />
       {preset === 'custom' ? (
         <Card>

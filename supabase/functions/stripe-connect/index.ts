@@ -17,10 +17,11 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: org, error: orgErr } = await db
       .from("organizations")
-      .select("id, name, email, stripe_account_id")
+      .select("id, name, email, stripe_account_id, is_demo")
       .eq("id", org_id)
       .single();
     if (orgErr || !org) return error("Organization not found", 404);
+    if (org.is_demo) return error("Payments can't be connected in the demo workspace. Create your own company to set up Stripe.");
 
     const s = stripe();
     let accountId: string | null = org.stripe_account_id;
