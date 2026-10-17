@@ -151,7 +151,7 @@ export const PRICING_FAQ: { q: string; a: string }[] = [
 export const SUPPORT_FAQ: { q: string; a: string }[] = [
   { q: 'How am I billed?', a: 'Through your Apple or Google account, monthly or yearly. Receipts come from Apple or Google, and you manage the subscription in their settings.' },
   { q: 'How do I cancel?', a: 'iPhone/iPad: Settings → your name → Subscriptions → Flight Ready. Android: Google Play → Profile → Payments & subscriptions → Subscriptions. Cancel at least 24 hours before renewal.' },
-  { q: 'How do I export my data?', a: 'Owners: open Settings → Export data. You will receive a download with spreadsheets of your records and your job photos.' },
+  { q: 'How do I export my data?', a: 'Owners: open More → Account & security → Export my company data. You will receive a download with spreadsheets of your records and your job photos.' },
   { q: 'How does customer texting work?', a: 'Turn on texting in the app to get a business number. Texts go only to customers who have agreed to receive them; anyone can reply STOP to opt out. Messages are held during quiet hours (8 AM–8 PM in the customer’s time).' },
   { q: 'Can I explore before signing up?', a: 'Yes. Tap “Explore demo” on the sign-in screen. The demo company is temporary and never sends real messages or payments.' },
   { q: 'How do I delete my account?', a: 'Open Account in the app and choose Delete account. If you own a company, export your data first — deleting the owner account also removes the company’s records.' },

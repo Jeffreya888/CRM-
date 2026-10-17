@@ -1,5 +1,5 @@
-import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { Link, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { AuthShell } from '../../components/AuthShell';
 import { AppleSignInButton, signInWithApple, useAppleAvailable } from '../../components/security/AppleSignIn';
@@ -10,6 +10,9 @@ import { parseInvite } from '../../lib/security';
 import { supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
 
+// Start the demo only once per page load, even if the screen re-mounts.
+let demoStarted = false;
+
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +20,8 @@ export default function SignIn() {
   const [joining, setJoining] = useState(false);
   const [invite, setInvite] = useState('');
   const apple = useAppleAvailable();
+  // The website's "Explore the demo" button links here with ?demo=1.
+  const { demo: demoParam } = useLocalSearchParams<{ demo?: string }>();
 
   const submit = async () => {
     setError(null);
@@ -32,6 +37,12 @@ export default function SignIn() {
       setError(e.message);
     }
   };
+
+  useEffect(() => {
+    if (demoParam !== '1' || demoStarted) return;
+    demoStarted = true;
+    startDemo().catch((e: any) => setError(e.message));
+  }, [demoParam]);
 
   const apple_ = async () => {
     setError(null);

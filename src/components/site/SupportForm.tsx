@@ -73,7 +73,8 @@ export function SupportForm() {
     });
     setBusy(false);
     if (error) {
-      setFailure(friendlyError(error.message));
+      const msg = /fetch|network/i.test(error.message) ? 'We couldn’t reach the server. Check your connection and try again.' : friendlyError(error.message);
+      setFailure(/[.!?]$/.test(msg) ? msg : `${msg}.`);
       return;
     }
     setSent(true);
