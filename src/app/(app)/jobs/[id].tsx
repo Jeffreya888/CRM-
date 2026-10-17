@@ -17,7 +17,7 @@ import { directionsUrl, errorCode, JOB_STATUS_LABEL, MAX_JOB_PHOTOS, pickJobPhot
 import { canAdmin, canEdit, isManager } from '../../../lib/plans';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
-import { friendlyError, supabase } from '../../../lib/supabase';
+import { callFunction, friendlyError, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
 import type { PhotoKind } from '../../../lib/types';
 import { useQuery } from '../../../lib/useQuery';
@@ -152,6 +152,19 @@ export default function JobDetail() {
   };
 
   const start = () => (before.length ? setStatus('in_progress') : needPhotos('before'));
+  // Lets the customer know the crew is heading out (Automation center → On our way).
+  const onOurWay = async () => {
+    try {
+      const { data, error } = await supabase.rpc('queue_on_our_way', { p_job: id });
+      if (error) throw error;
+      const ids = (data ?? []) as string[];
+      if (!ids.length) return notify('Already sent', 'The customer was already told you are on the way.');
+      for (const message_id of ids) await callFunction('send-message', { message_id });
+      notify('Customer notified', 'We let the customer know you are on the way.');
+    } catch (e: any) {
+      notify('Could not send', friendlyError(e.message));
+    }
+  };
   const done = checklist.filter((c) => c.done).length;
   const complete = () => {
     if (!after.length) return needPhotos('after');
@@ -367,6 +380,9 @@ export default function JobDetail() {
           </Row>
         ) : null}
 
+        {canEdit(role) && (j.status === 'scheduled' || j.status === 'tentative') ? (
+          <Button kind="secondary" icon="car-outline" title="On our way" onPress={onOurWay} style={{ marginTop: space.md }} />
+        ) : null}
         {j.location ? (
           <Section title={j.location.kind === 'marina' ? 'Marina' : j.location.kind === 'service_site' ? 'Service site' : 'Airport / FBO'} icon="location-outline">
             <Card>

@@ -427,3 +427,19 @@ verify_jwt = false   # Cron calls this; authenticated by CRON_SECRET
 
 [functions.invoice-checkout]
 verify_jwt = false   # Customers pay from the public portal without logging in
+
+# Public pages, webhooks and the cron worker authenticate themselves.
+[functions.automation-worker]
+verify_jwt = false
+
+[functions.portal]
+verify_jwt = false
+
+[functions.quote-deposit-checkout]
+verify_jwt = false
+
+[functions.resend-webhook]
+verify_jwt = false
+
+[functions.telnyx-webhook]
+verify_jwt = false
