@@ -217,14 +217,14 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Stripe stays Connect **Express** (simpler onboarding than the old app's Standard OAuth).
 
 ## Built-in aircraft catalog & price guide (platform defaults)
-- Built-in aircraft model catalog (manufacturer, model, size class, length, wingspan): piston singles/twins, turboprops, light/mid/super-mid/large/ultra-long-range jets, helicopters, airliners. Search when adding an asset; custom entry still allowed. Dimensions from public specs.
+- Built-in aircraft model catalog (manufacturer, model, size class, length, wingspan) covering all major makers: Gulfstream (G280–G800), Dassault Falcon (10–10X), Bombardier (Learjet, Challenger, Global), Cessna Citation (M2–Longitude), Embraer (Phenom, Praetor, Legacy, Lineage), Hawker/Beechcraft (King Air, Premier, Hawker), Pilatus, Honda, Cirrus Vision, Daher TBM, Piper, Cirrus, Diamond, Mooney, Boeing BBJ / Airbus ACJ and airliners, plus helicopters (Bell, Airbus, Leonardo, Sikorsky, Robinson). Search when adding an asset; custom entry still allowed. Dimensions from public specs.
 - Until the owner's pricing file arrives: 12 standard services with size-based pricing.
 - Owner will send pricing per aircraft + services → merged into the catalog as the **Flight Ready price guide** (suggested price per model per service) for every new company. Each company can edit prices and apply a regional adjustment %.
 
 ## Training library (platform defaults)
 - Default **step-by-step service guide** for every service, written by us (owner reviews): what it is, time estimate by size, crew, products, tools/equipment, prep and protection (pitot/static covers, sensors, antennas, de-ice boots, windows), numbered steps, aviation-specific do-nots, quality check, photos to take.
 - Guide steps double as the job checklist automatically.
-- Videos optional and added over time, attached to specific steps (only the hard ones); no need to film everything before launch.
+- Launch with written guides only. Owner adds videos later for the big services: brightwork polishing, ceramic coating, carpet extraction, paint correction (attached to specific steps).
 - Disclaimer: always follow the aircraft manufacturer's maintenance manual and OEM-approved products.
 - Each company can hide a default guide, duplicate and edit it, or add its own media/guides.
 
