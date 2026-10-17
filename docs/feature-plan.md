@@ -11,6 +11,8 @@ Flight Ready app. Status: **collecting; not built yet** (owner will say
 | Team | $89.99/mo | |
 | Fleet | $189.99/mo | Multiple company locations (branches) + scheduling-software integrations |
 
+Billing: monthly or yearly (≈2 months free): Solo $399.99/yr · Team $899.99/yr · Fleet $1,899.99/yr. Six store products (solo/team/fleet × monthly/annual).
+
 Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month; extra text packs as in-app purchase.
 
 ## Sign-in & demo
@@ -213,6 +215,18 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Not shown to subscribers. Rewrite as a private founder launch checklist for this stack: domain + support email, Supabase production project (daily backups / point-in-time restore, tested restore), Resend domain verification, Apple Developer + App Store Connect products, Google Play products, RevenueCat entitlements/offerings + webhook, Stripe Connect (Express) + webhook, Telnyx texting registration, EAS build/submit, legal pages, pilot company test, go/no-go list.
 - Subscribers get the in-app "Getting started" guide instead (first 7 steps).
 - Stripe stays Connect **Express** (simpler onboarding than the old app's Standard OAuth).
+
+## Built-in aircraft catalog & price guide (platform defaults)
+- Built-in aircraft model catalog (manufacturer, model, size class, length, wingspan): piston singles/twins, turboprops, light/mid/super-mid/large/ultra-long-range jets, helicopters, airliners. Search when adding an asset; custom entry still allowed. Dimensions from public specs.
+- Until the owner's pricing file arrives: 12 standard services with size-based pricing.
+- Owner will send pricing per aircraft + services → merged into the catalog as the **Flight Ready price guide** (suggested price per model per service) for every new company. Each company can edit prices and apply a regional adjustment %.
+
+## Training library (platform defaults)
+- Default **step-by-step service guide** for every service, written by us (owner reviews): what it is, time estimate by size, crew, products, tools/equipment, prep and protection (pitot/static covers, sensors, antennas, de-ice boots, windows), numbered steps, aviation-specific do-nots, quality check, photos to take.
+- Guide steps double as the job checklist automatically.
+- Videos optional and added over time, attached to specific steps (only the hard ones); no need to film everything before launch.
+- Disclaimer: always follow the aircraft manufacturer's maintenance manual and OEM-approved products.
+- Each company can hide a default guide, duplicate and edit it, or add its own media/guides.
 
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
