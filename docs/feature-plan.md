@@ -113,6 +113,14 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Scheduling providers (Fleet): FL3XX, Leon, Schedaero, Airplane Manager, Avianis, Flight Schedule Pro — "prepare vendor access request" flow; External schedule panel (read-only, aircraft only). Live sync per vendor once partner API access is approved.
 - **QuickBooks Online (Phase 2)**: start Intuit app review during beta; build ~1–2 months after launch / at 10–20 paying companies. Sync invoices, payments, expenses, payroll hours. Gusto later; ADP last.
 
+## Business expenses (all five)
+- Job attribution field on expenses; hint not to re-enter job supplies/labor.
+1. Receipt photo with auto-fill (vendor, amount, date) + stored receipt.
+2. Recurring expenses (monthly insurance, hangar rent, software, truck payments).
+3. Mileage tracking at IRS rate (manual or from job facility distance).
+4. Tax-friendly categories + accountant export.
+5. Branch tagging (Fleet) for per-location P&L.
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
