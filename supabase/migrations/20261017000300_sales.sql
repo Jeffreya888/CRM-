@@ -884,7 +884,7 @@ begin
       'photo_count', (select count(*) from quote_photos where quote_id = x.id),
       'org', jsonb_build_object('name', o.name, 'email', o.email, 'phone', o.phone, 'address', o.address, 'logo_url', o.logo_url,
                                 'currency', o.currency, 'accepts_cards', o.stripe_charges_enabled and o.payment_mode = 'stripe' and not o.is_demo,
-                                'timezone', o.timezone),
+                                'timezone', o.timezone, 'payment_mode', o.payment_mode, 'public_slug', o.public_slug),
       'customer', jsonb_build_object('name', c.name, 'company', c.company, 'email', c.email, 'billing_address', c.billing_address),
       'aircraft', (select jsonb_build_object('tail_number', a.tail_number, 'model', concat_ws(' ', a.manufacturer, a.model), 'asset_type', a.asset_type) from aircraft a where a.id = x.aircraft_id),
       'superseded', x.superseded_by is not null,
@@ -899,7 +899,8 @@ begin
       'org', coalesce(i.org_snapshot, jsonb_build_object('name', o.name, 'email', o.email, 'phone', o.phone, 'address', o.address, 'logo_url', o.logo_url))
              || jsonb_build_object('currency', o.currency,
                                    'accepts_cards', o.stripe_charges_enabled and o.payment_mode = 'stripe' and not o.is_demo,
-                                   'google_review_url', coalesce(i.org_snapshot ->> 'google_review_url', o.google_review_url)),
+                                   'google_review_url', coalesce(i.org_snapshot ->> 'google_review_url', o.google_review_url),
+                                   'payment_mode', o.payment_mode, 'public_slug', o.public_slug),
       'customer', jsonb_build_object('name', c.name, 'company', c.company, 'email', c.email, 'billing_address', c.billing_address),
       'aircraft', (select jsonb_build_object('tail_number', a.tail_number, 'model', concat_ws(' ', a.manufacturer, a.model), 'asset_type', a.asset_type) from aircraft a where a.id = i.aircraft_id)
     ) into v

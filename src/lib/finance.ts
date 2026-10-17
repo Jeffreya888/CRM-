@@ -158,7 +158,7 @@ th{background:#f1f5f9;font-weight:600}.r{text-align:right;font-variant-numeric:t
 export interface ExpenseRow {
   id: string; spent_on: string; category: string; vendor: string | null; description: string | null; amount: number;
   kind?: 'expense' | 'mileage'; miles?: number | null; mileage_rate?: number | null; payment_method?: string | null; notes?: string | null;
-  receipt_path?: string | null; job?: { number: string } | null; branch?: { name: string } | null;
+  receipt_path?: string | null; recurring_expense_id?: string | null; job?: { number: string } | null; branch?: { name: string } | null;
 }
 
 /** Accountant export: totals by category (with Schedule C line) and every expense. */

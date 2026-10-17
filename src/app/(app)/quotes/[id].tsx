@@ -1,3 +1,4 @@
+import { isPast } from 'date-fns';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -78,7 +79,7 @@ export default function QuoteDetail() {
 
   const send = run(async () => {
     if (!d.customer?.email) throw new Error('This customer has no email address. Add one, or copy the link and send it yourself.');
-    if (deadline && deadline.getTime() < Date.now()) throw new Error('The approval deadline has passed. Edit the quote (or create a new version) with a later deadline first.');
+    if (deadline && isPast(deadline)) throw new Error('The approval deadline has passed. Edit the quote (or create a new version) with a later deadline first.');
     await emailDocument('quote', id);
   });
 

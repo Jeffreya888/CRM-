@@ -68,3 +68,11 @@ URLs: customer links use `PORTAL_URL` (`EXPO_PUBLIC_PORTAL_URL` in the app): `/p
 }
 ```
 `verify` returns `{ token, expires_at }` (30-day session). `request_code` always returns `{ ok: true }` (never reveals whether an email exists).
+
+## Extra backend expectations from the app (binding)
+- `portal` also supports `{ action: 'quote_photos', quote_token }` → `{ urls: string[] }` (signed 1 h; public, token-scoped; quote must be non-draft).
+- Portal session errors (expired/revoked/invalid token) return HTTP 401 with `{ error: 'Session expired' }`. `files` returns `{ urls: Record<path, url> }`.
+- Stripe return URLs: deposit → `${PORTAL_URL}/portal/quote/<token>?deposit=paid|cancelled`; invoice → `${PORTAL_URL}/portal/invoice/<token>?paid=1` (cancel without the param).
+- Late fee invoice lines use the description `Late fee` (optionally `Late fee (x%)`).
+- Automation settings: `invoice_reminders.settings.late_fee = { enabled, type: 'flat'|'percent', value, after_days }`.
+- `get_public_document` org objects include `payment_mode` and `public_slug`.

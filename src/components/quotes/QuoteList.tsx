@@ -32,7 +32,7 @@ export function QuoteList() {
   const q = useQuery(async () => {
     if (!allowed) return [] as QRow[];
     let query = supabase.from('quotes')
-      .select('id, number, status, total, valid_until, valid_until_at, view_count, last_viewed_at, accepted_at, declined_at, superseded_by, version, branch_id, deposit_amount, deposit_paid_at, customer:customers(name), aircraft:aircraft(tail_number), options:quote_options(id)')
+      .select('id, number, status, total, valid_until, valid_until_at, view_count, last_viewed_at, accepted_at, declined_at, superseded_by, version, branch_id, deposit_amount, deposit_paid_at, customer:customers(name), aircraft:aircraft(tail_number), options:quote_options!quote_options_quote_id_fkey(id)')
       .eq('org_id', orgId).order('created_at', { ascending: false }).limit(500);
     if (branchId) query = query.eq('branch_id', branchId);
     const { data, error } = await query;

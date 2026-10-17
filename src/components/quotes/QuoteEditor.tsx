@@ -385,7 +385,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
                   <T>{p.name || 'Option'}</T><T variant="money">{money(depositFor(totalsFor(p.items).total), cur)}</T>
                 </Row>
               )) : <T variant="money">{money(depositFor(singleTotals.total), cur)}</T>}
-              {savedDeposit != null && header.deposit_type !== 'none' ? <T variant="small" style={{ marginTop: 4 }}>Last saved: {money(savedDeposit, cur)}</T> : null}
+              {savedDeposit != null ? <T variant="small" style={{ marginTop: 4 }}>Last saved: {money(savedDeposit, cur)}</T> : null}
               {!org.stripe_charges_enabled || org.payment_mode === 'direct' ? (
                 <T variant="small" style={{ marginTop: 4, color: colors.warning }}>Card deposits need Stripe payments turned on in Settings.</T>
               ) : null}

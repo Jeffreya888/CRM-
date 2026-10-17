@@ -1,3 +1,4 @@
+import { isPast } from 'date-fns';
 import { useState } from 'react';
 import { Linking, View } from 'react-native';
 import { invoiceTone } from '../status';
@@ -15,7 +16,7 @@ export function PublicInvoice({ d, token, paid }: { d: PublicDoc; token: string;
   const [error, setError] = useState<string | null>(null);
   const balance = Number(doc.balance) || 0;
   const due = balance > 0 && !['void', 'paid'].includes(doc.status);
-  const overdue = due && (doc.status === 'overdue' || new Date(`${doc.due_date}T23:59:59`).getTime() < Date.now());
+  const overdue = due && (doc.status === 'overdue' || isPast(new Date(`${doc.due_date}T23:59:59`)));
   const direct = d.org.payment_mode === 'direct' || !d.org.accepts_cards;
   const isLateFee = (s: string) => /late fee/i.test(s ?? '');
 

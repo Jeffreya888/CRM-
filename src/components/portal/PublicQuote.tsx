@@ -142,7 +142,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
       {superseded ? (
         <Notice tone="warning" icon="git-branch-outline" title="This quote was updated"
           body={`${d.org.name} sent a newer version of this quote. Please use the link in their latest message, or contact them for it.`} />
-      ) : expired && status !== 'accepted' && status !== 'declined' ? (
+      ) : expired ? (
         <Notice tone="warning" icon="hourglass-outline" title="The approval deadline has passed"
           body={`This quote can no longer be accepted online. Contact ${d.org.name} for an updated quote.`} />
       ) : null}
