@@ -167,8 +167,19 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 8. Optional annual price increase (X% on anniversary, with customer notice).
 9. Plan health: active schedules, monthly recurring revenue, visits this month, unassigned schedules.
 
+## Reminders & automation (all eight)
+- Platform plumbing (worker, email domain, queues/failures) = owner-only platform health in the admin area. Subscribers see a **Message log** (every email/text: Delivered / Opened / Bounced / Failed; fix email & resend).
+1. One Automation center: job reminder (X h before), on-our-way, job complete + photos, invoice reminders, review request, quote follow-ups, recurring heads-up, care-plan charges — each with on/off + timing.
+2. Channel per automation: email / text / both (text only with consent).
+3. Invoice reminder sequence: e.g. 3 days before due, due date, +7, +14, final notice; pay link in each; stops on payment.
+4. Optional late fee (flat or %) after X days overdue, warned in the prior reminder.
+5. Editable templates with fields ({customer}, {tail}, {date}, {amount}, {pay link}), live preview, send test to me.
+6. Quiet hours for texts (8 AM–8 PM customer time); queued until allowed.
+7. Per-customer exceptions (e.g. disable invoice reminders for net-60 accounts).
+8. Smart defaults: job reminders + invoice reminders ON for new companies.
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
 ## Still to review
-Reminders & delivery readiness, Account & security, Launch & setup guide, and anything else the owner sends.
+Account & security, Launch & setup guide, and anything else the owner sends.
