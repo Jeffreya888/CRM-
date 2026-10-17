@@ -196,8 +196,21 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 7. Activity log per member (owner-only).
 8. Seat usage meter + upgrade prompt.
 
+## Account & security (all ten)
+- Demo accounts show a demo status card instead (no password/email/push changes).
+1. Profile: name, photo, phone, change email (confirm link to new address).
+2. Change password + forgot-password email.
+3. Face ID / fingerprint app lock (on open or after X minutes away).
+4. Two-step sign-in (authenticator app); owner can require it for the whole team.
+5. Signed-in devices: list, last active, sign out one / everywhere.
+6. New-device sign-in alert email.
+7. Push per phone (enable/disable) + private lock screen (no customer names/amounts).
+8. Sign in with Apple.
+9. My companies: switch / leave.
+10. Owner data export: one-tap ZIP (CSVs, PDFs, photos).
+
 ## More menu (from original)
 Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
 ## Still to review
-Account & security, Launch & setup guide, and anything else the owner sends.
+Launch & setup guide, and anything else the owner sends.
