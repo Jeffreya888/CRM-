@@ -40,8 +40,12 @@ test('plan logic', () => {
   assert.equal(effectivePlan({ plan: 'trial', trial_ends_at: '2026-10-01T00:00:00Z', plan_expires_at: null }, now), 'expired');
   assert.equal(effectivePlan({ plan: 'team', trial_ends_at: '', plan_expires_at: '2026-11-01T00:00:00Z' }, now), 'team');
   assert.equal(effectivePlan({ plan: 'team', trial_ends_at: '', plan_expires_at: '2026-10-01T00:00:00Z' }, now), 'expired');
-  assert.equal(hasFeature('solo', 'inventory'), false);
-  assert.equal(hasFeature('team', 'inventory'), true);
+  assert.equal(hasFeature('solo', 'inventory'), true);
+  assert.equal(hasFeature('solo', 'timesheet_approvals'), false);
+  assert.equal(hasFeature('team', 'timesheet_approvals'), true);
+  assert.equal(hasFeature('team', 'branches'), false);
+  assert.equal(hasFeature('fleet', 'branches'), true);
+  assert.equal(hasFeature('trial', 'integrations'), true);
   assert.equal(hasFeature('trial', 'reports'), true);
   assert.equal(hasFeature('expired', 'reminders'), false);
   assert.equal(trialDaysLeft({ plan: 'trial', trial_ends_at: '2026-10-23T12:00:00Z' }, now), 14);

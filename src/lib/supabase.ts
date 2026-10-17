@@ -34,7 +34,9 @@ export async function must<T>(p: PromiseLike<{ data: T; error: { message: string
 
 export function friendlyError(message: string): string {
   if (message.includes('SUBSCRIPTION_REQUIRED')) return 'Your plan has expired. Choose a plan in Settings → Subscription to keep adding records.';
-  if (message.includes('SEAT_LIMIT')) return message.replace(/^.*SEAT_LIMIT:\s*/, '');
+  // Server errors carry a CODE: prefix followed by a human sentence.
+  const coded = /\b(SEAT_LIMIT|BEFORE_PHOTOS_REQUIRED|AFTER_PHOTOS_REQUIRED|PHOTO_LIMIT|QUOTE_LOCKED|SCHEDULE_CONFLICT|PERIOD_CLOSED|PERMISSION|PLAN_FEATURE|DEMO|EMAIL_UNVERIFIED):\s*(.*)$/s.exec(message);
+  if (coded) return coded[2]!.trim();
   if (message.includes('duplicate key') && message.includes('tail_number')) return 'That tail number already exists.';
   if (message.includes('time_entries_one_open')) return 'You already have a clock running. Stop it first.';
   if (message.includes('row-level security')) return "You don't have permission to do that.";

@@ -1,52 +1,73 @@
 // Subscription tiers. Product identifiers must match App Store Connect /
 // Google Play and the RevenueCat entitlement ids (see README → Monetization).
-import type { Plan, Role } from './types';
+// Keep in sync with public.plan_allows / plan_seat_limit in the database.
+import type { Organization, Plan, Role } from './types';
 
 export type Feature =
-  | 'unlimited_customers' | 'team' | 'online_payments' | 'inventory' | 'reports'
-  | 'pipeline' | 'reminders' | 'customer_portal' | 'multi_location' | 'expenses';
+  | 'unlimited_customers' | 'team' | 'timesheet_approvals' | 'online_payments' | 'inventory' | 'reports'
+  | 'pipeline' | 'reminders' | 'customer_portal' | 'branches' | 'integrations' | 'stock_locations'
+  | 'expenses' | 'texting' | 'recurring';
 
 export interface PlanInfo {
   id: Exclude<Plan, 'trial' | 'expired'>;
   name: string;
-  priceHint: string;   // display fallback when store prices haven't loaded
+  monthly: number;     // USD, display fallback when store prices haven't loaded
+  annual: number;      // USD per year (about two months free)
   seats: number;
   customerLimit: number | null;
   feeBps: number;      // platform fee on card payments
+  texts: number;       // included customer texts per month
   features: Feature[];
   blurb: string;
+  highlights: string[];
 }
+
+const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'expenses', 'recurring', 'texting', 'inventory', 'reports', 'pipeline', 'unlimited_customers'];
 
 export const PLANS: PlanInfo[] = [
   {
-    id: 'solo', name: 'Solo', priceHint: '$29.99/mo', seats: 1, customerLimit: 50, feeBps: 150,
-    features: ['online_payments', 'customer_portal', 'reminders', 'expenses'],
-    blurb: 'For owner-operators: quotes, jobs, invoices, photos and card payments.',
+    id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250,
+    features: CORE,
+    blurb: 'For an independent detailer running the whole business from one phone.',
+    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step service guides & price guide', 'Customer portal & card payments', '250 customer texts / month'],
   },
   {
-    id: 'team', name: 'Team', priceHint: '$79.99/mo', seats: 10, customerLimit: null, feeBps: 100,
-    features: ['unlimited_customers', 'team', 'online_payments', 'customer_portal', 'reminders', 'expenses', 'inventory', 'reports', 'pipeline', 'multi_location'],
-    blurb: 'Up to 10 staff, scheduling, time clock, inventory, pipeline and reports.',
+    id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000,
+    features: [...CORE, 'team', 'timesheet_approvals'],
+    blurb: 'For a company coordinating a detailing crew.',
+    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', '1,000 customer texts / month'],
   },
   {
-    id: 'fleet', name: 'Fleet', priceHint: '$199.99/mo', seats: Infinity, customerLimit: null, feeBps: 50,
-    features: ['unlimited_customers', 'team', 'online_payments', 'customer_portal', 'reminders', 'expenses', 'inventory', 'reports', 'pipeline', 'multi_location'],
-    blurb: 'Unlimited staff and locations, lowest payment fee. For multi-base operations.',
+    id: 'fleet', name: 'Fleet', monthly: 189.99, annual: 1899.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000,
+    features: [...CORE, 'team', 'timesheet_approvals', 'branches', 'integrations', 'stock_locations'],
+    blurb: 'For multi-location operations and aircraft management partners.',
+    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations', 'Scheduling-software integrations', '3,000 customer texts / month'],
   },
 ];
 
 export const FEATURE_LABELS: Record<Feature, string> = {
-  unlimited_customers: 'Unlimited customers & aircraft',
-  team: 'Team members, assignments & time clock',
+  unlimited_customers: 'Unlimited customers & assets',
+  team: 'Team members, roles & assignments',
+  timesheet_approvals: 'Timesheet approvals & pay periods',
   online_payments: 'Card & ACH payments on invoices',
-  inventory: 'Supply inventory & equipment tracking',
-  reports: 'Revenue, profit & technician reports',
-  pipeline: 'Sales pipeline',
-  reminders: 'Automatic recurring service reminders',
-  customer_portal: 'Customer portal: approve quotes, pay invoices',
-  multi_location: 'Multiple airports / FBOs',
-  expenses: 'Expense tracking',
+  inventory: 'Supply room & equipment maintenance',
+  reports: 'Profit & loss and reports',
+  pipeline: 'Leads & follow-ups',
+  reminders: 'Automatic reminders & follow-ups',
+  customer_portal: 'Customer portal',
+  branches: 'Multiple company locations',
+  integrations: 'Scheduling-software integrations',
+  stock_locations: 'Stock by van & location',
+  expenses: 'Business expenses & mileage',
+  texting: 'Customer texting',
+  recurring: 'Recurring care schedules',
 };
+
+export const planInfo = (plan: Plan) => PLANS.find((p) => p.id === plan) ?? null;
+export const priceLabel = (p: PlanInfo, period: 'monthly' | 'annual') =>
+  period === 'annual' ? `$${p.annual.toFixed(2)}/yr` : `$${p.monthly.toFixed(2)}/mo`;
+/** Savings of the yearly price versus twelve monthly payments. */
+export const annualSavings = (p: PlanInfo) => Math.round(p.monthly * 12 - p.annual);
 
 /** Effective plan the same way the database computes it. */
 export function effectivePlan(org: { plan: Plan; trial_ends_at: string; plan_expires_at: string | null }, now = new Date()): Plan {
@@ -56,10 +77,22 @@ export function effectivePlan(org: { plan: Plan; trial_ends_at: string; plan_exp
   return org.plan;
 }
 
+/** The free trial unlocks every feature so owners can evaluate Fleet. */
 export function hasFeature(plan: Plan, feature: Feature): boolean {
-  if (plan === 'trial') return true; // full Team experience during the trial
+  if (plan === 'trial') return true;
   if (plan === 'expired') return false;
-  return PLANS.find((p) => p.id === plan)?.features.includes(feature) ?? false;
+  return planInfo(plan)?.features.includes(feature) ?? false;
+}
+
+/** The cheapest plan that includes a feature (for upgrade prompts). */
+export function planFor(feature: Feature): PlanInfo {
+  return PLANS.find((p) => p.features.includes(feature)) ?? PLANS[PLANS.length - 1]!;
+}
+
+export function seatLimit(plan: Plan): number {
+  if (plan === 'trial') return 10;
+  if (plan === 'expired') return 0;
+  return planInfo(plan)?.seats ?? 0;
 }
 
 export function trialDaysLeft(org: { plan: Plan; trial_ends_at: string }, now = new Date()): number {
@@ -67,6 +100,38 @@ export function trialDaysLeft(org: { plan: Plan; trial_ends_at: string }, now = 
   return Math.max(0, Math.ceil((new Date(org.trial_ends_at).getTime() - now.getTime()) / 864e5));
 }
 
+// ---------------------------------------------------------------------------
+// Role permissions (owner-editable toggles for managers and technicians).
+// Mirrors public.has_perm: owners/admins can do everything, viewers nothing.
+// ---------------------------------------------------------------------------
+export type Permission = 'see_prices' | 'see_reports' | 'edit_customers' | 'approve_timesheets' | 'give_discounts' | 'delete_records';
+
+export const PERMISSIONS: { key: Permission; label: string; hint: string }[] = [
+  { key: 'see_prices', label: 'See prices, quotes & invoices', hint: 'Service prices, quotes, invoices, payments and expenses' },
+  { key: 'see_reports', label: 'See profit & loss and reports', hint: 'P&L, job profitability and business reports' },
+  { key: 'edit_customers', label: 'Add & edit customers', hint: 'Customers, contacts and their assets' },
+  { key: 'approve_timesheets', label: 'Approve timesheets', hint: 'Approve hours for the team' },
+  { key: 'give_discounts', label: 'Give discounts', hint: 'Add discounts on quotes and invoices' },
+  { key: 'delete_records', label: 'Delete records', hint: 'Delete customers, assets, jobs, quotes and invoices' },
+];
+
+export type RolePermissions = Partial<Record<'manager' | 'technician', Partial<Record<Permission, boolean>>>>;
+
+export const DEFAULT_PERMISSIONS: Required<RolePermissions> = {
+  manager: { see_prices: true, see_reports: false, edit_customers: true, approve_timesheets: true, give_discounts: true, delete_records: false },
+  technician: { see_prices: false, see_reports: false, edit_customers: false, approve_timesheets: false, give_discounts: false, delete_records: false },
+};
+
+export function hasPerm(role: Role | null | undefined, org: Pick<Organization, 'role_permissions'> | null | undefined, perm: Permission): boolean {
+  if (role === 'owner' || role === 'admin') return true;
+  if (!role || role === 'viewer') return false;
+  const set = org?.role_permissions?.[role] ?? DEFAULT_PERMISSIONS[role];
+  return set?.[perm] ?? DEFAULT_PERMISSIONS[role][perm] ?? false;
+}
+
+/** Role-only checks (prefer `perm()` from useSession for money/report access). */
 export const canSeeMoney = (role: Role | null | undefined) => role === 'owner' || role === 'admin' || role === 'manager';
 export const canAdmin = (role: Role | null | undefined) => role === 'owner' || role === 'admin';
+export const isOwner = (role: Role | null | undefined) => role === 'owner';
 export const canEdit = (role: Role | null | undefined) => !!role && role !== 'viewer';
+export const isManager = canSeeMoney;

@@ -762,6 +762,11 @@ begin
     update invoices set discount = v_disc where id = v_inv;
     perform set_config('app.system_discount', 'off', true);
   end if;
+  -- A deposit paid when the quote was accepted counts toward this invoice.
+  insert into payments (org_id, invoice_id, amount, method, reference, received_at, stripe_payment_intent_id)
+    select j.org_id, v_inv, q.deposit_amount, 'card', 'Deposit on quote ' || q.number, q.deposit_paid_at, q.deposit_payment_intent
+    from quotes q where q.id = j.quote_id and q.deposit_paid_at is not null and q.deposit_amount > 0
+      and not exists (select 1 from payments p where p.stripe_payment_intent_id = q.deposit_payment_intent and q.deposit_payment_intent is not null);
   update jobs set status = 'invoiced' where id = j.id and status in ('completed','in_progress','scheduled','on_hold','tentative');
   return v_inv;
 end;

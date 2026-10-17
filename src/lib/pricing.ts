@@ -1,6 +1,6 @@
 // Pure pricing logic shared by quotes, jobs and invoices. No React Native
 // imports so it can be unit-tested with plain Node (see pricing.test.ts).
-import type { AircraftCategory, LineItem, PricingMethod } from './types';
+import type { AircraftCategory, AssetType, LineItem, PricingMethod } from './types';
 
 export const AIRCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
   { value: 'piston_single', label: 'Piston Single', typicalLengthFt: 27, examples: 'Cessna 172, Cirrus SR22, Bonanza' },
@@ -16,8 +16,51 @@ export const AIRCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typi
   { value: 'other', label: 'Other', typicalLengthFt: 40, examples: '' },
 ];
 
+const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+export const VEHICLE_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
+  { value: 'car', label: 'Car', typicalLengthFt: 15, examples: 'Sedan, coupe, hatchback' },
+  { value: 'suv', label: 'SUV', typicalLengthFt: 16, examples: 'Range Rover, Tahoe, Model X' },
+  { value: 'truck', label: 'Truck', typicalLengthFt: 19, examples: 'F-150, Silverado, RAM' },
+  { value: 'van', label: 'Van', typicalLengthFt: 20, examples: 'Sprinter, Transit' },
+  { value: 'rv', label: 'RV / Motorhome', typicalLengthFt: 35, examples: 'Class A, B, C' },
+  { value: 'motorcycle', label: 'Motorcycle', typicalLengthFt: 7, examples: '' },
+];
+
+export const WATERCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
+  { value: 'boat_small', label: 'Small boat (under 25 ft)', typicalLengthFt: 22, examples: 'Center console, bowrider, PWC' },
+  { value: 'boat_medium', label: 'Medium boat (25–40 ft)', typicalLengthFt: 32, examples: 'Express cruiser, sportfish' },
+  { value: 'boat_large', label: 'Large boat (40–65 ft)', typicalLengthFt: 50, examples: 'Flybridge, motor yacht' },
+  { value: 'yacht', label: 'Yacht (65 ft+)', typicalLengthFt: 80, examples: 'Superyacht' },
+];
+
+export const ASSET_TYPES: { value: AssetType; label: string; plural: string; idLabel: string; icon: 'airplane-outline' | 'car-outline' | 'boat-outline' }[] = [
+  { value: 'aircraft', label: 'Aircraft', plural: 'Aircraft', idLabel: 'Tail number', icon: 'airplane-outline' },
+  { value: 'vehicle', label: 'Vehicle', plural: 'Vehicles', idLabel: 'Plate or nickname', icon: 'car-outline' },
+  { value: 'watercraft', label: 'Watercraft', plural: 'Watercraft', idLabel: 'Vessel name', icon: 'boat-outline' },
+];
+
+export const BUSINESS_TYPE_CHOICES: { value: AssetType[]; label: string; hint: string }[] = [
+  { value: ['aircraft'], label: 'Aircraft only', hint: 'Private, charter and corporate aircraft' },
+  { value: ['aircraft', 'vehicle'], label: 'Aircraft + Vehicles', hint: 'Add cars, trucks, vans and RVs' },
+  { value: ['aircraft', 'vehicle', 'watercraft'], label: 'Aircraft + Vehicles + Watercraft', hint: 'Everything, including boats and yachts' },
+];
+
+export const categoriesFor = (t: AssetType | null | undefined) =>
+  t === 'vehicle' ? VEHICLE_CATEGORIES : t === 'watercraft' ? WATERCRAFT_CATEGORIES : AIRCRAFT_CATEGORIES;
+
+export const assetTypeOf = (c: AircraftCategory | null | undefined): AssetType =>
+  VEHICLE_CATEGORIES.some((x) => x.value === c) ? 'vehicle' : WATERCRAFT_CATEGORIES.some((x) => x.value === c) ? 'watercraft' : 'aircraft';
+
+export const assetTypeInfo = (t: AssetType | null | undefined) => ASSET_TYPES.find((a) => a.value === t) ?? ASSET_TYPES[0]!;
+
 export const categoryLabel = (c: AircraftCategory | null | undefined) =>
-  AIRCRAFT_CATEGORIES.find((x) => x.value === c)?.label ?? 'Unknown';
+  [...AIRCRAFT_CATEGORIES, ...VEHICLE_CATEGORIES, ...WATERCRAFT_CATEGORIES].find((x) => x.value === c)?.label ?? 'Unknown';
+
+/** Applies the company's regional price adjustment (e.g. +10%) to a guide price. */
+export function adjustPrice(price: number, adjustPct: number | null | undefined): number {
+  return round2(price * (1 + (Number(adjustPct) || 0) / 100));
+}
 
 export interface PriceableService {
   pricing_method: PricingMethod;
@@ -33,7 +76,6 @@ export interface PriceableAircraft {
   length_ft: number | null;
 }
 
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**
  * Suggested unit price for a service on an aircraft.
@@ -48,7 +90,8 @@ export function priceService(service: PriceableService, aircraft?: PriceableAirc
     case 'flat':
       return round2(base);
     case 'per_foot': {
-      const length = Number(aircraft?.length_ft) || AIRCRAFT_CATEGORIES.find((c) => c.value === aircraft?.category)?.typicalLengthFt || 0;
+      const length = Number(aircraft?.length_ft)
+        || [...AIRCRAFT_CATEGORIES, ...VEHICLE_CATEGORIES, ...WATERCRAFT_CATEGORIES].find((c) => c.value === aircraft?.category)?.typicalLengthFt || 0;
       return round2(Math.max(base, length * (Number(service.price_per_foot) || 0)));
     }
     case 'per_category': {
@@ -64,7 +107,7 @@ export function pricingSummary(s: PriceableService): string {
   switch (s.pricing_method) {
     case 'flat': return `$${s.base_price} flat`;
     case 'per_foot': return `$${s.price_per_foot}/ft${s.base_price ? ` (min $${s.base_price})` : ''}`;
-    case 'per_category': return 'By aircraft class';
+    case 'per_category': return 'By size class';
     case 'hourly': return `$${s.hourly_rate}/hr`;
   }
 }

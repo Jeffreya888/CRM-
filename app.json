@@ -16,12 +16,16 @@
       "bundleIdentifier": "com.flightready.app",
       "buildNumber": "1",
       "supportsTablet": true,
-      "config": { "usesNonExemptEncryption": false },
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "Flight Ready uses the camera to take before, after and damage photos of aircraft on each job.",
         "NSPhotoLibraryUsageDescription": "Flight Ready lets you attach existing photos to jobs and aircraft profiles.",
-        "ITSAppUsesNonExemptEncryption": false
-      }
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Flight Ready uses Face ID to lock the app so customer details and gate codes stay private."
+      },
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "com.flightready.app",
@@ -32,7 +36,10 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["CAMERA", "com.android.vending.BILLING"],
+      "permissions": [
+        "CAMERA",
+        "com.android.vending.BILLING"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -51,14 +58,35 @@
           "photosPermission": "Flight Ready lets you attach existing photos to jobs and aircraft profiles."
         }
       ],
-      ["expo-notifications", { "color": "#4698E1" }],
-      "@react-native-community/datetimepicker"
+      [
+        "expo-notifications",
+        {
+          "color": "#4698E1"
+        }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Flight Ready uses the camera for job photos and to scan supply barcodes and equipment QR labels.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Flight Ready uses Face ID to lock the app so customer details and gate codes stay private."
+        }
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": false
     },
     "extra": {
-      "eas": { "projectId": "" }
+      "eas": {
+        "projectId": ""
+      }
     }
   }
 }

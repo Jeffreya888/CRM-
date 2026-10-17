@@ -1,9 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { effectivePlan, hasFeature, trialDaysLeft, type Feature } from './plans';
+import { effectivePlan, hasFeature, hasPerm, trialDaysLeft, type Feature, type Permission } from './plans';
 import { identifyOrg } from './purchases';
 import { supabase } from './supabase';
-import type { Membership, Organization, Plan, Profile, Role } from './types';
+import type { AssetType, Membership, Organization, Plan, Profile, Role } from './types';
 
 interface SessionState {
   loading: boolean;
@@ -15,6 +16,14 @@ interface SessionState {
   plan: Plan;
   trialDays: number;
   can: (f: Feature) => boolean;
+  /** Role permission (owner-editable toggles), e.g. perm('see_prices'). */
+  perm: (p: Permission) => boolean;
+  /** Business types enabled for the company (always includes aircraft). */
+  businessTypes: AssetType[];
+  isDemo: boolean;
+  /** Company location filter (Fleet). null = all locations. */
+  branchId: string | null;
+  setBranchId: (id: string | null) => void;
   refresh: () => Promise<void>;
   switchOrg: (orgId: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -27,6 +36,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [branchByOrg, setBranchByOrg] = useState<Record<string, string | null>>({});
 
   const load = useCallback(async (s: Session | null) => {
     if (!s) {
@@ -67,6 +77,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (org?.id) identifyOrg(org.id).catch(() => {});
   }, [org?.id]);
 
+  // Remember the chosen company location per company on this device.
+  useEffect(() => {
+    if (!org?.id || org.id in branchByOrg) return;
+    AsyncStorage.getItem(`branch:${org.id}`)
+      .then((v) => setBranchByOrg((b) => ({ ...b, [org.id]: v || null })))
+      .catch(() => setBranchByOrg((b) => ({ ...b, [org.id]: null })));
+  }, [org?.id, branchByOrg]);
+  const branchId = org ? branchByOrg[org.id] ?? null : null;
+
   const value: SessionState = {
     loading,
     session,
@@ -77,6 +96,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     plan,
     trialDays: org ? trialDaysLeft(org) : 0,
     can: (f) => hasFeature(plan, f),
+    perm: (p) => hasPerm(current?.role, org, p),
+    businessTypes: org?.business_types?.length ? org.business_types : ['aircraft'],
+    isDemo: !!org?.is_demo,
+    branchId,
+    setBranchId: (id) => {
+      if (!org) return;
+      setBranchByOrg((b) => ({ ...b, [org.id]: id }));
+      AsyncStorage.setItem(`branch:${org.id}`, id ?? '').catch(() => {});
+    },
     refresh: () => load(session),
     switchOrg: async (orgId) => {
       if (!session) return;

@@ -1,0 +1,54 @@
+# Build contract (app ↔ database ↔ edge functions)
+
+Internal reference for implementing docs/feature-plan.md. The database is in
+`supabase/migrations/20261017*.sql` (read them for exact columns/RPCs).
+
+## Conventions
+- Expo SDK 57 + expo-router 57. Routes in `src/app`. Use `src/components/ui.tsx` kit, `src/lib/theme.ts` colors.
+- Session: `useOrg()` → `{ org, orgId, role, plan, perm(p), can(feature), businessTypes, isDemo, branchId, setBranchId, refresh, session, profile }`.
+  - Money/price UI: `perm('see_prices')`. P&L/profitability: `perm('see_reports')`. Admin: `canAdmin(role)`. Owner: `isOwner(role)`.
+  - Plan features: `can('branches' | 'integrations' | 'stock_locations' | 'timesheet_approvals' | 'team' | ...)`; wrap upsell areas in `<Gate feature=...>`.
+- Data: `useQuery(fn, deps)` (src/lib/useQuery.ts), `supabase` + `must()` + `friendlyError()` + `callFunction(name, body)` (src/lib/supabase.ts).
+- Pickers: `useLookups()` (customers, assets, facilities, services (price-free for techs), members, branches + option builders).
+- Assets: table `aircraft` holds aircraft, vehicles and watercraft (`asset_type`). Helpers in `src/lib/pricing.ts`: `ASSET_TYPES`, `categoriesFor()`, `categoryLabel()`, `assetTypeInfo()`, `BUSINESS_TYPE_CHOICES`, `adjustPrice()`.
+- Errors from the DB use `CODE: sentence` and `friendlyError` strips the code.
+- Forms: `FormSheet` (src/components/FormSheet.tsx), date/time: `DateTimeField`.
+- Never show prices to people without `see_prices` (the DB also blocks them).
+- Run `npx tsc --noEmit` and `npx expo lint` before finishing.
+
+## Route map (who owns what)
+| Area | Routes |
+|---|---|
+| Auth, onboarding, demo, account & security | `(auth)/*`, `/onboarding`, `/invite/[token]`, `/account`, root `_layout.tsx` |
+| Dashboard, More, settings, branches, paywall, about, admin | `/(tabs)/index`, `/(tabs)/more`, `/settings`, `/branches`, `/paywall`, `/getting-started`, `/about`, `/admin` |
+| Jobs & scheduling | `/(tabs)/jobs`, `/jobs/*`, `/schedule`, `/dispatch`, `/scheduling`, `/requests` |
+| Customers, assets, leads, facilities | `/(tabs)/customers`, `/customers/*`, `/aircraft/*` (assets), `/leads`, `/facilities` |
+| Services & training | `/(tabs)/services`, `/services/*`, `/training`, `/guides/*` |
+| Quotes, invoices, portal | `/quotes/*`, `/invoices/*`, `/portal/[kind]/[token]`, `/portal/c/[slug]` |
+| Recurring care, automations, messages | `/recurring/*`, `/automations/*`, `/messages/*`, `/texting`, `/reminders` |
+| Finance & team | `/timesheets`, `/expenses`, `/reports` (Profit & loss), `/team/*`, `/integrations`, `/activity` |
+| Supply room & equipment | `/inventory/*`, `/equipment/*`, `/scan` |
+| Website | `(site)/welcome`, `(site)/pricing`, `(site)/privacy`, `(site)/terms`, `(site)/support` |
+
+Old routes being replaced: `/pipeline` → `/leads`, `/locations` → `/facilities`, `/business` → `/settings`, `/notifications` → `/account`.
+
+## Edge functions (`callFunction(name, body)`; all return JSON, `{ error }` on failure)
+| Function | Body | Returns | Notes |
+|---|---|---|---|
+| `send-message` | `{ message_id }` | `{ status }` | Sends a `messages` row now (caller must be manager of its org). The worker sends anything still `queued`. |
+| `send-document` | `{ kind: 'quote'\|'invoice', id }` | `{ sent }` | Existing; also logs to `messages`. |
+| `send-invite` | `{ invitation_id }` | `{ sent }` | Emails the invite link `PORTAL_URL/invite/<token>` + code. |
+| `portal` | `{ action: 'request_code', slug, email }` → `{ ok }`; `{ action: 'verify', slug, email, code }` → `{ token }`; `{ action: 'data', token }` → portal JSON; `{ action: 'request', token, kind, aircraft_id?, service_id?, job_id?, preferred: string[], notes? }` → `{ ok }`; `{ action: 'files', token, paths }` → `{ urls }` | | Public (no auth). |
+| `quote-deposit-checkout` | `{ token }` | `{ url }` | Public. Stripe Checkout for the deposit. |
+| `care-plan` | `{ action: 'start' \| 'cancel', schedule_id }` | `{ url? }` | Start returns a Checkout (subscription) link to send to the customer. |
+| `export-data` | `{ org_id }` | `{ url }` | Owner only; ZIP of CSVs + PDFs list + photos. |
+| `scan-receipt` | `{ org_id, path }` | `{ vendor, amount, date, category }` | Receipt photo already uploaded to storage. |
+| `security-alert` | `{ device }` | `{ sent }` | Emails the signed-in user about a new device. |
+| `texting` | `{ action: 'request_number', org_id }` | `{ status }` | Owner only. |
+| `send-reorder` | `{ org_id, item_ids? }` | `{ emailed }` | Emails vendors the low-stock reorder list. |
+| `send-report` | `{ org_id, to?, subject, body, attachments: [{ filename, content_base64, type }] }` | `{ sent }` | Accountant exports. |
+| `admin-action` | `{ action: 'set_sms', org_id, status, number? }` / `{ action: 'set_integration', id, status }` / `{ action: 'support_handled', id }` | `{ ok }` | Platform admins only. |
+| `automation-worker` | cron (`Authorization: Bearer CRON_SECRET`) | summary | Every 10 min: outbox pushes, recurring jobs/expenses, automations, sequences, late fees, review requests, follow-ups, alerts, demo cleanup. |
+| Webhooks | `stripe-webhook`, `revenuecat-webhook`, `resend-webhook`, `telnyx-webhook` | | |
+
+URLs: customer links use `PORTAL_URL` (`EXPO_PUBLIC_PORTAL_URL` in the app): `/portal/quote/<token>`, `/portal/invoice/<token>`, `/portal/c/<org.public_slug>`, `/invite/<token>`.
