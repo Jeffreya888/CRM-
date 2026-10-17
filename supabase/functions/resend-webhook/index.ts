@@ -7,9 +7,9 @@ import { env, json } from "../_shared/http.ts";
 
 const TOLERANCE_S = 5 * 60;
 
-function b64ToBytes(b64: string): Uint8Array {
+function b64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
   const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
+  const out = new Uint8Array(new ArrayBuffer(bin.length));
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
