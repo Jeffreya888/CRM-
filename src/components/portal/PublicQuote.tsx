@@ -209,7 +209,8 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
       {doc.notes ? <Section title="Notes"><Card><T>{doc.notes}</T></Card></Section> : null}
       {doc.terms ? <Section title="Terms"><Card><T variant="muted">{doc.terms}</T></Card></Section> : null}
 
-      <View style={{ marginTop: space.lg }}><ErrorBanner message={error} /></View>
+      {/* After acceptance the banner sits next to the deposit and dates cards instead. */}
+      {status !== 'accepted' ? <View style={{ marginTop: space.lg }}><ErrorBanner message={error} /></View> : null}
 
       {/* Accept */}
       {canRespond && !declining ? (
@@ -268,6 +269,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
             ) : null}
           </Notice>
 
+          <ErrorBanner message={error} />
           {depositReturn === 'paid' || doc.deposit_paid_at ? (
             <Notice tone="success" icon="card" title="Deposit received" body="Thank you. It will be credited on your final invoice." />
           ) : null}

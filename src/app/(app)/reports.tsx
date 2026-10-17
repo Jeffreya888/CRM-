@@ -230,7 +230,7 @@ function PLScreen() {
             <Card><BarList rows={pl.by_service} labelKey="name" valueKey="revenue" sub={(r) => `${r.invoices} invoice${Number(r.invoices) === 1 ? '' : 's'}`} format={(n) => money(n, org.currency)} /></Card>
           </Section>
           <Section title="Profit by customer">
-            <Card><BarList rows={pl.by_customer} labelKey="name" valueKey="revenue" sub={(r) => `Gross profit ${money(r.gross_profit, org.currency)}`} format={(n) => money(n, org.currency)} /></Card>
+            <Card><BarList rows={pl.by_customer} labelKey="name" valueKey="revenue" sub={(r) => `Gross profit ${r.gross_profit == null ? 'Unknown' : money(r.gross_profit, org.currency)}`} format={(n) => money(n, org.currency)} /></Card>
           </Section>
           {fleet ? (
             <Section title="Profit by company location">

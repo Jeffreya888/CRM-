@@ -168,7 +168,7 @@ export default function Dashboard() {
         <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
           {manager ? <QuickAction primary icon="add" label="New job" onPress={() => router.push('/jobs/new')} /> : null}
           {perm('edit_customers') ? <QuickAction icon="person-add-outline" label="Customer" onPress={() => router.push('/customers/new')} /> : null}
-          {seePrices ? <QuickAction icon="document-text-outline" label="Quote" onPress={() => router.push('/quotes/new')} /> : null}
+          {seePrices ? <QuickAction icon="document-text-outline" label="Quote" onPress={() => router.push('/quotes/edit')} /> : null}
           <QuickAction icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} primary={!manager} />
         </Row>
       </Section>

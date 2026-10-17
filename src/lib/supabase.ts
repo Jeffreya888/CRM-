@@ -52,6 +52,8 @@ export async function callFunction<T = any>(name: string, body: Record<string, u
       const ctx = (error as any).context;
       if (ctx?.json) msg = (await ctx.json()).error ?? msg;
     } catch {}
+    // supabase-js's generic messages (function down, network error) mean nothing to people.
+    if (/Edge Function|non-2xx|Failed to send a request|Relay Error/i.test(msg)) msg = 'The service is temporarily unavailable. Please try again in a moment.';
     throw new Error(msg);
   }
   return data as T;

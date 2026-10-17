@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DEMO_TITLE } from '../../lib/demo';
@@ -19,7 +20,11 @@ export function DemoBanner() {
           <T style={{ fontWeight: '700', color: colors.warning }} numberOfLines={1}>{DEMO_TITLE}</T>
           <T variant="small" numberOfLines={2}>Private sample company · expires {expires}. No real sends or payments.</T>
         </View>
-        <Button small kind="secondary" title="Exit demo" onPress={signOut} />
+        <Button small kind="secondary" title="Exit demo" onPress={async () => {
+          await signOut();
+          // Back to sign in (on the web a signed-out "/" would otherwise show the website).
+          router.replace('/sign-in');
+        }} />
       </Row>
     </View>
   );

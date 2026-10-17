@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, Image, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { dateTime, money } from '../../lib/format';
@@ -179,20 +179,27 @@ export function GuideStepSheet({ item, onClose, onToggle }: {
   );
 }
 
-/** Job profitability (only for people with "see reports"). */
-export function ProfitCard({ jobId, currency }: { jobId: string; currency: string }) {
+/** Job profitability (only for people with "see reports"). Pass the loaded job as `refreshKey` so it updates after changes. */
+export function ProfitCard({ jobId, currency, refreshKey }: { jobId: string; currency: string; refreshKey?: unknown }) {
   const q = useQuery(async () => {
     const { data, error } = await supabase.rpc('job_profitability', { p_job: jobId });
     if (error) throw new Error(friendlyError(error.message));
     return data as { revenue: number; labor: number | null; labor_minutes: number; labor_unknown_minutes: number; supplies: number | null; job_expenses: number; gross: number | null; net: number | null; margin_pct: number | null };
   }, [jobId]);
+  const { reload } = q;
+  const seenKey = useRef(refreshKey);
+  useEffect(() => {
+    if (seenKey.current === refreshKey) return;
+    seenKey.current = refreshKey;
+    reload();
+  }, [refreshKey, reload]);
   const p = q.data;
   const fmt = (n: number | null | undefined) => (n == null ? 'Unknown' : money(n, currency));
   const line = (label: string, v: number | null | undefined, minus = false, bold = false) => (
     <Row style={{ justifyContent: 'space-between', paddingVertical: 4 }}>
       <T variant={bold ? 'body' : 'muted'} style={bold ? { fontWeight: '700' } : undefined}>{label}</T>
       <T style={{ fontWeight: bold ? '800' : '600', color: v == null ? colors.textMuted : bold ? (Number(v) >= 0 ? colors.success : colors.danger) : colors.text }}>
-        {v == null ? 'Unknown' : `${minus ? '−' : ''}${fmt(v)}`}
+        {v == null ? 'Unknown' : `${minus && Number(v) !== 0 ? '−' : ''}${fmt(v)}`}
       </T>
     </Row>
   );

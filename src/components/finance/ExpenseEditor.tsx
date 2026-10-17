@@ -152,7 +152,7 @@ export function ExpenseEditor({
             {d.kind === 'mileage' ? (
               <>
                 <Field label="Miles driven *" value={d.miles} onChangeText={(t) => set('miles', t)} keyboardType="decimal-pad" placeholder="0"
-                  hint={`At ${money(rate)}/mile = ${money((miles || 0) * rate)}. Rate is set in the Settings tab.`} />
+                  hint={`At ${money(rate)}/mile = ${money((miles || 0) * rate)}. Change the rate under Mileage & export.`} />
                 <Field label="Trip" value={d.description} onChangeText={(t) => set('description', t)} placeholder="Shop → KTEB and back" />
               </>
             ) : (

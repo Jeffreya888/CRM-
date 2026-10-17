@@ -558,7 +558,7 @@ export default function JobDetail() {
 
         {reports ? (
           <Section title="Job profitability" icon="trending-up-outline" iconColor={colors.success}>
-            <ProfitCard jobId={id} currency={org.currency} />
+            <ProfitCard jobId={id} currency={org.currency} refreshKey={q.data} />
           </Section>
         ) : null}
 

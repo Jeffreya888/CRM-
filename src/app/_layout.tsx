@@ -61,9 +61,13 @@ function RootNavigator() {
     };
   }, []);
 
+  // Someone who signs out (or exits the demo) goes to sign in, not the website.
+  const hadSession = useRef(false);
+  useEffect(() => { if (session) hadSession.current = true; }, [session]);
+
   // Signed-out web visitors at "/" see the public website.
   useEffect(() => {
-    if (Platform.OS !== 'web' || loading || session || !navState?.key || webRedirected.current) return;
+    if (Platform.OS !== 'web' || loading || session || !navState?.key || webRedirected.current || hadSession.current) return;
     if (pathname === '/' || initialWebPath === '/') {
       webRedirected.current = true;
       router.replace('/welcome');
