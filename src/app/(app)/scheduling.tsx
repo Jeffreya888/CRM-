@@ -315,7 +315,7 @@ function ResourcesTab() {
         {d?.hangars.length ? d.hangars.map((l) => {
           const hs = holdsFor('location_id', l.id);
           return (
-            <Card key={l.id} style={{ padding: space.md }}>
+            <Card key={l.id} onPress={() => router.push(`/facilities/${l.id}`)} style={{ padding: space.md }}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <T style={{ fontWeight: '600', flex: 1 }}>{[l.airport_code, l.name].filter(Boolean).join(' · ')}</T>
                 <Badge label={`${l.hangar_capacity} space${l.hangar_capacity === 1 ? '' : 's'}`} tone="info" raw />

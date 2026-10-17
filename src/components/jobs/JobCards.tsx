@@ -169,7 +169,7 @@ export function GuideStepSheet({ item, onClose, onToggle }: {
               <T variant="small" style={{ marginTop: space.lg }}>Always follow the manufacturer&apos;s maintenance manual and use OEM-approved products.</T>
               <Row style={{ marginTop: space.lg, flexWrap: 'wrap' }}>
                 {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? 'Mark not done' : 'Mark done'} onPress={() => { onToggle(); onClose(); }} /> : null}
-                {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: g.id, step: String(item?.step_index ?? '') } }); }} /> : null}
+                {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: item?.guide_key ?? g.key, step: String(item?.step_index ?? '') } }); }} /> : null}
               </Row>
             </>
           )}

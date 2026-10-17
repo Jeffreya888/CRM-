@@ -682,7 +682,7 @@ begin
   insert into job_assignments (job_id, user_id, org_id, is_primary)
     select p_job, u, j.org_id, false from unnest(coalesce(p_crew, '{}')) u
     on conflict (job_id, user_id) do nothing;
-  update job_assignments set is_primary = (user_id = p_primary) where job_id = p_job;
+  update job_assignments set is_primary = coalesce(user_id = p_primary, false) where job_id = p_job;
 
   delete from resource_holds where job_id = p_job;
   foreach e in array coalesce(p_equipment, '{}') loop

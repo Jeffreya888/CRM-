@@ -371,7 +371,7 @@ export default function JobDetail() {
           <Section title={j.location.kind === 'marina' ? 'Marina' : j.location.kind === 'service_site' ? 'Service site' : 'Airport / FBO'} icon="location-outline">
             <Card>
               <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Pressable style={{ flex: 1 }} onPress={() => router.push({ pathname: '/facilities', params: { id: j.location.id } })}>
+                <Pressable style={{ flex: 1 }} onPress={() => router.push(`/facilities/${j.location.id}`)}>
                   <T style={{ fontWeight: '700', color: colors.primaryText }}>{[j.location.airport_code, j.location.name].filter(Boolean).join(' · ')}</T>
                   {j.location.fbo_name ? <T variant="muted">{j.location.fbo_name}</T> : null}
                   {j.location.address ? <T variant="small">{j.location.address}</T> : null}

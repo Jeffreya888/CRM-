@@ -1,62 +1,112 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Gate } from '../../components/Gate';
 import { CrudList } from '../../components/CrudList';
-import { Badge, Button, ListRow, Row, Segmented } from '../../components/ui';
-import { date } from '../../lib/format';
-import { canSeeMoney } from '../../lib/plans';
+import { Gate } from '../../components/Gate';
+import { Badge, Button, ListRow, Row, Segmented, T } from '../../components/ui';
+import { date, isoDate } from '../../lib/format';
 import { useLookups } from '../../lib/lookups';
+import { canEdit, isManager } from '../../lib/plans';
+import { describeRepeat } from '../../lib/recurring';
 import { useOrg } from '../../lib/session';
-import { supabase } from '../../lib/supabase';
+import { friendlyError, supabase } from '../../lib/supabase';
+import { space } from '../../lib/theme';
+import { notify } from '../../components/FormSheet';
 
-type Reminder = { id: string; title: string; due_on: string; status: string; interval_days: number | null; aircraft_id: string; aircraft: { tail_number: string; customer_id: string | null; customer: { name: string } | null } | null };
+type Reminder = {
+  id: string; title: string; due_on: string; status: string; service_id: string | null;
+  recur_every: number | null; recur_unit: 'week' | 'month' | null; aircraft_id: string;
+  aircraft: { tail_number: string; customer_id: string | null; customer: { name: string } | null } | null;
+};
 
 export default function Reminders() {
-  const { role } = useOrg();
+  const { role, perm } = useOrg();
   const { aircraftOptions, services } = useLookups();
   const [view, setView] = useState<'open' | 'scheduled' | 'dismissed'>('open');
+  const manager = isManager(role);
+
+  const setStatus = async (id: string, status: string) => {
+    const { error } = await supabase.from('service_reminders').update({ status }).eq('id', id);
+    if (error) { notify('Could not update', friendlyError(error.message)); return false; }
+    return true;
+  };
+
   return (
     <Gate feature="reminders">
       <CrudList<Reminder>
         title="Service reminders"
         table="service_reminders"
-        select="*, aircraft:aircraft(tail_number, customer_id, customer:customers(name))"
+        select="id, title, due_on, status, service_id, recur_every, recur_unit, aircraft_id, aircraft:aircraft(tail_number, customer_id, customer:customers(name))"
         deps={[view]}
         filter={(q) => (view === 'open' ? q.in('status', ['upcoming', 'due']) : q.eq('status', view))}
-        order={[{ column: 'due_on' }]}
+        order={[{ column: 'due_on', ascending: view === 'open' }]}
         emptyIcon="notifications-outline"
-        emptyTitle="No reminders"
-        emptyBody="When a recurring service (monthly wash, ceramic refresh…) is completed, the next one appears here automatically."
+        emptyTitle={view === 'open' ? 'Nothing due' : view === 'scheduled' ? 'Nothing scheduled' : 'No dismissed reminders'}
+        emptyBody="When a repeating service (monthly wash, ceramic top-up…) is completed for a customer who did not opt in to automatic visits, the next one appears here."
         searchKeys={(r) => [r.title, r.aircraft?.tail_number, r.aircraft?.customer?.name]}
-        toRow={(v) => { const { aircraft: _a, ...rest } = v; return rest; }}
+        canWrite={canEdit(role) && manager}
+        toRow={(v) => {
+          const { aircraft: _a, ...rest } = v;
+          if (!rest.recur_every) { rest.recur_every = null; rest.recur_unit = null; }
+          else rest.recur_unit = rest.recur_unit ?? 'month';
+          return rest;
+        }}
         fields={[
-          { key: 'aircraft_id', label: 'Aircraft', type: 'select', options: aircraftOptions(), required: true },
+          { key: 'aircraft_id', label: 'Asset', type: 'select', options: aircraftOptions(), required: true },
           { key: 'service_id', label: 'Service', type: 'select', options: services.map((s) => ({ value: s.id, label: s.name })), allowClear: true },
           { key: 'title', label: 'Title', type: 'text', required: true },
           { key: 'due_on', label: 'Due', type: 'date', required: true },
-          { key: 'interval_days', label: 'Repeat every (days)', type: 'number' },
-          { key: 'status', label: 'Status', type: 'select', options: ['upcoming', 'due', 'scheduled', 'dismissed'].map((s) => ({ value: s, label: s })) },
+          { key: 'recur_every', label: 'Repeats every (leave empty for once)', type: 'number' },
+          { key: 'recur_unit', label: 'Weeks or months', type: 'select', options: [{ value: 'week', label: 'Weeks' }, { value: 'month', label: 'Months' }] },
+          { key: 'status', label: 'Status', type: 'select', options: [{ value: 'upcoming', label: 'Upcoming' }, { value: 'due', label: 'Due' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'dismissed', label: 'Dismissed' }] },
         ]}
-        defaults={{ status: 'upcoming' }}
-        header={() => <Segmented value={view} onChange={setView} options={[{ value: 'open', label: 'Upcoming & due' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'dismissed', label: 'Dismissed' }]} />}
-        renderRow={(r, edit, reload) => {
-          const overdue = r.due_on < new Date().toISOString().slice(0, 10);
+        defaults={() => ({ status: 'upcoming', recur_unit: 'month', due_on: isoDate() })}
+        header={(rows) => {
+          const today = isoDate();
+          const due = rows.filter((r) => r.due_on <= today).length;
           return (
-            <ListRow icon="notifications-outline" title={`${r.aircraft?.tail_number ?? ''} · ${r.title}`} subtitle={r.aircraft?.customer?.name}
-              meta={`Due ${date(r.due_on)}${r.interval_days ? ` · every ${r.interval_days}d` : ''}`}
+            <>
+              <Segmented value={view} onChange={setView} options={[{ value: 'open', label: 'Due & upcoming' }, { value: 'scheduled', label: 'Scheduled' }, { value: 'dismissed', label: 'Dismissed' }]} />
+              {view === 'open' && rows.length ? (
+                <T variant="muted" style={{ marginBottom: space.md }}>{due} due now · {rows.length - due} upcoming</T>
+              ) : null}
+            </>
+          );
+        }}
+        renderRow={(r, edit, reload) => {
+          const today = isoDate();
+          const overdue = view === 'open' && r.due_on < today;
+          const dueNow = view === 'open' && r.due_on <= today;
+          const repeat = r.recur_every && r.recur_unit ? ` · ${describeRepeat(r.recur_every, r.recur_unit)}` : '';
+          const schedule = async () => {
+            if (!(await setStatus(r.id, 'scheduled'))) return;
+            reload();
+            router.push({ pathname: '/jobs/new', params: { customer_id: r.aircraft?.customer_id ?? '', aircraft_id: r.aircraft_id, service_id: r.service_id ?? '' } });
+          };
+          const quote = async () => {
+            if (!(await setStatus(r.id, 'scheduled'))) return;
+            reload();
+            router.push({ pathname: '/quotes/edit', params: { customer_id: r.aircraft?.customer_id ?? '', aircraft_id: r.aircraft_id } });
+          };
+          return (
+            <ListRow icon="notifications-outline" tone={overdue ? 'danger' : dueNow ? 'warning' : 'info'}
+              title={`${r.aircraft?.tail_number ?? ''} · ${r.title}`} subtitle={r.aircraft?.customer?.name}
+              meta={`Due ${date(r.due_on)}${repeat}`}
               right={
-                <Row gap={4}>
-                  <Badge label={overdue && view === 'open' ? 'overdue' : r.status} tone={overdue ? 'danger' : r.status === 'due' ? 'warning' : 'info'} />
-                  {view === 'open' && canSeeMoney(role) ? (
-                    <Button small kind="secondary" title="Quote" onPress={async () => {
-                      await supabase.from('service_reminders').update({ status: 'scheduled' }).eq('id', r.id);
-                      reload();
-                      router.push({ pathname: '/quotes/edit', params: { customer_id: r.aircraft?.customer_id ?? '', aircraft_id: r.aircraft_id } });
-                    }} />
+                <Row gap={4} style={{ flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: 210 }}>
+                  <Badge label={overdue ? 'overdue' : dueNow ? 'due' : r.status} tone={overdue ? 'danger' : dueNow || r.status === 'due' ? 'warning' : r.status === 'dismissed' ? 'neutral' : 'info'} />
+                  {view === 'open' && manager ? (
+                    <>
+                      <Button small kind="secondary" icon="calendar-outline" title="Schedule" onPress={schedule} />
+                      {perm('see_prices') ? <Button small kind="ghost" title="Quote" onPress={quote} /> : null}
+                      <Button small kind="ghost" title="Dismiss" onPress={async () => { if (await setStatus(r.id, 'dismissed')) reload(); }} />
+                    </>
+                  ) : null}
+                  {view === 'dismissed' && manager ? (
+                    <Button small kind="ghost" title="Restore" onPress={async () => { if (await setStatus(r.id, 'upcoming')) reload(); }} />
                   ) : null}
                 </Row>
               }
-              onPress={edit} />
+              onPress={manager ? edit : undefined} />
           );
         }}
       />

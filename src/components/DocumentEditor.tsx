@@ -2,6 +2,7 @@ import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FormFields, type FieldDef, type FormValues } from './FormSheet';
 import { LineItemsEditor } from './LineItemsEditor';
+import { usePriceGuide } from './quotes/quoteUtils';
 import { Button, ErrorBanner, Loading, Screen, Section } from './ui';
 import { useLookups } from '../lib/lookups';
 import { useOrg } from '../lib/session';
@@ -13,12 +14,13 @@ import type { LineItem } from '../lib/types';
  * Line items are replaced wholesale on save; DB triggers recompute totals.
  */
 export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoice'; id?: string; defaults: FormValues }) {
-  const { org, orgId, session } = useOrg();
+  const { org, orgId, session, perm, can, branchId, businessTypes } = useOrg();
+  const canDiscount = perm('give_discounts');
   const lk = useLookups();
   const table = kind === 'quote' ? 'quotes' : 'invoices';
   const itemsTable = kind === 'quote' ? 'quote_items' : 'invoice_items';
   const fk = kind === 'quote' ? 'quote_id' : 'invoice_id';
-  const [values, setValues] = useState<FormValues | null>(id ? null : defaults);
+  const [values, setValues] = useState<FormValues | null>(id ? null : { branch_id: branchId, ...defaults });
   const [items, setItems] = useState<LineItem[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,12 +36,14 @@ export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoic
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const aircraft = useMemo(() => lk.aircraft.find((a) => a.id === values?.aircraft_id) ?? null, [lk.aircraft, values?.aircraft_id]);
+  const guide = usePriceGuide(aircraft?.asset_type === 'aircraft' ? aircraft.model_id : null, org.price_adjust_pct);
 
   if (!values || lk.loading) return <Loading />;
 
   const fields: FieldDef[] = [
     { key: 'customer_id', label: 'Customer', type: 'select', options: lk.customerOptions, required: true },
-    { key: 'aircraft_id', label: 'Aircraft', type: 'select', options: lk.aircraftOptions(values.customer_id), allowClear: true },
+    { key: 'aircraft_id', label: businessTypes.length > 1 ? 'Aircraft, vehicle or boat' : 'Aircraft', type: 'select', options: lk.aircraftOptions(values.customer_id), allowClear: true },
+    ...(can('branches') && lk.branches.length ? [{ key: 'branch_id', label: 'Company location', type: 'select', options: lk.branchOptions, allowClear: true } as FieldDef] : []),
     ...(kind === 'quote' ? [{ key: 'location_id', label: 'Location', type: 'select', options: lk.locationOptions, allowClear: true } as FieldDef] : []),
     { key: 'issue_date', label: 'Date', type: 'date', required: true },
     kind === 'quote' ? { key: 'valid_until', label: 'Valid until', type: 'date', required: true } : { key: 'due_date', label: 'Due date', type: 'date', required: true },
@@ -53,8 +57,9 @@ export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoic
     try {
       const header: FormValues = {
         customer_id: values.customer_id, aircraft_id: values.aircraft_id ?? null, issue_date: values.issue_date,
-        discount: Number(values.discount) || 0, tax_rate: Number(values.tax_rate) || 0, notes: values.notes ?? null,
+        tax_rate: Number(values.tax_rate) || 0, notes: values.notes ?? null, branch_id: values.branch_id ?? null,
       };
+      if (canDiscount) header.discount = Number(values.discount) || 0;
       if (kind === 'quote') Object.assign(header, { valid_until: values.valid_until, location_id: values.location_id ?? null, terms: values.terms ?? null });
       else header.due_date = values.due_date;
 
@@ -101,6 +106,8 @@ export function DocumentEditor({ kind, id, defaults }: { kind: 'quote' | 'invoic
           onChange={setItems}
           services={lk.services}
           aircraft={aircraft}
+          priceFor={guide.priceFor}
+          hideDiscount={!canDiscount}
           discount={Number(values.discount) || 0}
           onDiscount={(d) => setValues((s) => ({ ...s!, discount: d }))}
           taxRate={Number(values.tax_rate) || 0}
