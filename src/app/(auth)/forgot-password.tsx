@@ -19,18 +19,18 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthShell title="Reset password">
+    <AuthShell title="Reset password" subtitle="We’ll email you a link to choose a new password.">
       <ErrorBanner message={error} />
       {sent ? (
-        <T>Check {email} for a reset link.</T>
+        <T>Check {email.trim()} for a reset link. Open it on this device, then pick a new password (10–128 characters).</T>
       ) : (
         <>
-          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-          <Button title="Send reset link" onPress={submit} disabled={!email} />
+          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" icon="mail-outline" onSubmitEditing={submit} />
+          <Button title="Send reset link" onPress={submit} disabled={!email.trim()} />
         </>
       )}
       <Link href="/sign-in" style={{ marginTop: space.lg, alignSelf: 'center' }}>
-        <T style={{ color: colors.primary }}>Back to sign in</T>
+        <T style={{ color: colors.primaryText }}>Back to sign in</T>
       </Link>
     </AuthShell>
   );

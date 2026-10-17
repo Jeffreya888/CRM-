@@ -1,180 +1,254 @@
 import { router, Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Share } from 'react-native';
-import { confirmAction, FormSheet, notify, type FieldDef } from '../../components/FormSheet';
-import { Badge, Button, Card, KeyValue, ListRow, Row, Screen, Section, T } from '../../components/ui';
-import { APP_NAME, PRIVACY_URL, SUPPORT_EMAIL, TERMS_URL } from '../../lib/config';
+import { Image, View } from 'react-native';
+import { FormSheet, type FieldDef } from '../../components/FormSheet';
+import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
+import { appVersion, openSite, SITE } from '../../components/settings/links';
+import { PaymentsCard } from '../../components/settings/PaymentsCard';
+import { Badge, Button, Card, ErrorBanner, IconTile, KeyValue, ListRow, Row, Screen, Section, T, ToggleRow } from '../../components/ui';
+import { APP_NAME } from '../../lib/config';
 import { date } from '../../lib/format';
-import { canAdmin, PLANS } from '../../lib/plans';
+import { pickImage, uploadImage } from '../../lib/files';
+import { canAdmin, planInfo } from '../../lib/plans';
 import { manageSubscriptionsUrl } from '../../lib/purchases';
 import { useOrg } from '../../lib/session';
-import { callFunction, friendlyError, supabase } from '../../lib/supabase';
-import { space } from '../../lib/theme';
+import { SOCIALS } from '../../lib/social';
+import { friendlyError, supabase } from '../../lib/supabase';
+import { colors, radius, space } from '../../lib/theme';
 
-const COMPANY_FIELDS: FieldDef[] = [
-  { key: 'name', label: 'Company name', type: 'text', required: true },
-  { key: 'email', label: 'Billing email', type: 'email' },
-  { key: 'phone', label: 'Phone', type: 'phone' },
-  { key: 'website', label: 'Website', type: 'text' },
-  { key: 'address', label: 'Address', type: 'multiline' },
-  { key: 'logo_url', label: 'Logo URL (for PDFs)', type: 'text' },
-  { key: 'tax_rate_pct', label: 'Default sales tax (%)', type: 'number' },
-  { key: 'payment_terms_days', label: 'Default payment terms (days)', type: 'number' },
-  { key: 'currency', label: 'Currency', type: 'select', options: ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'MXN', 'CHF', 'AED'].map((c) => ({ value: c, label: c })) },
-  { key: 'invoice_prefix', label: 'Invoice prefix', type: 'text' },
-  { key: 'quote_prefix', label: 'Quote prefix', type: 'text' },
-  { key: 'job_prefix', label: 'Work order prefix', type: 'text' },
-  { key: 'default_quote_terms', label: 'Default quote terms', type: 'multiline' },
-  { key: 'default_invoice_notes', label: 'Default invoice notes', type: 'multiline' },
+const TIMEZONES = [
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix', 'America/Los_Angeles', 'America/Anchorage',
+  'Pacific/Honolulu', 'America/Puerto_Rico', 'America/Toronto', 'America/Vancouver', 'America/Mexico_City',
+  'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Europe/Zurich', 'Asia/Dubai', 'Asia/Singapore', 'Australia/Sydney', 'UTC',
 ];
+const tzLabel = (z: string) => z.replace(/_/g, ' ').replace('America/', '').replace('Pacific/', '').replace('Europe/', '').replace('Asia/', '').replace('Australia/', '');
 
-function toCsv(rows: Record<string, unknown>[]): string {
-  if (!rows.length) return '';
-  const cols = Object.keys(rows[0]!);
-  const cell = (v: unknown) => { const s = v == null ? '' : Array.isArray(v) ? v.join('; ') : String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  return [cols.join(','), ...rows.map((r) => cols.map((c) => cell(r[c])).join(','))].join('\n');
-}
+type SheetKey = 'company' | 'social' | 'invoicing' | 'pricing' | 'documents' | null;
+
+const pctOf = (fraction: number | string | null | undefined) => String(+(Number(fraction ?? 0) * 100).toFixed(4));
 
 export default function Settings() {
-  const { org, orgId, role, plan, trialDays, profile, session, refresh, signOut } = useOrg();
+  const { org, orgId, role, plan, trialDays, refresh, businessTypes, isDemo } = useOrg();
   const admin = canAdmin(role);
-  const [companySheet, setCompanySheet] = useState(false);
-  const [profileSheet, setProfileSheet] = useState(false);
-  const planInfo = PLANS.find((p) => p.id === plan);
+  const [sheet, setSheet] = useState<SheetKey>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const info = planInfo(plan);
 
-  const stripe = async (action: 'onboard' | 'status' | 'dashboard') => {
+  const save = async (patch: Record<string, unknown>) => {
+    const { error: e } = await supabase.from('organizations').update(patch).eq('id', orgId);
+    if (e) throw new Error(friendlyError(e.message));
+    await refresh();
+  };
+  const saveQuiet = async (patch: Record<string, unknown>) => {
+    setError(null);
+    try { await save(patch); } catch (e: any) { setError(e.message); }
+  };
+
+  const timezoneOptions = (TIMEZONES.includes(org.timezone) ? TIMEZONES : [org.timezone, ...TIMEZONES]).map((z) => ({ value: z, label: tzLabel(z), hint: z }));
+
+  const SHEETS: Record<Exclude<SheetKey, null>, { title: string; fields: FieldDef[]; initial: Record<string, unknown>; submit: (v: Record<string, any>) => Promise<void> }> = {
+    company: {
+      title: 'Company info',
+      fields: [
+        { key: 'name', label: 'Company name', type: 'text', required: true },
+        { key: 'email', label: 'Email', type: 'email', placeholder: 'info@yourcompany.com' },
+        { key: 'phone', label: 'Phone', type: 'phone', placeholder: '(555) 123-4567' },
+        { key: 'website', label: 'Website', type: 'text', placeholder: 'yourcompany.com' },
+        { key: 'address', label: 'Address', type: 'multiline' },
+        { key: 'timezone', label: 'Time zone', type: 'select', options: timezoneOptions },
+      ],
+      initial: { name: org.name, email: org.email, phone: org.phone, website: org.website, address: org.address, timezone: org.timezone },
+      submit: async (v) => save({ ...v, timezone: v.timezone || org.timezone }),
+    },
+    social: {
+      title: 'Social media',
+      fields: SOCIALS.map((s) => ({ key: s.key, label: s.label, type: 'text' as const, placeholder: s.placeholder })),
+      initial: Object.fromEntries(SOCIALS.map((s) => [s.key, org[s.key]])),
+      submit: save,
+    },
+    invoicing: {
+      title: 'Invoicing & reviews',
+      fields: [
+        { key: 'tax_rate_pct', label: 'Default sales tax (%)', type: 'number', placeholder: '8.25' },
+        { key: 'payment_terms_days', label: 'Payment terms (days)', type: 'number', placeholder: '30', hint: 'Invoices are due this many days after they are sent.' },
+        { key: 'currency', label: 'Currency', type: 'select', options: ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'MXN', 'CHF', 'AED'].map((c) => ({ value: c, label: c })) },
+        { key: 'google_review_url', label: 'Google review link', type: 'text', placeholder: 'https://g.page/r/…', hint: 'Shown on every invoice and payment page, and sent about a day after payment.' },
+      ],
+      initial: { tax_rate_pct: pctOf(org.tax_rate), payment_terms_days: String(org.payment_terms_days ?? 30), currency: org.currency, google_review_url: org.google_review_url },
+      submit: async ({ tax_rate_pct, payment_terms_days, google_review_url, currency }) => {
+        const tax = Number(tax_rate_pct) || 0;
+        if (tax < 0 || tax > 30) throw new Error('Sales tax should be between 0 and 30%.');
+        const url = google_review_url ? (/^https?:\/\//i.test(google_review_url) ? google_review_url : `https://${google_review_url}`) : null;
+        await save({ tax_rate: tax / 100, payment_terms_days: Math.max(0, Math.round(Number(payment_terms_days) || 0)), google_review_url: url, currency: currency || org.currency });
+      },
+    },
+    pricing: {
+      title: 'Price guide',
+      fields: [{ key: 'price_adjust_pct', label: 'Regional price adjustment (%)', type: 'number', placeholder: '0', hint: 'For example 10 raises guide prices by 10%; -5 lowers them by 5%. Between -50 and 200.' }],
+      initial: { price_adjust_pct: String(Number(org.price_adjust_pct ?? 0)) },
+      submit: async ({ price_adjust_pct }) => {
+        const n = Number(price_adjust_pct) || 0;
+        if (n < -50 || n > 200) throw new Error('Use a number between -50 and 200.');
+        await save({ price_adjust_pct: n });
+      },
+    },
+    documents: {
+      title: 'Documents',
+      fields: [
+        { key: 'quote_prefix', label: 'Quote number prefix', type: 'text', required: true },
+        { key: 'job_prefix', label: 'Work order prefix', type: 'text', required: true },
+        { key: 'invoice_prefix', label: 'Invoice number prefix', type: 'text', required: true },
+        { key: 'default_quote_terms', label: 'Default quote terms', type: 'multiline' },
+        { key: 'default_invoice_notes', label: 'Default invoice notes', type: 'multiline' },
+      ],
+      initial: { quote_prefix: org.quote_prefix, job_prefix: org.job_prefix, invoice_prefix: org.invoice_prefix, default_quote_terms: org.default_quote_terms, default_invoice_notes: org.default_invoice_notes },
+      submit: save,
+    },
+  };
+
+  const uploadLogo = async () => {
+    setError(null);
     try {
-      const r = await callFunction<any>('stripe-connect', { org_id: orgId, action, return_url: Linking.createURL('/settings') });
-      if (r.url) await WebBrowser.openBrowserAsync(r.url);
-      const s = await callFunction<any>('stripe-connect', { org_id: orgId, action: 'status' });
-      await refresh();
-      if (action === 'status') notify(s.charges_enabled ? 'Payments are live' : 'Setup incomplete', s.charges_enabled ? 'Customers can pay invoices by card and ACH.' : 'Finish Stripe onboarding to start accepting payments.');
+      const uri = await pickImage('library');
+      if (!uri) return;
+      setLogoBusy(true);
+      const path = await uploadImage(orgId, 'branding', uri);
+      // Long-lived link so quotes, invoices and the portal can show the logo.
+      const { data, error: e } = await supabase.storage.from('org-files').createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (e || !data?.signedUrl) throw new Error(e?.message ?? 'Could not create a link for the logo');
+      await save({ logo_url: data.signedUrl });
     } catch (e: any) {
-      notify('Stripe', e.message);
+      setError(friendlyError(e.message));
+    } finally {
+      setLogoBusy(false);
     }
   };
 
-  const exportData = async (table: 'customers' | 'aircraft' | 'invoices' | 'jobs') => {
-    const { data, error } = await supabase.from(table).select('*').eq('org_id', orgId).limit(10000);
-    if (error) return notify('Export failed', error.message);
-    await Share.share({ title: `${table}.csv`, message: toCsv((data ?? []).map(({ org_id: _o, public_token: _t, signature_svg: _s, ...r }: any) => r)) });
+  const manage = async () => {
+    const url = await manageSubscriptionsUrl().catch(() => null);
+    Linking.openURL(url ?? 'https://apps.apple.com/account/subscriptions');
   };
 
-  const deleteAccount = () =>
-    confirmAction(
-      'Delete your account?',
-      role === 'owner'
-        ? `This permanently deletes your login AND ${org.name} with all customers, jobs, photos and invoices (unless another owner exists). Active App Store subscriptions must be cancelled separately in Settings → Apple ID → Subscriptions.`
-        : 'This permanently deletes your login and removes you from the team.',
-      async () => {
-        const { error } = await supabase.rpc('delete_my_account');
-        if (error) return notify('Could not delete', friendlyError(error.message));
-        await signOut();
-      },
-      true,
-    );
+  const current = sheet ? SHEETS[sheet] : null;
+  const edit = (k: Exclude<SheetKey, null>) => (admin ? <Button small kind="ghost" title="Edit" onPress={() => setSheet(k)} /> : null);
+  const socials = SOCIALS.filter((s) => org[s.key]);
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Settings' }} />
+      <Stack.Screen options={{ title: 'Company profile & settings' }} />
+      <ErrorBanner message={error} />
+      {!admin ? (
+        <Card style={{ backgroundColor: colors.infoSoft, borderColor: 'transparent' }}>
+          <Row><IconTile icon="lock-closed-outline" tone="info" size={32} /><T style={{ flex: 1 }}>Only the owner or an admin can change company settings.</T></Row>
+        </Card>
+      ) : null}
+
+      <Section title="Company info" action={edit('company')}>
+        <Card>
+          <Row gap={space.md} style={{ marginBottom: space.md }}>
+            <View style={{ width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.cardRaised, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+              {org.logo_url ? <Image source={{ uri: org.logo_url }} style={{ width: 64, height: 64 }} resizeMode="contain" accessibilityLabel="Company logo" />
+                : <IconTile icon="image-outline" tone="neutral" size={64} />}
+            </View>
+            <View style={{ flex: 1 }}>
+              <T style={{ fontWeight: '700', fontSize: 18 }} numberOfLines={2}>{org.name}</T>
+              {admin ? (
+                <Row style={{ marginTop: space.xs, flexWrap: 'wrap' }}>
+                  <Button small kind="secondary" icon="cloud-upload-outline" title={org.logo_url ? 'Change logo' : 'Upload logo'} loading={logoBusy} onPress={uploadLogo} />
+                  {org.logo_url ? <Button small kind="ghost" title="Remove" onPress={() => saveQuiet({ logo_url: null })} /> : null}
+                </Row>
+              ) : null}
+            </View>
+          </Row>
+          <KeyValue label="Email" value={org.email ?? '—'} />
+          <KeyValue label="Phone" value={org.phone ?? '—'} />
+          <KeyValue label="Website" value={org.website ?? '—'} />
+          <KeyValue label="Address" value={org.address ?? '—'} />
+          <KeyValue label="Time zone" value={tzLabel(org.timezone)} />
+          <T variant="small" style={{ marginTop: space.sm }}>
+            These details appear as the sender on quotes and invoices. Invoices you already sent keep a snapshot of the details at the time they were sent.
+          </T>
+        </Card>
+      </Section>
+
+      <Section title="Social media" action={edit('social')}>
+        <Card>
+          {socials.length ? socials.map((s) => <KeyValue key={s.key} label={s.label} value={org[s.key]} />)
+            : <T variant="muted">No social links yet. They show on your More page and customer portal.</T>}
+        </Card>
+      </Section>
+
+      <Section title="Business type">
+        <BusinessTypeCard orgId={orgId} types={businessTypes} editable={admin} onChanged={refresh} />
+      </Section>
+
+      <Section title="Invoicing & reviews" action={edit('invoicing')}>
+        <Card>
+          <KeyValue label="Sales tax" value={`${pctOf(org.tax_rate)}%`} />
+          <KeyValue label="Payment terms" value={`Net ${org.payment_terms_days}`} />
+          <KeyValue label="Currency" value={org.currency} />
+          <KeyValue label="Review link" value={org.google_review_url ?? 'Not set'} />
+          <View style={{ marginTop: space.md }}>
+            <ToggleRow label="Auto-send invoices on completion" hint="When a job is marked complete, its invoice is emailed to the customer automatically."
+              value={!!org.auto_send_invoices} onChange={(v) => (admin ? saveQuiet({ auto_send_invoices: v }) : undefined)} />
+          </View>
+        </Card>
+      </Section>
+
+      <Section title="Payments">
+        <PaymentsCard org={org} plan={plan} editable={admin} isDemo={isDemo} onChanged={refresh} />
+      </Section>
+
+      <Section title="Price guide" action={edit('pricing')}>
+        <Card>
+          <KeyValue label="Regional adjustment" value={`${Number(org.price_adjust_pct) > 0 ? '+' : ''}${Number(org.price_adjust_pct ?? 0)}%`} />
+          <T variant="small" style={{ marginTop: space.xs }}>Applied to Flight Ready price guide suggestions so they match prices in your area.</T>
+        </Card>
+      </Section>
+
+      <Section title="Documents" action={edit('documents')}>
+        <Card>
+          <KeyValue label="Numbering" value={`${org.quote_prefix}… · ${org.job_prefix}… · ${org.invoice_prefix}…`} />
+          <KeyValue label="Quote terms" value={org.default_quote_terms ?? 'None'} />
+          <KeyValue label="Invoice notes" value={org.default_invoice_notes ?? 'None'} />
+        </Card>
+      </Section>
 
       <Section title="Subscription">
         <Card>
           <Row style={{ justifyContent: 'space-between' }}>
-            <T variant="h3">{plan === 'trial' ? 'Free trial' : planInfo?.name ?? 'No active plan'}</T>
+            <T variant="h3">{plan === 'trial' ? 'Free trial' : info?.name ?? 'No active plan'}</T>
             <Badge label={plan} tone={plan === 'expired' ? 'danger' : plan === 'trial' ? 'warning' : 'success'} />
           </Row>
-          {plan === 'trial' ? <T variant="muted">{trialDays} days left · ends {date(org.trial_ends_at)}</T> : null}
-          {org.plan_expires_at && plan !== 'expired' ? <T variant="muted">Renews / expires {date(org.plan_expires_at)}</T> : null}
+          {info ? <T variant="muted">{org.billing_period === 'annual' ? `Yearly · $${info.annual.toFixed(2)}/yr` : `Monthly · $${info.monthly.toFixed(2)}/mo`}</T> : null}
+          {plan === 'trial' ? <T variant="muted">{trialDays} day{trialDays === 1 ? '' : 's'} left · ends {date(org.trial_ends_at)}</T> : null}
+          {org.plan_expires_at && plan !== 'expired' && plan !== 'trial' ? <T variant="muted">Renews or ends {date(org.plan_expires_at)}</T> : null}
           {admin ? (
-            <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
-              <Button small icon="rocket-outline" title={plan === 'trial' || plan === 'expired' ? 'Choose plan' : 'Change plan'} onPress={() => router.push('/paywall')} />
-              <Button small kind="secondary" title="Manage subscription" onPress={async () => {
-                const url = await manageSubscriptionsUrl();
-                Linking.openURL(url ?? 'https://apps.apple.com/account/subscriptions');
-              }} />
+            <Row style={{ marginTop: space.md, flexWrap: 'wrap' }}>
+              <Button small icon="rocket-outline" title={plan === 'trial' || plan === 'expired' ? 'Choose a plan' : 'Change plan'} onPress={() => router.push('/paywall')} />
+              {plan !== 'trial' && plan !== 'expired' ? <Button small kind="secondary" title="Manage subscription" onPress={manage} /> : null}
             </Row>
           ) : null}
         </Card>
       </Section>
 
-      {admin ? (
-        <Section title="Online payments (Stripe)">
-          <Card>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <T>{org.stripe_charges_enabled ? 'Accepting card & ACH payments' : org.stripe_account_id ? 'Onboarding incomplete' : 'Not connected'}</T>
-              <Badge label={org.stripe_charges_enabled ? 'live' : 'off'} tone={org.stripe_charges_enabled ? 'success' : 'neutral'} />
-            </Row>
-            <T variant="small" style={{ marginTop: 4 }}>
-              Customers pay invoices online and funds go straight to your bank. A {((planInfo?.feeBps ?? 150) / 100).toFixed(1)}% platform fee applies on top of Stripe&apos;s processing fee.
-            </T>
-            <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
-              {!org.stripe_charges_enabled ? <Button small icon="card-outline" title={org.stripe_account_id ? 'Continue setup' : 'Connect Stripe'} onPress={() => stripe('onboard')} /> : null}
-              {org.stripe_account_id ? <Button small kind="secondary" title="Refresh status" onPress={() => stripe('status')} /> : null}
-              {org.stripe_charges_enabled ? <Button small kind="secondary" title="Payouts dashboard" onPress={() => stripe('dashboard')} /> : null}
-            </Row>
-          </Card>
-        </Section>
-      ) : null}
-
-      <Section title="Company" action={admin ? <Button small kind="ghost" title="Edit" onPress={() => setCompanySheet(true)} /> : null}>
-        <Card>
-          <KeyValue label="Name" value={org.name} />
-          <KeyValue label="Email" value={org.email} />
-          <KeyValue label="Phone" value={org.phone} />
-          <KeyValue label="Sales tax" value={`${(Number(org.tax_rate) * 100).toFixed(3).replace(/\.?0+$/, '')}%`} />
-          <KeyValue label="Terms" value={`Net ${org.payment_terms_days}`} />
-          <KeyValue label="Numbering" value={`${org.quote_prefix}… / ${org.job_prefix}… / ${org.invoice_prefix}…`} />
-        </Card>
-      </Section>
-
-      <Section title="My profile" action={<Button small kind="ghost" title="Edit" onPress={() => setProfileSheet(true)} />}>
-        <Card>
-          <KeyValue label="Name" value={profile?.full_name} />
-          <KeyValue label="Email" value={session?.user.email} />
-          <KeyValue label="Phone" value={profile?.phone} />
-        </Card>
-      </Section>
-
-      {admin ? (
-        <Section title="Export your data (CSV)">
-          <Row style={{ flexWrap: 'wrap' }}>
-            {(['customers', 'aircraft', 'jobs', 'invoices'] as const).map((t) => <Button key={t} small kind="secondary" title={t} onPress={() => exportData(t)} />)}
-          </Row>
-        </Section>
-      ) : null}
-
-      <Section title="Help">
+      <Section title={`About ${APP_NAME} CRM`}>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
-          <ListRow icon="mail-outline" title="Contact support" subtitle={SUPPORT_EMAIL} onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(APP_NAME + ' support')}`)} />
-          <ListRow icon="shield-checkmark-outline" title="Privacy policy" onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)} />
-          <ListRow icon="document-outline" title="Terms of use" onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)} />
+          <ListRow icon="information-circle-outline" title="Website & plan information" subtitle={`Version ${appVersion()}`} onPress={() => router.push('/about')} />
+          {SITE.pricing ? <ListRow icon="pricetags-outline" title="Plans & pricing" onPress={() => openSite(SITE.pricing)} /> : null}
+          <ListRow icon="shield-checkmark-outline" title="Privacy policy" onPress={() => openSite(SITE.privacy)} />
+          {SITE.support ? <ListRow icon="help-buoy-outline" title="Support" onPress={() => openSite(SITE.support)} /> : null}
+          <ListRow icon="person-circle-outline" title="Your login & security" subtitle="Your profile, password and devices" onPress={() => router.push('/account')} />
         </Card>
       </Section>
 
-      <Button style={{ marginTop: space.xl }} kind="secondary" icon="log-out-outline" title="Sign out" onPress={signOut} />
-      <Button style={{ marginTop: space.sm }} kind="ghost" icon="trash-outline" title="Delete account" onPress={deleteAccount} />
-
-      <FormSheet visible={companySheet} title="Company" fields={COMPANY_FIELDS}
-        initial={{ ...org, tax_rate_pct: String(+(Number(org.tax_rate) * 100).toFixed(4)) }}
-        onClose={() => setCompanySheet(false)}
-        onSubmit={async (v) => {
-          const { tax_rate_pct, ...rest } = v;
-          const { error } = await supabase.from('organizations').update({ ...rest, tax_rate: (Number(tax_rate_pct) || 0) / 100 }).eq('id', orgId);
-          if (error) throw error;
-          await refresh();
-        }} />
-      <FormSheet visible={profileSheet} title="My profile" initial={{ full_name: profile?.full_name, phone: profile?.phone }}
-        fields={[{ key: 'full_name', label: 'Full name', type: 'text', required: true }, { key: 'phone', label: 'Phone', type: 'phone' }]}
-        onClose={() => setProfileSheet(false)}
-        onSubmit={async (v) => {
-          const { error } = await supabase.from('profiles').update(v).eq('id', session!.user.id);
-          if (error) throw error;
-          await supabase.rpc('set_my_display_name', { p_name: v.full_name });
-          await refresh();
-        }} />
+      {current ? (
+        <FormSheet visible title={current.title} fields={current.fields} initial={current.initial}
+          onClose={() => setSheet(null)}
+          onSubmit={current.submit} />
+      ) : null}
     </Screen>
   );
 }

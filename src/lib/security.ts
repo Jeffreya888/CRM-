@@ -235,6 +235,13 @@ export const useAppLock = create<AppLockState>((set, get) => ({
 // ---------------------------------------------------------------------------
 const INVITE_KEY = 'security:pending-invite';
 
+/** Pulls the invite token or code out of a pasted link or code. */
+export function parseInvite(input: string): string {
+  const s = input.trim();
+  const m = /invite\/([A-Za-z0-9_-]+)/.exec(s);
+  return m ? m[1]! : s.replace(/\s+/g, '');
+}
+
 export async function savePendingInvite(token: string) {
   try { await AsyncStorage.setItem(INVITE_KEY, token); } catch {}
 }
@@ -257,4 +264,40 @@ export async function uploadAvatar(orgId: string, userId: string, uri: string): 
   const { error: e2 } = await supabase.from('profiles').update({ avatar_url: path }).eq('id', userId);
   if (e2) throw new Error(e2.message);
   return path;
+}
+
+// ---------------------------------------------------------------------------
+// Email links (confirm sign-up, reset password, change email) on phones
+// ---------------------------------------------------------------------------
+/** Set while the person arrived from a "reset password" email and must pick a new one. */
+export const useRecovery = create<{ active: boolean; set: (v: boolean) => void }>((set) => ({
+  active: false,
+  set: (active) => set({ active }),
+}));
+
+/**
+ * Finishes sign-in from an email link opened in the app (tokens in the URL
+ * fragment, or a PKCE `code`). The web build handles this automatically.
+ */
+export async function handleAuthLink(url: string | null | undefined): Promise<void> {
+  if (!url || Platform.OS === 'web') return;
+  const query = url.includes('?') ? url.split('?')[1]!.split('#')[0]! : '';
+  const hash = url.includes('#') ? url.split('#')[1]! : '';
+  const params = new URLSearchParams(`${query}&${hash}`);
+  const type = params.get('type');
+  try {
+    const access = params.get('access_token');
+    const refresh = params.get('refresh_token');
+    const code = params.get('code');
+    if (access && refresh) {
+      const { error } = await supabase.auth.setSession({ access_token: access, refresh_token: refresh });
+      if (error) return;
+    } else if (code) {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) return;
+    } else {
+      return;
+    }
+    if (type === 'recovery') useRecovery.getState().set(true);
+  } catch {}
 }
