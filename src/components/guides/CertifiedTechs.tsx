@@ -7,6 +7,8 @@ import { colors, space } from '../../lib/theme';
 import type { ServiceSkill } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { confirmAction, notify } from '../FormSheet';
+import { PlanUpsellRow } from '../plans/PlanUpsell';
+import { useSession } from '../../lib/session';
 import { Badge, Button, Card, Divider, Row, Section, Segmented, Select, T } from '../ui';
 
 const tone = (l: string) => (l === 'trainer' ? 'purple' : l === 'certified' ? 'success' : 'warning') as 'purple' | 'success' | 'warning';
@@ -22,7 +24,21 @@ export async function setSkill(orgId: string, userId: string, guideKey: string, 
  * "Certified technicians" on an SOP (service_skills). Techs can ask for a sign-off;
  * managers certify, make trainers, remove, or add anyone on the team.
  */
-export function CertifiedTechs({ orgId, guideKey, uid, manager, canRequest }: {
+export function CertifiedTechs(props: { orgId: string; guideKey: string; uid: string; manager: boolean; canRequest: boolean }) {
+  const { can } = useSession();
+  if (can('certification')) return <CertifiedTechsList {...props} />;
+  // Team+ feature: managers see a short upsell, technicians see nothing.
+  if (!props.manager) return null;
+  return (
+    <Section title="Certified technicians" icon="ribbon-outline" iconColor={colors.success}>
+      <Card style={{ paddingBottom: 0 }}>
+        <PlanUpsellRow feature="certification" label="Technician certification" hint="Sign off who is trained on each SOP and warn when someone uncertified is scheduled." />
+      </Card>
+    </Section>
+  );
+}
+
+function CertifiedTechsList({ orgId, guideKey, uid, manager, canRequest }: {
   orgId: string; guideKey: string; uid: string; manager: boolean; canRequest: boolean;
 }) {
   const [addUser, setAddUser] = useState<string | null>(null);

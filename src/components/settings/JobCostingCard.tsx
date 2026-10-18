@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
+import { FeatureRow } from '../plans/PlanUpsell';
 import { Button, Card, Divider, ErrorBanner, Field, Row, T, ToggleRow } from '../ui';
 import { money } from '../../lib/format';
 import { CONDITION_LEVELS, DEFAULT_CONDITION_MULTIPLIERS } from '../../lib/pricing';
@@ -108,10 +109,14 @@ export function JobCostingCard({ org, onChanged }: { org: Organization; onChange
 
       <Divider />
       <T variant="h3" style={{ marginBottom: space.md }}>Quality</T>
-      <ToggleRow label="Require a quality check before completing jobs" hint="A manager passes the job's quality checks before it can be marked complete."
-        value={!!org.require_qc} onChange={(on) => toggle({ require_qc: on })} />
-      <ToggleRow label="Customers can request quotes from photos" hint="Adds “Get a quote from photos” to your customer portal, with an AI condition report for you to review."
-        value={org.photo_quotes_enabled !== false} onChange={(on) => toggle({ photo_quotes_enabled: on })} />
+      <FeatureRow feature="quality_check" label="Require a quality check before completing jobs" hint="A manager signs off each job before it's complete.">
+        <ToggleRow label="Require a quality check before completing jobs" hint="A manager passes the job's quality checks before it can be marked complete."
+          value={!!org.require_qc} onChange={(on) => toggle({ require_qc: on })} />
+      </FeatureRow>
+      <FeatureRow feature="photo_quotes" label="Customers can request quotes from photos" hint="Customers send photos from your portal and get an AI condition report.">
+        <ToggleRow label="Customers can request quotes from photos" hint="Adds “Get a quote from photos” to your customer portal, with an AI condition report for you to review."
+          value={org.photo_quotes_enabled !== false} onChange={(on) => toggle({ photo_quotes_enabled: on })} />
+      </FeatureRow>
     </Card>
   );
 }

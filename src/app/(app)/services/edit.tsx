@@ -9,6 +9,7 @@ import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Loading, Row,
 import { assetTypeLabel, loadGuideLibrary, recurLabel, stepTitles } from '../../../lib/guides';
 import { categoriesFor } from '../../../lib/pricing';
 import { canSeeMoney } from '../../../lib/plans';
+import { FeatureRow } from '../../../components/plans/PlanUpsell';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
@@ -251,8 +252,10 @@ export default function ServiceEdit() {
 
       {form.guide_key ? (
         <Section title="Who can do it">
-          <ToggleRow label="Only certified technicians" value={form.requires_cert} onChange={(v) => set('requires_cert', v)}
-            hint="Scheduling warns when someone not certified on this SOP is assigned. You can still override it." />
+          <FeatureRow feature="certification" label="Only certified technicians" hint="Warn when someone not certified on this SOP is scheduled.">
+            <ToggleRow label="Only certified technicians" value={form.requires_cert} onChange={(v) => set('requires_cert', v)}
+              hint="Scheduling warns when someone not certified on this SOP is assigned. You can still override it." />
+          </FeatureRow>
         </Section>
       ) : null}
 

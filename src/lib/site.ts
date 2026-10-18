@@ -1,6 +1,7 @@
 // Copy and links for the public Flight Ready website (src/app/(site)).
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
+import { PLANS, TRIAL_AI_CHECKS } from './plans';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -173,7 +174,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'Who is Flight Ready for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan in the app when you are ready.` },
-  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. Certify technicians per SOP and require a quality check before jobs are completed.` },
+  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
   { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Flight Ready looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
   { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
   { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },
@@ -190,6 +191,7 @@ export const PRICING_FAQ: { q: string; a: string }[] = [
   { q: 'Can I export my data?', a: 'Yes. Owners can download a full export (spreadsheets plus photos) at any time from Settings.' },
   { q: 'Can I change plans later?', a: 'Upgrade or downgrade anytime from the app. Changes are handled by the App Store or Google Play and take effect according to their rules.' },
   { q: 'What if I need more texts?', a: 'Extra text packs are available as in-app purchases whenever you need them.' },
+  { q: 'What are AI checks?', a: `Each AI check turns up to six photos into a condition report with suggested services. Every plan includes AI checks each month: ${PLANS.map((p) => `${p.aiChecks} on ${p.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} (the free trial includes ${TRIAL_AI_CHECKS}). Need more? Buy extra AI check packs in the app. Unused monthly checks don’t roll over, but extra checks you buy never expire.` },
 ];
 
 export const SUPPORT_FAQ: { q: string; a: string }[] = [

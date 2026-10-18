@@ -26,7 +26,7 @@ const blank = (service_id: string | null = null, guide_key: string | null = null
 
 export default function TrainingCenter() {
   const { add, attach, step, tab: tabParam } = useLocalSearchParams<{ add?: string; attach?: string; step?: string; tab?: string }>();
-  const { orgId, role, session, businessTypes } = useOrg();
+  const { orgId, role, session, businessTypes, can } = useOrg();
   const uid = session!.user.id;
   const manager = canSeeMoney(role);
   const attachStep = step != null && step !== '' && !Number.isNaN(Number(step)) ? Number(step) : null;
@@ -125,7 +125,7 @@ export default function TrainingCenter() {
         {tab === 'guides' ? (
           <>
             <ErrorBanner message={lib.error} onRetry={lib.reload} />
-            {enabledKeys.size ? (
+            {enabledKeys.size && can('certification') ? (
               <Card>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <T variant="h3">Your certifications</T>

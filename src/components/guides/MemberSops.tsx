@@ -8,12 +8,24 @@ import type { ServiceSkill } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { confirmAction } from '../FormSheet';
 import { Badge, Button, Card, Divider, IconButton, ListRow, Segmented, Select, T } from '../ui';
+import { PlanUpsellRow } from '../plans/PlanUpsell';
+import { useSession } from '../../lib/session';
 import { setSkill } from './CertifiedTechs';
 
 const tone = (l: string) => (l === 'trainer' ? 'purple' : l === 'certified' ? 'success' : 'warning') as 'purple' | 'success' | 'warning';
 
 /** "Certified for" on a team member: the SOPs they are certified on, with a quick add for managers. */
-export function MemberSops({ orgId, userId, manager, businessTypes }: { orgId: string; userId: string; manager: boolean; businessTypes: string[] }) {
+export function MemberSops(props: { orgId: string; userId: string; manager: boolean; businessTypes: string[] }) {
+  const { can } = useSession();
+  if (can('certification')) return <MemberSopsList {...props} />;
+  return (
+    <Card style={{ paddingBottom: 0 }}>
+      <PlanUpsellRow feature="certification" label="Technician certification" hint="Track which SOPs each person is certified on." />
+    </Card>
+  );
+}
+
+function MemberSopsList({ orgId, userId, manager, businessTypes }: { orgId: string; userId: string; manager: boolean; businessTypes: string[] }) {
   const [key, setKey] = useState<string | null>(null);
   const [level, setLevel] = useState<SkillLevel>('certified');
 

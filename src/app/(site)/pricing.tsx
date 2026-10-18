@@ -154,12 +154,19 @@ type RowDef = { label: string; cells: [Cell, Cell, Cell] };
 function compareRows(): { group: string; rows: RowDef[] }[] {
   const byPlan = (fn: (p: PlanInfo) => Cell) => PLANS.map(fn) as [Cell, Cell, Cell];
   const all: [Cell, Cell, Cell] = [true, true, true];
-  const order: Feature[] = ['unlimited_customers', 'customer_portal', 'online_payments', 'reminders', 'recurring', 'texting', 'pipeline', 'inventory', 'expenses', 'reports', 'team', 'timesheet_approvals', 'branches', 'stock_locations', 'integrations'];
+  const order: Feature[] = ['unlimited_customers', 'customer_portal', 'online_payments', 'reminders', 'recurring', 'texting', 'pipeline', 'inventory', 'expenses', 'reports', 'team', 'timesheet_approvals', 'photo_quotes', 'certification', 'quality_check', 'job_costing', 'branches', 'stock_locations', 'integrations'];
+  const featureLabel: Partial<Record<Feature, string>> = {
+    photo_quotes: 'Customer photo quotes in the portal',
+    certification: 'Technician certification per SOP',
+    quality_check: 'Quality check sign-off',
+    job_costing: 'Job costing report (profit by class, model & type)',
+  };
   return [
     {
       group: 'Plan limits',
       rows: [
         { label: 'Team members', cells: byPlan(seatsLabel) },
+        { label: 'AI photo checks per month', cells: byPlan((p) => p.aiChecks.toLocaleString('en-US')) },
         { label: 'Customer texts per month', cells: byPlan((p) => p.texts.toLocaleString('en-US')) },
         { label: 'Platform fee on card payments', cells: byPlan(feeLabel) },
         { label: 'Monthly price', cells: byPlan((p) => money(p.monthly)) },
@@ -169,11 +176,13 @@ function compareRows(): { group: string; rows: RowDef[] }[] {
     {
       group: 'Included on every plan',
       rows: [
-        { label: `${GUIDE_COUNT} step-by-step SOPs`, cells: all },
-        { label: 'Technician certification & quality checks', cells: all },
-        { label: 'FAA tail-number autofill', cells: all },
-        { label: 'AI photo condition reports & photo quotes', cells: all },
-        { label: 'True job costing (estimate vs actual, profit by class and model)', cells: all },
+        { label: 'FAA tail-number lookup (unlimited)', cells: all },
+        { label: `${GUIDE_COUNT} step-by-step SOPs with time & products per step`, cells: all },
+        { label: 'Condition & size-based pricing', cells: all },
+        { label: 'Fractional supply usage', cells: all },
+        { label: 'Estimate vs actual on every job', cells: all },
+        { label: 'Quote cost & margin', cells: all },
+        { label: 'AI photo condition reports (monthly checks above)', cells: all },
         { label: `Aircraft price guide (${AIRCRAFT_MODELS} models)`, cells: all },
         { label: 'Before/after photos & condition sign-off', cells: all },
         { label: 'Good / Better / Best quotes & deposits', cells: all },
@@ -182,7 +191,7 @@ function compareRows(): { group: string; rows: RowDef[] }[] {
     },
     {
       group: 'Features',
-      rows: order.map((f) => ({ label: FEATURE_LABELS[f], cells: byPlan((p) => p.features.includes(f)) })),
+      rows: order.map((f) => ({ label: featureLabel[f] ?? FEATURE_LABELS[f], cells: byPlan((p) => p.features.includes(f)) })),
     },
   ];
 }

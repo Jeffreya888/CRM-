@@ -21,7 +21,7 @@ const usd = (n: number) => `$${Math.round(Number(n)).toLocaleString('en-US')}`;
 
 export default function ServiceDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { orgId, org, role, perm, session } = useOrg();
+  const { orgId, org, role, perm, session, can } = useOrg();
   const money = perm('see_prices');
   const manager = canSeeMoney(role);
   const editor = money && manager;
@@ -73,7 +73,7 @@ export default function ServiceDetail() {
             <T variant="small">{assetTypeLabel(s.asset_type)}</T>
           </Row>
           {!s.active ? <Badge label="Hidden from menu" tone="warning" raw /> : null}
-          {s.requires_cert && s.guide_key ? <Badge label="Certified technicians only" tone="purple" raw /> : null}
+          {s.requires_cert && s.guide_key && can('certification') ? <Badge label="Certified technicians only" tone="purple" raw /> : null}
           {money && !s.taxable ? <Badge label="Not taxable" tone="neutral" raw /> : null}
         </Row>
         {s.description ? <T style={{ color: colors.textMuted, lineHeight: 22 }}>{s.description}</T> : null}
