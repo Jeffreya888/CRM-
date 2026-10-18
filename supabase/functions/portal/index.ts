@@ -15,7 +15,7 @@ import type { SupabaseClient } from "../_shared/deps.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
 import type { Row } from "../_shared/automation.ts";
-import { MAX_PHOTOS, runAssessment } from "../_shared/assess.ts";
+import { MAX_PHOTOS, runMeteredAssessment } from "../_shared/assess.ts";
 
 const BUCKET = "org-files";
 const CODE_TTL_MS = 10 * 60e3;
@@ -196,13 +196,14 @@ async function portalData(db: SupabaseClient, s: Session) {
       .eq("org_id", s.org_id).eq("customer_id", s.customer_id).order("created_at", { ascending: false }).limit(20),
   ]);
   for (const r of [svcR, upR, pastR, quoteR, invR, reqR]) if (r.error) throw r.error;
+  const photoPlan = await db.rpc("plan_allows", { p_org: s.org_id, p_feature: "photo_quotes" });
 
   return {
     org: {
       name: o.name, logo_url: o.logo_url ?? null, phone: o.phone ?? null, email: o.email ?? null, timezone: o.timezone,
       google_review_url: o.google_review_url ?? null,
       accepts_cards: !!(o.stripe_charges_enabled && o.payment_mode === "stripe" && !o.is_demo),
-      photo_quotes_enabled: o.photo_quotes_enabled !== false,
+      photo_quotes_enabled: o.photo_quotes_enabled !== false && photoPlan.data === true,
     },
     customer: custR.data,
     assets: (assetsR.data ?? []).map((a) => ({
@@ -328,7 +329,8 @@ const portalFolder = (s: Session) => `${s.org_id}/portal/${s.customer_id}/`;
 /** Null when photo quotes are allowed for this customer right now, else the error response. */
 async function photoQuoteBlocked(db: SupabaseClient, s: Session): Promise<Response | null> {
   const { data: org } = await db.from("organizations").select("photo_quotes_enabled").eq("id", s.org_id).maybeSingle();
-  if (org?.photo_quotes_enabled === false) return error("Quotes from photos aren't available. Please send a service request instead.", 403);
+  const { data: planOk } = await db.rpc("plan_allows", { p_org: s.org_id, p_feature: "photo_quotes" });
+  if (org?.photo_quotes_enabled === false || planOk !== true) return error("Quotes from photos aren't available. Please send a service request instead.", 403);
   const { count } = await db.from("booking_requests").select("id", { count: "exact", head: true })
     .eq("org_id", s.org_id).eq("customer_id", s.customer_id).eq("kind", "photo_quote")
     .gte("created_at", new Date(Date.now() - 864e5).toISOString());
@@ -385,7 +387,8 @@ async function photoQuote(db: SupabaseClient, s: Session, body: Row) {
   // Best effort: the request stands even if the AI check fails.
   const assess = (async () => {
     try {
-      const row = await runAssessment(db, {
+      // Out of AI checks: the request still reaches the team with its photos, just without a report.
+      const row = await runMeteredAssessment(db, {
         orgId: s.org_id, paths, aircraftId, customerId: s.customer_id, bookingRequestId: reqRow.id, source: "portal",
       });
       if (row?.id) {

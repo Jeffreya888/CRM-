@@ -275,3 +275,24 @@ export async function runAssessment(db: SupabaseClient, input: AssessInput): Pro
     return await finish(db, id, { status: "failed", error: message });
   }
 }
+
+/**
+ * Runs an assessment against the company's AI check allowance (plan checks
+ * first, then purchased packs). Returns null when the company is out of checks.
+ * A check that fails (bad photos, AI error) is given back.
+ */
+export async function runMeteredAssessment(db: SupabaseClient, input: AssessInput): Promise<AssessmentRow | null> {
+  const { data: usage, error: claimErr } = await db.rpc("claim_ai_check", { p_org: input.orgId, p_source: input.source });
+  if (claimErr) throw claimErr;
+  if (usage == null) return null;
+  let row: AssessmentRow | null = null;
+  try {
+    row = await runAssessment(db, input);
+    return row;
+  } finally {
+    if (!row || row.status !== "done") {
+      const { error: relErr } = await db.rpc("release_ai_check", { p_usage: usage });
+      if (relErr) console.error("release_ai_check failed", relErr);
+    }
+  }
+}

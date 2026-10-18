@@ -3,13 +3,12 @@
 // POST { org_id, paths: string[] (1–6, already uploaded to org-files under <org_id>/…),
 //        aircraft_id?, customer_id?, job_id?, quote_id? }
 //   → the saved condition_assessments row (status 'done', or 'failed' with `error`).
-// Any active member except viewers. Daily cap: 40 per company (demo companies: 5).
+// Any active member except viewers. Uses the company's monthly AI checks (plan
+// allowance, then purchased packs); out of checks → 402 { code: "ai_limit" }.
 import { adminClient, callerRole } from "../_shared/clients.ts";
 import { error, json, preflight, readJson } from "../_shared/http.ts";
-import { MAX_PHOTOS, runAssessment } from "../_shared/assess.ts";
+import { MAX_PHOTOS, runMeteredAssessment } from "../_shared/assess.ts";
 
-const DAILY_CAP = 40;
-const DEMO_DAILY_CAP = 5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Body = {
@@ -49,20 +48,12 @@ Deno.serve(async (req) => {
     const checks = await Promise.all([belongs("aircraft", aircraftId), belongs("customers", customerId), belongs("jobs", jobId), belongs("quotes", quoteId)]);
     if (checks.includes(false)) return error("That record isn't in this company", 404);
 
-    // Daily cap per company.
-    const { data: org } = await db.from("organizations").select("is_demo").eq("id", orgId).maybeSingle();
-    const cap = org?.is_demo ? DEMO_DAILY_CAP : DAILY_CAP;
-    const { count } = await db.from("condition_assessments").select("id", { count: "exact", head: true })
-      .eq("org_id", orgId).eq("source", "staff").gte("created_at", new Date(Date.now() - 864e5).toISOString());
-    if ((count ?? 0) >= cap) {
-      return error(org?.is_demo
-        ? `The demo allows ${DEMO_DAILY_CAP} photo checks a day. Start your own company to use more.`
-        : `Your company has used today's ${DAILY_CAP} photo checks. Please try again tomorrow.`, 429);
-    }
-
-    const row = await runAssessment(db, {
+    const row = await runMeteredAssessment(db, {
       orgId, paths: paths as string[], aircraftId, customerId, jobId, quoteId, source: "staff", createdBy: caller.userId,
     });
+    if (!row) {
+      return json({ error: "AI_LIMIT: You've used all your AI checks this month.", code: "ai_limit" }, 402);
+    }
     return json(row);
   } catch (e) {
     console.error(e);

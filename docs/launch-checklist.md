@@ -44,7 +44,7 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 - **Check:** in the app, add an aircraft and type a real N-number; the FAA card appears with make, model and owner.
 
 ## 3c. AI photo condition reports
-- [ ] `ANTHROPIC_API_KEY` is set in the function secrets (same key as receipt scanning). Each check sends up to 6 photos; caps: 40 per company per day (5 in demo), 3 per customer per day from the portal.
+- [ ] `ANTHROPIC_API_KEY` is set in the function secrets (same key as receipt scanning). Each check sends up to 6 photos. Monthly AI checks: Solo 25, Team 150, Fleet 500 (trial 15, demo 5) plus purchased packs; checks that fail are given back. Customer photo quotes (Team and Fleet) are limited to 3 per customer per day.
 - **Check:** on an aircraft, "Check condition from photos" returns a report; in the portal, "Get a quote from photos" creates a request on the Requests screen.
 
 ## 4. Email (Resend)
@@ -55,6 +55,7 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 ## 5. Subscriptions (Apple / Google / RevenueCat)
 - [ ] App Store Connect subscription group "Flight Ready Plans" with six products (ids must contain the plan name): `flightready_solo_monthly` $39.99, `flightready_solo_annual` $399.99, `flightready_team_monthly` $89.99, `flightready_team_annual` $899.99, `flightready_fleet_monthly` $189.99, `flightready_fleet_annual` $1,899.99.
 - [ ] Optional consumable text packs, e.g. `flightready_texts_500`, `flightready_texts_2000`.
+- [ ] AI check packs (consumable; the id must contain `ai_checks` and the number), e.g. `flightready_ai_checks_50`, `flightready_ai_checks_200`. Put them in RevenueCat like the text packs.
 - [ ] RevenueCat: entitlements `solo`, `team`, `fleet`; current offering with monthly + annual packages; webhook → `/functions/v1/revenuecat-webhook` with `Bearer <REVENUECAT_WEBHOOK_SECRET>`; public SDK keys in the app env.
 - **Check:** sandbox purchase on a real iPhone unlocks the plan; Restore works; the yearly plan shows "Yearly" in Settings.
 

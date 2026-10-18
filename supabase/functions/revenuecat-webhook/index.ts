@@ -46,6 +46,32 @@ export function textPackSize(productId: string | undefined): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+/** AI check packs: consumables whose product id contains "ai_checks", e.g. flightready_ai_checks_50 → 50. */
+export function aiPackSize(productId: string | undefined): number | null {
+  const id = (productId ?? "").toLowerCase();
+  if (!id.includes("ai_checks")) return null;
+  const n = /(\d[\d,]*)/.exec(id.slice(id.indexOf("ai_checks")))?.[1];
+  const v = n ? Number(n.replace(/,/g, "")) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
+/** Adds purchased AI checks once per RevenueCat event id (ids kept in worker_runs). */
+async function addAiPack(db: ReturnType<typeof adminClient>, orgId: string, event: RCEvent, checks: number): Promise<boolean> {
+  const eventId = event.id ?? `${orgId}:${event.product_id}:${event.expiration_at_ms ?? ""}`;
+  const { data: seen } = await db.from("worker_runs").select("id").eq("worker", "revenuecat_ai")
+    .eq("details->>event_id", eventId).limit(1);
+  if (seen?.length) return true;
+  const { data: balance, error } = await db.rpc("add_ai_credits", { p_org: orgId, p_checks: checks });
+  if (error) {
+    console.error(error);
+    return false;
+  }
+  await db.from("worker_runs").insert({
+    worker: "revenuecat_ai", ok: true, details: { event_id: eventId, org_id: orgId, product_id: event.product_id, checks, balance },
+  });
+  return true;
+}
+
 /** Adds purchased texts once per RevenueCat event id (ids kept in worker_runs). */
 async function addTextPack(db: ReturnType<typeof adminClient>, orgId: string, event: RCEvent, texts: number): Promise<boolean> {
   const eventId = event.id ?? `${orgId}:${event.product_id}:${event.expiration_at_ms ?? ""}`;
@@ -89,6 +115,16 @@ Deno.serve(async (req) => {
   const expires = event.expiration_at_ms ? new Date(event.expiration_at_ms).toISOString() : null;
   const ids = [...new Set(orgIds(event))];
   if (ids.length === 0) return new Response("ignored: no org id", { status: 200 });
+
+  // AI check packs (consumable): add checks, never touch the plan.
+  const aiPack = aiPackSize(event.product_id);
+  if (aiPack !== null) {
+    if (event.type === "NON_RENEWING_PURCHASE") {
+      const target = UUID.test(event.app_user_id) ? event.app_user_id : ids[0];
+      if (!(await addAiPack(db, target, event, aiPack))) return new Response("db error", { status: 500 });
+    }
+    return new Response("ok");
+  }
 
   // Extra text packs (consumable, NON_RENEWING_PURCHASE): add credits, never touch the plan.
   const pack = textPackSize(event.product_id);

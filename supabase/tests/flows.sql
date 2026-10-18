@@ -990,4 +990,60 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Plan tiers & AI checks (20261018000200) -------------------------
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+do $$
+declare
+  o uuid := (select v from ctx where k = 'edge');
+  u bigint;
+  i int;
+begin
+  assert public.ai_included(o) = 15, 'trial: 15 checks';
+  for i in 1..15 loop assert public.claim_ai_check(o) is not null; end loop;
+  assert public.claim_ai_check(o) is null, 'out of checks';
+  perform public.add_ai_credits(o, 2);
+  u := public.claim_ai_check(o);
+  assert u is not null and (select ai_extra_credits from organizations where id = o) = 1, 'packs used after the plan allowance';
+  perform public.release_ai_check(u);
+  assert (select ai_extra_credits from organizations where id = o) = 2, 'failed check refunded to the pack';
+  assert (public.ai_allowance(o) ->> 'left')::int = 2 and (public.ai_allowance(o) ->> 'used')::int = 15, 'allowance';
+  update organizations set plan = 'solo', plan_expires_at = now() + interval '30 days' where id = o;
+  assert public.ai_included(o) = 25 and (public.ai_allowance(o) ->> 'left')::int = 12, 'solo: 25 + 2 extra - 15 used';
+  assert not public.plan_allows(o, 'job_costing') and not public.plan_allows(o, 'photo_quotes'), 'solo lacks Team features';
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$
+declare o uuid := (select v from ctx where k = 'edge');
+begin
+  begin
+    perform public.job_costing_report(o, current_date - 1, current_date + 1);
+    raise exception 'job costing needs Team';
+  exception when raise_exception then
+    if sqlerrm not like 'PLAN_FEATURE%' then raise; end if;
+  end;
+  begin
+    perform public.set_skill(o, '00000000-0000-0000-0000-0000000000a2', 'interior_detail', 'certified');
+    raise exception 'certification needs Team';
+  exception when raise_exception then
+    if sqlerrm not like 'PLAN_FEATURE%' then raise; end if;
+  end;
+  begin
+    update services set requires_cert = true where org_id = o and guide_key = 'interior_detail';
+    raise exception 'certified-only services need Team';
+  exception when raise_exception then
+    if sqlerrm not like 'PLAN_FEATURE%' then raise; end if;
+  end;
+  perform public.job_profitability((select id from jobs where number = 'EDGE-1'));  -- estimate vs actual stays on every plan
+  assert (public.ai_allowance(o) ->> 'included')::int = 25, 'members can read the allowance';
+  begin
+    update organizations set ai_extra_credits = 999 where id = o;
+    raise exception 'credits must not be editable';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED
