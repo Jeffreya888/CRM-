@@ -2,19 +2,21 @@ import { addDays, format } from 'date-fns';
 import { router, Stack } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import { AssessPhotosSheet } from '../ai/AssessPhotosSheet';
+import { QuoteMarginBanner } from '../costing/QuoteMarginBanner';
 import { DateTimeField } from '../DateTimeField';
-import { FormSheet, notify } from '../FormSheet';
+import { confirmAction, FormSheet, notify } from '../FormSheet';
 import { LineItemsEditor } from '../LineItemsEditor';
 import { quoteTone } from '../status';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, IconButton, Loading, Row, Screen, Section, Segmented, Select, T, ToggleRow } from '../ui';
 import { money } from '../../lib/format';
 import { useLookups } from '../../lib/lookups';
-import { computeTotals } from '../../lib/pricing';
+import { computeTotals, CONDITION_LEVELS, conditionLabel, conditionPct, priceService, withCondition } from '../../lib/pricing';
 import { useOrg } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
-import type { LineItem, Quote, QuoteOption } from '../../lib/types';
+import type { ConditionLevel, LineItem, Quote, QuoteOption, Service } from '../../lib/types';
 import { QuotePhotos, uploadQuotePhotos } from './QuotePhotos';
 import { buildTemplateContent, DEFAULT_OPTION_NAMES, usePriceGuide } from './quoteUtils';
 
@@ -24,6 +26,8 @@ interface Header {
   customer_id: string | null; aircraft_id: string | null; location_id: string | null; branch_id: string | null;
   issue_date: string; valid_until_at: string | null; discount: number; tax_rate: number; taxPct: string;
   notes: string; terms: string; deposit_type: DepositType; deposit_value: string;
+  /** undefined = not chosen yet (follows the selected asset's condition). */
+  condition_level: ConditionLevel | null | undefined; condition_pct: number;
 }
 
 let keySeq = 0;
@@ -53,6 +57,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
     issue_date: format(new Date(), 'yyyy-MM-dd'), valid_until_at: defaultDeadline(), discount: 0,
     tax_rate: Number(org.tax_rate) || 0, taxPct: String(+(Number(org.tax_rate) * 100).toFixed(4)),
     notes: '', terms: org.default_quote_terms ?? '', deposit_type: 'none', deposit_value: '',
+    condition_level: undefined, condition_pct: 0,
   });
   const [status, setStatus] = useState<Quote['status']>('draft');
   const [number, setNumber] = useState<string | null>(null);
@@ -65,6 +70,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
   const [templateSheet, setTemplateSheet] = useState(false);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [photoSheet, setPhotoSheet] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -88,6 +94,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
         tax_rate: num(q.tax_rate), taxPct: String(+(num(q.tax_rate) * 100).toFixed(4)),
         notes: q.notes ?? '', terms: q.terms ?? '', deposit_type: q.deposit_type ?? 'none',
         deposit_value: q.deposit_type && q.deposit_type !== 'none' ? String(num(q.deposit_value)) : '',
+        condition_level: q.condition_level ?? null, condition_pct: num(q.condition_pct),
       });
       if (opts.length) {
         setPackages(opts.map((op) => ({ key: newKey(), name: op.name, description: op.description ?? '', items: rows.filter((r) => r.option_id === op.id) })));
@@ -159,6 +166,62 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
     return next;
   });
 
+  // ---------------------------------------------------------------------------
+  // Condition pricing: new service lines get + condition %, existing service
+  // lines are re-priced from their service after a confirm.
+  // ---------------------------------------------------------------------------
+  const mult = org.condition_multipliers;
+  const condLevel: ConditionLevel | null = header.condition_level === undefined ? asset?.condition_level ?? null : header.condition_level;
+  const condPct = header.condition_level === undefined ? conditionPct(condLevel, mult) : header.condition_pct;
+  const basePrice = (s: Service) => guide.priceFor(s) ?? (s.pricing_method === 'hourly' ? num(s.hourly_rate) : priceService(s, asset));
+  const priceFor = (s: Service): number | null => {
+    const g = guide.priceFor(s);
+    if (g != null) return withCondition(g, condPct);
+    if (!condPct || s.pricing_method === 'hourly') return null; // hourly: rate adjusted in withNewLinePct
+    return withCondition(priceService(s, asset), condPct);
+  };
+  /** LineItemsEditor prices a newly added hourly service at the plain rate; add the condition % to it. */
+  const withNewLinePct = (prev: LineItem[], next: LineItem[]): LineItem[] => {
+    if (!condPct || next.length !== prev.length + 1) return next;
+    const last = next[next.length - 1]!;
+    const s = last.service_id ? lk.services.find((x) => x.id === last.service_id) : null;
+    if (!s || s.pricing_method !== 'hourly' || guide.priceFor(s) != null || prev.includes(last)) return next;
+    return [...next.slice(0, -1), { ...last, unit_price: withCondition(num(s.hourly_rate), condPct) }];
+  };
+  const isServiceLine = (it: LineItem) => !!it.service_id && lk.services.some((x) => x.id === it.service_id);
+  const repriceList = (list: LineItem[], p: number) => list.map((it) => {
+    const s = it.service_id ? lk.services.find((x) => x.id === it.service_id) : null;
+    return s ? { ...it, unit_price: withCondition(basePrice(s), p) } : it;
+  });
+  const applyCondition = (level: ConditionLevel | null) => {
+    const p = conditionPct(level, mult);
+    setHeader((h) => ({ ...h!, condition_level: level, condition_pct: p }));
+    const n = (packages ? packages.flatMap((pk) => pk.items) : items).filter(isServiceLine).length;
+    if (!n || p === condPct) return;
+    confirmAction(
+      `Re-price ${n} line${n === 1 ? '' : 's'} for ${level ? `${conditionLabel(level)} condition` : 'no condition adjustment'}?`,
+      `Lines added from services are recalculated from the service price${p ? ` plus ${p}%` : ''}. Custom lines stay as they are.`,
+      () => {
+        setItems((list) => repriceList(list, p));
+        setPackages((ps) => (ps ? ps.map((pk) => ({ ...pk, items: repriceList(pk.items, p) })) : ps));
+      },
+    );
+  };
+  const setAsset = (v: string | null) => {
+    const a = lk.aircraft.find((x) => x.id === v) ?? null;
+    set('aircraft_id', v);
+    // Follow the new asset's condition unless someone already picked one by hand.
+    if (header.condition_level === undefined) applyCondition(a?.condition_level ?? null);
+    else if (a?.condition_level && a.condition_level !== condLevel) applyCondition(a.condition_level);
+  };
+  const conditionOptions = [
+    { value: 'none', label: 'Not set', hint: 'No condition adjustment' },
+    ...CONDITION_LEVELS.map((c) => {
+      const p = conditionPct(c.value, mult);
+      return { value: c.value as string, label: `${c.label}${p ? `  +${p}%` : ''}`, hint: c.hint };
+    }),
+  ];
+
   const togglePackages = (on: boolean) => {
     if (on) {
       setPackages(DEFAULT_OPTION_NAMES.map((name, i) => ({ key: newKey(), name, description: '', items: i === 0 ? items : [] })));
@@ -211,6 +274,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
         issue_date: header.issue_date, valid_until_at: deadline.toISOString(), valid_until: format(deadline, 'yyyy-MM-dd'),
         tax_rate: header.tax_rate, notes: header.notes.trim() || null, terms: header.terms.trim() || null,
         deposit_type: header.deposit_type, deposit_value: header.deposit_type === 'none' ? 0 : num(header.deposit_value),
+        condition_level: condLevel, condition_pct: condLevel ? condPct : 0,
         ...(canDiscount ? { discount: header.discount } : {}),
       };
       let quoteId = id;
@@ -293,6 +357,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
         headerRight: () => <IconButton icon="bookmark-outline" label="Save as template" onPress={() => setTemplateSheet(true)} />,
       }} />
       <ErrorBanner message={error} />
+      {id ? <QuoteMarginBanner quoteId={id} note="Based on the last saved version." /> : null}
 
       {!id && (templates.data?.length ?? 0) > 0 ? (
         <Card>
@@ -305,9 +370,20 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
       ) : null}
 
       <Select label="Customer *" value={header.customer_id} options={lk.customerOptions} onChange={setCustomer} searchable />
-      <Select label={assetLabel} value={header.aircraft_id} options={lk.aircraftOptions(header.customer_id)} onChange={(v) => set('aircraft_id', v)} allowClear
+      <Select label={assetLabel} value={header.aircraft_id} options={lk.aircraftOptions(header.customer_id)} onChange={setAsset} allowClear
         placeholder={header.customer_id ? 'Select…' : 'Choose a customer first'} />
       {guide.hasGuide ? <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg, color: colors.primaryText }}>Services use the Flight Ready price guide for this model{num(org.price_adjust_pct) ? ` (${num(org.price_adjust_pct) > 0 ? '+' : ''}${num(org.price_adjust_pct)}% regional adjustment)` : ''}.</T> : null}
+      <Select label="Condition" value={condLevel ?? 'none'} options={conditionOptions} inline={false}
+        onChange={(v) => applyCondition(!v || v === 'none' ? null : (v as ConditionLevel))} />
+      <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg }}>
+        {condLevel
+          ? `${conditionLabel(condLevel)} condition${condPct ? `: service prices +${condPct}%` : ': no price change'}${header.condition_level === undefined || (asset?.condition_level === condLevel) ? ' (from the asset)' : ''}.`
+          : 'Pick a condition to adjust service prices (set the percents in Settings).'}
+      </T>
+      {!id && header.customer_id ? (
+        <Button small kind="ghost" icon="camera-outline" title="Start from photos (AI condition report)" onPress={() => setPhotoSheet(true)}
+          style={{ alignSelf: 'flex-start', marginTop: -space.sm, marginBottom: space.md }} />
+      ) : null}
       <Select label="Facility" value={header.location_id} options={lk.locationOptions} onChange={(v) => set('location_id', v)} allowClear />
       {showBranches ? <Select label="Company location" value={header.branch_id} options={lk.branchOptions} onChange={(v) => set('branch_id', v)} allowClear /> : null}
       <DateTimeField label="Quote date" mode="date" value={header.issue_date} allowClear={false} onChange={(v) => v && set('issue_date', v)} />
@@ -332,10 +408,10 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
                 <LineItemsEditor
                   title={p.name.trim() || `Option ${idx + 1}`}
                   items={p.items}
-                  onChange={(list) => updatePkg(p.key, { items: list })}
+                  onChange={(list) => updatePkg(p.key, { items: withNewLinePct(p.items, list) })}
                   services={services}
                   aircraft={asset}
-                  priceFor={guide.priceFor}
+                  priceFor={priceFor}
                   discount={header.discount}
                   onDiscount={(d) => set('discount', d)}
                   hideDiscount={!canDiscount || idx > 0}
@@ -356,10 +432,10 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
           <>
             <LineItemsEditor
               items={items}
-              onChange={setItems}
+              onChange={(list) => setItems(withNewLinePct(items, list))}
               services={services}
               aircraft={asset}
-              priceFor={guide.priceFor}
+              priceFor={priceFor}
               discount={header.discount}
               onDiscount={(d) => set('discount', d)}
               hideDiscount={!canDiscount}
@@ -406,6 +482,11 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
       </Section>
 
       <Button kind="ghost" icon="bookmark-outline" title="Save as template" onPress={() => setTemplateSheet(true)} />
+
+      {!id ? (
+        <AssessPhotosSheet visible={photoSheet} onClose={() => setPhotoSheet(false)} customerId={header.customer_id} aircraftId={header.aircraft_id}
+          onQuoteCreated={(qid) => { setPhotoSheet(false); router.replace({ pathname: '/quotes/edit', params: { id: qid } }); }} />
+      ) : null}
 
       <FormSheet
         visible={templateSheet}

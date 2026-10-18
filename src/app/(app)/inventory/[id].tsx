@@ -6,8 +6,9 @@ import { notify } from '../../../components/FormSheet';
 import { StockSheet, type StockMode } from '../../../components/inventory/StockSheet';
 import { Badge, Button, Card, EmptyState, ErrorBanner, IconTile, KeyValue, ListRow, Loading, Row, Screen, Section, T } from '../../../components/ui';
 import { date, dateTime, money } from '../../../lib/format';
+import { fmtQty as fmtNum } from '../../../components/inventory/qty';
 import {
-  expiryBadge, fmtNum, isLow, normalizeUrl, openStorageFile, REASON_LABELS, reorderMailto,
+  expiryBadge, isLow, normalizeUrl, openStorageFile, REASON_LABELS, reorderMailto,
   type InventoryItem, type Movement, type StockByLocation, type StockLocation,
 } from '../../../lib/inventory';
 import { useLookups } from '../../../lib/lookups';

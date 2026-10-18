@@ -1,3 +1,4 @@
+import { hasMax3Decimals } from './qty';
 import { FormSheet, type FieldDef } from '../FormSheet';
 import type { Option } from '../ui';
 import { money } from '../../lib/format';
@@ -53,7 +54,7 @@ export function StockSheet({
         { value: 'adjustment', label: 'Correction (+ or −)' },
         { value: 'waste', label: 'Waste / damaged / expired (−)' },
       ] },
-      { key: 'delta', label: `Quantity (${unit})`, type: 'number', required: true, hint: 'Whole units. For corrections, use a negative number to reduce.' },
+      { key: 'delta', label: `Quantity (${unit})`, type: 'number', required: true, hint: 'Decimals are fine (up to 3, e.g. 0.25). For corrections, use a negative number to reduce.' },
       ...(useLocations ? [locField('location', 'Location')] : []),
       { key: 'note', label: 'Note', type: 'text' },
     ];
@@ -86,9 +87,9 @@ export function StockSheet({
       onClose={onClose}
       onSubmit={async (v) => {
         if (!item) return;
-        const raw = Number(v.delta);
+        const raw = Number(String(v.delta ?? '').replace(',', '.'));
         if (!raw || !Number.isFinite(raw)) throw new Error('Enter a quantity other than zero');
-        if (!Number.isInteger(raw)) throw new Error('Supplies are counted in whole units');
+        if (!hasMax3Decimals(raw)) throw new Error('Use at most 3 decimals, e.g. 0.25');
         const loc = (k: string) => (v[k] && v[k] !== NONE ? (v[k] as string) : null);
         const base = { org_id: orgId, item_id: item.id, note: v.note ?? null };
 

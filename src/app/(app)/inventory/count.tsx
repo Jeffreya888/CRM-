@@ -6,7 +6,8 @@ import { confirmAction } from '../../../components/FormSheet';
 import { Gate } from '../../../components/Gate';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, IconTile, Loading, Row, Screen, SearchBar, Section, Select, T } from '../../../components/ui';
 import { money } from '../../../lib/format';
-import { fmtNum, parseWhole, type InventoryItem, type StockByLocation, type StockLocation } from '../../../lib/inventory';
+import { cleanQtyInput, fmtQty as fmtNum, parseQty as parseWhole } from '../../../components/inventory/qty';
+import { type InventoryItem, type StockByLocation, type StockLocation } from '../../../lib/inventory';
 import { canEdit } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, must, supabase } from '../../../lib/supabase';
@@ -64,7 +65,7 @@ function CountInner() {
 
   const finish = () => {
     if (!entered.length) return setError('Enter at least one counted quantity.');
-    if (invalid.length) return setError(`Counts are whole numbers. Check: ${invalid.map((i) => i.name).join(', ')}`);
+    if (invalid.length) return setError(`Counts are numbers with up to 3 decimals. Check: ${invalid.map((i) => i.name).join(', ')}`);
     setError(null);
     confirmAction('Save count?', `Save counts for ${entered.length} item${entered.length === 1 ? '' : 's'}${locId ? ` at ${locations.find((l) => l.id === locId)?.name}` : ''}? Any difference is logged as a count correction.`, async () => {
       setSaving(true);
@@ -138,7 +139,7 @@ function CountInner() {
         ListHeaderComponent={
           <View>
             <T variant="muted" style={{ marginBottom: space.md }}>
-              Walk the shelves and type what you actually find (whole numbers). Leave an item blank to skip it. Differences are logged as count corrections.
+              Walk the shelves and type what you actually find (decimals like 0.5 are fine). Leave an item blank to skip it. Differences are logged as count corrections.
             </T>
             {fleet && locations.length ? (
               <Select label="Counting at" value={location} onChange={(v) => { setLocation(v ?? ALL); setCounts({}); }}
@@ -162,15 +163,15 @@ function CountInner() {
                   <T style={{ fontWeight: '700' }} numberOfLines={1}>{i.name}</T>
                   <T variant="small">{`${i.category ? i.category + ' · ' : ''}expected ${fmtNum(expected)} ${i.unit}`}</T>
                   {raw.trim() !== '' ? (
-                    n == null ? <T variant="small" style={{ color: colors.danger }}>Whole numbers only</T>
+                    n == null ? <T variant="small" style={{ color: colors.danger }}>Enter a number, e.g. 3 or 0.5</T>
                       : diff === 0 ? <T variant="small" style={{ color: colors.success }}>Matches</T>
                         : <T variant="small" style={{ color: colors.warning }}>{`${diff! > 0 ? '+' : ''}${fmtNum(diff)} difference`}</T>
                   ) : null}
                 </View>
                 <TextInput
                   value={raw}
-                  onChangeText={(v) => setCounts((c) => ({ ...c, [i.id]: v.replace(/[^0-9]/g, '') }))}
-                  keyboardType="number-pad"
+                  onChangeText={(v) => setCounts((c) => ({ ...c, [i.id]: cleanQtyInput(v) }))}
+                  keyboardType="decimal-pad"
                   placeholder="—"
                   placeholderTextColor={colors.textFaint}
                   accessibilityLabel={`Counted ${i.name}`}

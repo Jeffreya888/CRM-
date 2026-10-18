@@ -11,10 +11,11 @@ import type { PortalData, PortalPastJob, PortalUpcomingJob } from '../../lib/por
 import { colors, radius, space } from '../../lib/theme';
 import type { AircraftCategory } from '../../lib/types';
 import { BrandHeader, Notice } from './PortalShell';
+import { PhotoQuoteSheet } from './PhotoQuoteSheet';
 import { RequestSheet, type RequestTarget } from './RequestSheet';
 
 const assetIcon = (t: string) => (t === 'vehicle' ? 'car-outline' : t === 'watercraft' ? 'boat-outline' : 'airplane-outline') as 'car-outline';
-const REQUEST_LABEL: Record<string, string> = { booking: 'Service request', reschedule: 'Reschedule request', quote_dates: 'Preferred dates' };
+const REQUEST_LABEL: Record<string, string> = { booking: 'Service request', reschedule: 'Reschedule request', quote_dates: 'Preferred dates', photo_quote: 'Quote from photos' };
 
 /** Signed-in customer portal: what's coming up, what needs action, history and photos. */
 export function PortalDashboard({ data, token, photoUrls, onSignOut, onChanged }: {
@@ -23,6 +24,9 @@ export function PortalDashboard({ data, token, photoUrls, onSignOut, onChanged }
   const [request, setRequest] = useState<RequestTarget | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [viewer, setViewer] = useState<string | null>(null);
+  const [photoQuote, setPhotoQuote] = useState(false);
+  // The portal data may not say whether the company offers photo quotes; show it unless it is explicitly off.
+  const photoQuotes = (data.org as { photo_quotes_enabled?: boolean }).photo_quotes_enabled !== false;
   const cur = 'USD';
 
   const openQuotes = data.quotes.filter((q) => ['sent', 'viewed'].includes(q.status) && (!q.valid_until_at || isFuture(new Date(q.valid_until_at))));
@@ -47,6 +51,9 @@ export function PortalDashboard({ data, token, photoUrls, onSignOut, onChanged }
       </Row>
 
       <Button icon="add-circle-outline" title="Request service" onPress={() => setRequest({ kind: 'booking' })} style={{ marginTop: space.lg }} />
+      {photoQuotes ? (
+        <Button kind="secondary" icon="camera-outline" title="Get a quote from photos" onPress={() => setPhotoQuote(true)} style={{ marginTop: space.sm }} />
+      ) : null}
 
       {openQuotes.length || unpaid.length ? (
         <Section title="Needs your attention" icon="alert-circle-outline" iconColor={colors.warning}>
@@ -138,6 +145,9 @@ export function PortalDashboard({ data, token, photoUrls, onSignOut, onChanged }
 
       <RequestSheet target={request} token={token} assets={data.assets} services={data.services}
         onClose={() => setRequest(null)} onSent={(m) => { setFlash(m); onChanged(); }} />
+
+      <PhotoQuoteSheet visible={photoQuote} token={token} assets={data.assets}
+        onClose={() => setPhotoQuote(false)} onSent={(m) => { setFlash(m); onChanged(); }} />
 
       <Modal visible={!!viewer} animationType="fade" onRequestClose={() => setViewer(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>

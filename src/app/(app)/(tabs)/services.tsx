@@ -58,7 +58,7 @@ export default function Services() {
         ListHeaderComponent={
           <View>
             <PageTitle title="Services" subtitle={`${all.length} service${all.length === 1 ? '' : 's'}${money ? '' : ' · times and steps'}`}
-              right={<Button small kind="secondary" icon="book-outline" title="Guides" onPress={() => router.push('/training')} />} />
+              right={<Button small kind="secondary" icon="book-outline" title="SOPs" onPress={() => router.push('/training')} />} />
             {multi ? (
               <Segmented value={type} onChange={(v) => { setType(v); setCat('all'); }} options={[
                 { value: 'all', label: 'All', count: all.length },
@@ -97,7 +97,7 @@ export default function Services() {
                   {recur ? <Row gap={4}><Ionicons name="repeat-outline" size={16} color={colors.textMuted} /><T variant="muted">{recur}</T></Row> : null}
                 </Row>
                 <Row gap={6}>
-                  {guide ? <Chip icon="book-outline" label="Guide" color={colors.primaryText} bg={colors.primarySoft} /> : null}
+                  {guide ? <Chip icon="book-outline" label="SOP" color={colors.primaryText} bg={colors.primarySoft} /> : null}
                   {hasMedia(s.id) ? <Chip icon="play" label="Video" color={colors.success} bg={colors.successSoft} /> : null}
                   <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                 </Row>

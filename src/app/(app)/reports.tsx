@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { DateTimeField } from '../../components/DateTimeField';
 import { BarList, MonthBars } from '../../components/finance/Charts';
+import { JobCostingPanel } from '../../components/finance/JobCosting';
 import { PayRatesPanel } from '../../components/finance/PayRatesPanel';
 import { notify } from '../../components/FormSheet';
 import { Gate } from '../../components/Gate';
@@ -55,6 +56,7 @@ function PLScreen() {
   const [compare, setCompare] = useState(true);
   const [branch, setBranch] = useState<string | null>(fleet ? branchId : null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [tab, setTab] = useState<'pl' | 'costing'>('pl');
   const range = preset === 'custom' ? applied : presetRange(preset);
   const prevRange = previousRange(range.from, range.to);
   const branchName = branch ? branches.find((b) => b.id === branch)?.name ?? null : null;
@@ -138,6 +140,7 @@ function PLScreen() {
   return (
     <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
       <Stack.Screen options={{ title: 'Profit & loss' }} />
+      <Segmented value={tab} onChange={setTab} options={[{ value: 'pl', label: 'Profit & loss' }, { value: 'costing', label: 'Job costing' }]} />
       <Row style={{ justifyContent: 'space-between', marginBottom: space.sm }}>
         <T variant="muted" style={{ flex: 1 }}>{rangeLabel(range.from, range.to)}</T>
         <IconButton icon="refresh" label="Refresh" onPress={q.refresh} />
@@ -152,8 +155,12 @@ function PLScreen() {
           <Button small title="Apply" icon="checkmark" disabled={custom.from > custom.to} onPress={() => setApplied(custom)} />
         </Card>
       ) : null}
-      <Segmented value={basis} onChange={setBasis} options={[{ value: 'cash', label: 'Cash basis' }, { value: 'accrual', label: 'Accrual basis' }]} />
+      {tab === 'pl' ? <Segmented value={basis} onChange={setBasis} options={[{ value: 'cash', label: 'Cash basis' }, { value: 'accrual', label: 'Accrual basis' }]} /> : null}
       {fleet ? <Select label="Company location" value={branch} options={branchOptions} onChange={setBranch} allowClear placeholder="All locations" icon="business-outline" /> : null}
+      {tab === 'costing' ? (
+        <JobCostingPanel orgId={orgId} from={range.from} to={range.to} branch={branch} currency={org.currency} admin={admin} />
+      ) : (
+      <>
       <ToggleRow label="Compare to previous period" hint={rangeLabel(prevRange.from, prevRange.to)} value={compare} onChange={setCompare} />
       <ErrorBanner message={q.error} onRetry={q.reload} />
 
@@ -281,6 +288,8 @@ function PLScreen() {
             </Card>
           </Section>
         </>
+      )}
+      </>
       )}
     </Screen>
   );

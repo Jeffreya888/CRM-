@@ -29,7 +29,7 @@ export const PLANS: PlanInfo[] = [
     id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250,
     features: CORE,
     blurb: 'For an independent detailer running the whole business from one phone.',
-    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step service guides & price guide', 'Customer portal & card payments', '250 customer texts / month'],
+    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs & price guide', 'Customer portal & card payments', '250 customer texts / month'],
   },
   {
     id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000,

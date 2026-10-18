@@ -8,7 +8,9 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 export const APP_STORE_URL = process.env.EXPO_PUBLIC_APP_STORE_URL ?? 'https://apps.apple.com/app/flight-ready/id0000000000';
 export const PLAY_STORE_URL = process.env.EXPO_PUBLIC_PLAY_STORE_URL ?? 'https://play.google.com/store/apps/details?id=com.flightready.app';
 
-export const SITE_TAGLINE = 'The all-in-one CRM for aircraft, auto & marine detailers';
+export const SITE_TAGLINE = 'The operating system for professional detailing — aviation, marine and automotive';
+/** Short form for tight spaces (pills, footers). */
+export const SITE_TAGLINE_SHORT = 'The operating system for professional detailing';
 export const TRIAL_DAYS = 14;
 export const AIRCRAFT_MODELS = 545;
 export const BOAT_MODELS = 604;
@@ -33,22 +35,37 @@ export const FOOTER_LINKS = [
 export const WORKFLOW: { step: string; title: string; body: string; icon: IconName; points: string[] }[] = [
   {
     step: '01', title: 'Plan', icon: 'calendar-outline',
-    body: 'Quote the job with your own prices or the built-in price guide, win approval with Good / Better / Best packages, and drop the work onto a crew calendar that warns you before anything collides.',
+    body: 'Type a tail number and the FAA registry fills in the aircraft. Quote with your own prices or the built-in price guide, adjusted for condition, win approval with Good / Better / Best packages, and drop the work onto a crew calendar that warns you before anything collides.',
     points: ['Quotes customers approve and sign from their phone', 'Deposits collected the moment they say yes', 'Crew, hangar and equipment booked without conflicts'],
   },
   {
     step: '02', title: 'Document', icon: 'camera-outline',
     body: 'Every job carries its own proof: before and after photos, a condition report the customer signs, damage notes and a clean service report — so nothing becomes a debate later.',
-    points: ['Before photos to start, after photos to finish', 'Condition & service sign-off, versioned', 'Step-by-step guides your crew can follow on the ramp'],
+    points: ['AI condition report from a few photos', 'Before/after photos and customer sign-off, versioned', 'SOPs, certified technicians and a quality check before handover'],
   },
   {
     step: '03', title: 'Get paid', icon: 'card-outline',
-    body: 'Turn finished work into an invoice in a tap, let customers pay by card from a private link, and let automatic reminders do the chasing while you see true profit per job.',
-    points: ['Card payments and pay links on every invoice', 'Reminder sequences that stop when they pay', 'Profit & loss that includes labor and supplies'],
+    body: 'Turn finished work into an invoice in a tap, let customers pay by card from a private link, and let automatic reminders do the chasing — while you see the true profit of every job, labor and overhead included.',
+    points: ['Card payments and pay links on every invoice', 'Reminder sequences that stop when they pay', 'True job cost: estimate vs actual, profit by aircraft class and model'],
   },
 ];
 
 export const FEATURES: { id: string; title: string; body: string; icon: IconName; tone: 'blue' | 'gold' | 'green'; bullets: string[] }[] = [
+  {
+    id: 'faa', title: 'FAA tail-number autofill', icon: 'airplane-outline', tone: 'blue',
+    body: 'Type the N-number. The aircraft fills itself in.',
+    bullets: ['Make, model, year and serial from the FAA registry', 'Size class, length and wingspan for accurate pricing', 'Registered owner and location at a glance', 'Warnings for expired or deregistered aircraft'],
+  },
+  {
+    id: 'ai', title: 'AI photo condition reports', icon: 'sparkles-outline', tone: 'gold',
+    body: 'A few photos in, a condition report and quote out.',
+    bullets: ['Condition, score and findings from up to six photos', 'Suggested services turned into a quote in one tap', 'Customers request quotes from photos in their portal', 'Condition-based pricing for moderate, heavy and severe'],
+  },
+  {
+    id: 'sops', title: 'SOPs, certification & quality checks', icon: 'ribbon-outline', tone: 'green',
+    body: 'Every technician, every step, the same standard.',
+    bullets: ['Standard operating procedures with time and products per step', 'Technician certification per SOP, with sign-off requests', 'Scheduling warns before booking an uncertified tech', 'Quality check sign-off before a job is completed'],
+  },
   {
     id: 'schedule', title: 'Scheduling & dispatch', icon: 'calendar-number-outline', tone: 'blue',
     body: 'A live crew calendar built for ramp days and early departures.',
@@ -87,12 +104,12 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'crew', title: 'Crew, timesheets & payroll exports', icon: 'people-outline', tone: 'green',
     body: 'Everyone clocks their own time; you approve it in seconds.',
-    bullets: ['Roles and permission toggles (techs never see prices)', 'Timesheet approvals and pay periods', 'Certifications and badge expirations', 'Payroll and accountant exports'],
+    bullets: ['Roles and permission toggles (techs never see prices)', 'Timesheet approvals and pay periods', 'Badge expirations and airport credentials', 'Profit & loss, payroll and accountant exports'],
   },
   {
-    id: 'pnl', title: 'Profit & loss', icon: 'stats-chart-outline', tone: 'gold',
-    body: 'See the real margin on every job, every month.',
-    bullets: ['Revenue, labor, supplies and expenses in one view', 'Job profitability (owner-only)', 'Expenses, mileage and receipt scanning', 'Win/loss reporting on quotes'],
+    id: 'costing', title: 'True job costing & profit', icon: 'stats-chart-outline', tone: 'gold',
+    body: 'Know what every job really cost — and what it really earned.',
+    bullets: ['Estimate vs actual hours and cost on every job', 'True labor cost with payroll taxes and overhead', 'Profit by aircraft class, model and boat size', 'Margin check on quotes before you send them'],
   },
 ];
 
@@ -105,21 +122,45 @@ export const GUIDE_EXAMPLES = [
   'Leather Shampoo & Conditioning',
 ];
 
+/** The four capabilities that set Flight Ready apart (homepage spotlight). */
+export const EDGE: { title: string; body: string; icon: IconName; tone: 'blue' | 'gold' | 'green'; sample: { label: string; value: string }[] }[] = [
+  {
+    title: 'FAA tail-number autofill', icon: 'airplane-outline', tone: 'blue',
+    body: 'Type N550GV and the registry fills in the make, model, year, serial and size — ready to price.',
+    sample: [{ label: 'FAA', value: '2008 Gulfstream G550' }, { label: 'S/N', value: '5190' }, { label: 'Class', value: 'Large cabin jet' }],
+  },
+  {
+    title: 'AI photo condition reports', icon: 'sparkles-outline', tone: 'gold',
+    body: 'Snap a few photos for a condition report and suggested services. Customers can even request a quote from photos.',
+    sample: [{ label: 'Condition', value: 'Heavy' }, { label: 'Score', value: '5 / 10' }, { label: 'Pricing', value: '+35%' }],
+  },
+  {
+    title: 'SOPs, certification & quality checks', icon: 'ribbon-outline', tone: 'green',
+    body: 'Standard operating procedures with time per step, certified technicians, and a quality check before handover.',
+    sample: [{ label: 'Steps', value: '3h 10m (est. 2h 45m)' }, { label: 'Tech', value: 'Certified' }, { label: 'QC', value: 'Passed' }],
+  },
+  {
+    title: 'True job costing', icon: 'stats-chart-outline', tone: 'blue',
+    body: 'Estimate vs actual on every job, true labor cost with overhead, and profit by aircraft class, model and boat size.',
+    sample: [{ label: 'Hours', value: 'est 6.0 · actual 7.2' }, { label: 'True cost', value: '$492' }, { label: 'Margin', value: '69%' }],
+  },
+];
+
 export const BUSINESS_TYPES: { title: string; icon: IconName; body: string; examples: string[] }[] = [
   {
     title: 'Aircraft', icon: 'airplane-outline',
-    body: 'Built first for aviation: tail numbers, makes and models, facilities and FBOs, hangar bookings and airport badges.',
-    examples: [`${AIRCRAFT_MODELS} aircraft models in the price guide`, 'Pistons, turboprops, light to heavy jets', 'Facility and FBO access notes'],
+    body: 'Built first for aviation: FAA tail-number autofill, makes and models, facilities and FBOs, hangar bookings and airport badges.',
+    examples: ['FAA registry lookup by tail number', `${AIRCRAFT_MODELS} aircraft models in the price guide`, 'Pistons, turboprops, light to heavy jets', 'Facility and FBO access notes'],
   },
   {
     title: 'Vehicles', icon: 'car-sport-outline',
     body: 'Cars, trucks, SUVs and fleets with sizes that drive your pricing automatically.',
-    examples: ['Size-based pricing', 'Mobile and shop work', 'Fleet accounts and recurring washes'],
+    examples: ['Size-based and condition-based pricing', 'Mobile and shop work', 'Fleet accounts and recurring washes'],
   },
   {
     title: 'Watercraft', icon: 'boat-outline',
     body: 'Boats and yachts with lengths, marinas and slip details right on the asset.',
-    examples: [`${BOAT_MODELS} boat models in the catalog`, 'Length-based pricing', 'Marina and slip notes'],
+    examples: [`${BOAT_MODELS} boat models in the catalog`, 'Length, beam and square-foot pricing', 'Profit by boat size'],
   },
 ];
 
@@ -130,9 +171,12 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 ];
 
 export const HOME_FAQ: { q: string; a: string }[] = [
-  { q: 'Who is Flight Ready for?', a: 'Detailing companies that care for aircraft — and, if you choose, vehicles and watercraft too. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
+  { q: 'Who is Flight Ready for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan in the app when you are ready.` },
-  { q: 'Are the service guides and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step service guides and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy.` },
+  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. Certify technicians per SOP and require a quality check before jobs are completed.` },
+  { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Flight Ready looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
+  { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
+  { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },
   { q: 'How do my customers pay?', a: 'Connect Stripe and customers pay invoices, deposits and care plans by card from a private link. Prefer checks or ACH? Record them in a tap.' },
   { q: 'Can I try it without setting anything up?', a: 'Yes. Open the demo for a fully loaded sample company. Nothing you do there sends real emails, texts or payments.' },
   { q: 'Can I take my data with me?', a: 'Always. The owner can export customers, assets, jobs, quotes, invoices and photos at any time.' },
@@ -159,11 +203,11 @@ export const SUPPORT_FAQ: { q: string; a: string }[] = [
 
 export const GETTING_STARTED: { title: string; body: string; icon: IconName }[] = [
   { title: 'Create your company & choose business types', body: 'Sign up, name your company and pick Aircraft only, Aircraft + Vehicles, or Aircraft + Vehicles + Watercraft. You can add categories later.', icon: 'business-outline' },
-  { title: 'Set your services & prices', body: `Start from the built-in services — each comes with a step-by-step guide — and set prices yourself or from the price guide (${AIRCRAFT_MODELS} aircraft models).`, icon: 'pricetags-outline' },
-  { title: 'Add customers & assets', body: 'Add customers and their aircraft, vehicles or boats. Tail numbers, sizes and facility notes make every quote and job faster.', icon: 'person-add-outline' },
+  { title: 'Set your services & prices', body: `Start from the built-in services — each comes with a step-by-step SOP — and set prices yourself or from the price guide (${AIRCRAFT_MODELS} aircraft models).`, icon: 'pricetags-outline' },
+  { title: 'Add customers & assets', body: 'Add customers and their aircraft, vehicles or boats. Type a US tail number and the FAA registry fills in the details; sizes and facility notes make every quote and job faster.', icon: 'person-add-outline' },
   { title: 'Invite your crew', body: 'Send email invitations and choose each person’s role. Technicians see their assigned work — never your prices.', icon: 'people-outline' },
   { title: 'Connect payments', body: 'Connect Stripe to accept cards on invoices, deposits and care plans — or arrange payment directly and record it in the app.', icon: 'card-outline' },
-  { title: 'Schedule & complete your first job', body: 'Put a job on the calendar, take before photos to start, follow the service guide, and take after photos to finish.', icon: 'camera-outline' },
+  { title: 'Schedule & complete your first job', body: 'Put a job on the calendar, take before photos to start, follow the SOP, and take after photos to finish.', icon: 'camera-outline' },
   { title: 'Send the invoice & turn on automations', body: 'Invoice in one tap, then switch on reminders, follow-ups and review requests so the app keeps working while you do.', icon: 'flash-outline' },
 ];
 

@@ -6,7 +6,7 @@ export function withServiceDefaults(x: Partial<Service>): Service {
   return {
     pricing_method: 'flat', base_price: 0, price_per_foot: 0, hourly_rate: 0, category_prices: {}, pricing_tiers: [],
     taxable: true, asset_type: 'aircraft', guide_key: null, recur_every: null, recur_unit: null, est_hours_max: null,
-    checklist: [], equipment: [], ...x,
+    checklist: [], equipment: [], price_per_sqft: 0, category_hours: {}, requires_cert: false, ...x,
   } as Service;
 }
 

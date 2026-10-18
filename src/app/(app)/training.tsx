@@ -34,6 +34,12 @@ export default function TrainingCenter() {
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState<Draft | null>(() => (manager && (add || attach) ? blank(add ?? null, attach ?? null, attach ? attachStep ?? 0 : null) : null));
   const lib = useQuery(() => loadGuideLibrary(orgId), [orgId]);
+  // The technician's own SOP certifications (service_skills).
+  const skills = useQuery(async () => {
+    const { data, error } = await supabase.from('service_skills').select('guide_key, level').eq('org_id', orgId).eq('user_id', uid);
+    if (error) return [] as { guide_key: string; level: string }[];
+    return (data ?? []) as { guide_key: string; level: string }[];
+  }, [orgId, uid]);
   const [error, setError] = useState<string | null>(null);
 
   const q = useQuery(async () => {
@@ -64,6 +70,10 @@ export default function TrainingCenter() {
     return m.step_index != null && g.steps[m.step_index] ? `${g.title} · Step ${m.step_index + 1}: ${g.steps[m.step_index]!.title}` : g.title;
   };
   const draftGuide = guideByKey(draft?.guide_key ?? null);
+  const enabledKeys = new Set((lib.data?.guides ?? []).filter((r) => businessTypes.includes(r.guide.asset_type)).map((r) => r.guide.key));
+  const certifiedCount = (skills.data ?? []).filter((x) => enabledKeys.has(x.guide_key) && (x.level === 'certified' || x.level === 'trainer')).length;
+  const trainingCount = (skills.data ?? []).filter((x) => enabledKeys.has(x.guide_key) && x.level === 'training').length;
+  const certPct = enabledKeys.size ? Math.round((certifiedCount / enabledKeys.size) * 100) : 0;
 
   const save = async () => {
     if (!draft) return;
@@ -106,15 +116,30 @@ export default function TrainingCenter() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Screen refreshing={tab === 'guides' ? lib.refreshing : q.refreshing} onRefresh={tab === 'guides' ? lib.refresh : q.refresh}>
+      <Screen refreshing={tab === 'guides' ? lib.refreshing : q.refreshing} onRefresh={tab === 'guides' ? () => { lib.refresh(); skills.reload(); } : q.refresh}>
         <Stack.Screen options={{ title: 'Training Center' }} />
         <Segmented value={tab} onChange={setTab} options={[
-          { value: 'guides', label: 'Service guides', count: lib.data?.guides.filter((r) => businessTypes.includes(r.guide.asset_type)).length },
+          { value: 'guides', label: 'SOPs', count: lib.data?.guides.filter((r) => businessTypes.includes(r.guide.asset_type)).length },
           { value: 'media', label: 'Videos & documents', count: media.length },
         ]} />
         {tab === 'guides' ? (
           <>
             <ErrorBanner message={lib.error} onRetry={lib.reload} />
+            {enabledKeys.size ? (
+              <Card>
+                <Row style={{ justifyContent: 'space-between' }}>
+                  <T variant="h3">Your certifications</T>
+                  <T style={{ color: colors.success, fontSize: 20, fontWeight: '800' }}>{certifiedCount} of {enabledKeys.size}</T>
+                </Row>
+                <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.cardRaised, marginVertical: space.md }}>
+                  <View style={{ height: 8, borderRadius: 4, width: `${certPct}%`, backgroundColor: colors.success }} />
+                </View>
+                <T variant="muted">
+                  {certifiedCount ? `Certified on ${certifiedCount} SOP${certifiedCount === 1 ? '' : 's'}.` : 'Not certified on any SOP yet.'}
+                  {trainingCount ? ` ${trainingCount} in training.` : ''} Open an SOP and tap Request sign-off when you are ready.
+                </T>
+              </Card>
+            ) : null}
             <GuideLibrary lib={lib.data} loading={lib.loading} orgId={orgId} manager={manager} businessTypes={businessTypes} onChanged={lib.reload} />
           </>
         ) : (
@@ -134,7 +159,7 @@ export default function TrainingCenter() {
 
         {!q.loading && media.length === 0 ? (
           <EmptyState icon="school-outline" title="No training content yet"
-            body={manager ? 'Add how-to videos and product documents so every technician details the same way. Attach a video to a guide step and techs see it right under that step.' : 'Your manager hasn\'t added training content yet.'} />
+            body={manager ? 'Add how-to videos and product documents so every technician details the same way. Attach a video to an SOP step and techs see it right under that step.' : 'Your manager hasn\'t added training content yet.'} />
         ) : null}
 
         {videos.length ? (
@@ -176,10 +201,10 @@ export default function TrainingCenter() {
               <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
                 <ErrorBanner message={error} />
                 <Segmented value={draft.kind} onChange={(kind) => setDraft({ ...draft, kind, file: null })} options={[{ value: 'video', label: 'Video' }, { value: 'document', label: 'Document' }]} />
-                <Field label="Title" placeholder={draft.kind === 'video' ? 'Exterior Detail Masterclass' : 'Leather Product Guide'} value={draft.title} onChangeText={(title) => setDraft({ ...draft, title })} />
+                <Field label="Title" placeholder={draft.kind === 'video' ? 'Exterior Detail Masterclass' : 'Leather Product Sheet'} value={draft.title} onChangeText={(title) => setDraft({ ...draft, title })} />
                 <Select label="Service" placeholder="General (not tied to a service)" icon="sparkles-outline" iconColor={colors.success}
                   value={draft.service_id} allowClear options={(q.data?.services ?? []).map((x) => ({ value: x.id, label: x.name }))} onChange={(service_id) => setDraft({ ...draft, service_id })} />
-                <Select label="Guide step (optional)" placeholder="Not attached to a guide" icon="book-outline" allowClear searchable={guideOptions.length > 8}
+                <Select label="SOP step (optional)" placeholder="Not attached to an SOP" icon="book-outline" allowClear searchable={guideOptions.length > 8}
                   value={draft.guide_key} options={guideOptions} onChange={(guide_key) => setDraft({ ...draft, guide_key, step_index: guide_key ? 0 : null })} />
                 {draftGuide ? (
                   <Select label="Show under step" placeholder="Choose a step" value={draft.step_index != null ? String(draft.step_index) : null}

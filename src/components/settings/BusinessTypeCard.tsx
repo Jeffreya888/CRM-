@@ -21,7 +21,7 @@ export function BusinessTypeCard({ orgId, types, editable, onChanged }: { orgId:
     const info = ASSET_TYPES.find((a) => a.value === t)!;
     confirmAction(
       `Add ${info.plural.toLowerCase()}?`,
-      `We'll add ${info.plural.toLowerCase()} (${ADD_INFO[t]}) to your company: asset sizes, starter services and prices you can edit, and service guides. ` +
+      `We'll add ${info.plural.toLowerCase()} (${ADD_INFO[t]}) to your company: asset sizes, starter services and prices you can edit, and step-by-step SOPs. ` +
         'Business types can be added but not removed later. Your plan price stays the same.',
       async () => {
         const next = ASSET_TYPES.map((a) => a.value).filter((v) => v === t || types.includes(v));

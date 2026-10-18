@@ -1,0 +1,41 @@
+# Weekly import of the public FAA aircraft registry for tail number autofill.
+# Needs the repository secret SUPABASE_DB_URL (Supabase → Project Settings →
+# Database → Connection string, "Session pooler" URI with the password).
+name: FAA registry import
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'   # Mondays 09:17 UTC
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Check configuration
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL secret is not set; skipping the FAA import."
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/checkout@v4
+        if: env.SKIP != '1'
+      - uses: actions/setup-node@v4
+        if: env.SKIP != '1'
+        with:
+          node-version: 22
+      - name: Download FAA registry
+        if: env.SKIP != '1'
+        run: |
+          curl -fsSL --retry 4 --retry-delay 15 -A "Mozilla/5.0 (registry import)" \
+            -o faa.zip https://registry.faa.gov/database/ReleasableAircraft.zip
+          unzip -o -j faa.zip MASTER.txt ACFTREF.txt -d faa
+      - name: Convert
+        if: env.SKIP != '1'
+        run: node scripts/faa-registry/convert.mjs faa faa-out
+      - name: Load into Supabase
+        if: env.SKIP != '1'
+        run: psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f scripts/faa-registry/load.sql

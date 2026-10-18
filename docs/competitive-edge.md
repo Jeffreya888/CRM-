@@ -6,7 +6,7 @@ Guiding rules:
 - One tap to apply an AI or FAA suggestion. A person always confirms; nothing changes silently.
 - Plain words: "SOP", "True cost", "Condition", "Quality check". Never use jargon like "burden" alone. Write "Payroll taxes & insurance (%)".
 
-The database lives in `supabase/migrations/20261018000000_competitive_edge.sql` (lead writes it). The contract below is binding for UI work.
+The database lives in `supabase/migrations/20261018000100_competitive_edge.sql` (lead writes it). The contract below is binding for UI work.
 
 ---
 

@@ -11,6 +11,7 @@ import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 import type { Quote, QuoteStatus } from '../../lib/types';
 import { deadlineOf, effectiveStatus, viewedLabel } from './quoteUtils';
+import { StartFromPhotosButton } from '../ai/StartFromPhotos';
 
 type Filter = 'all' | QuoteStatus;
 type QRow = Pick<Quote, 'id' | 'number' | 'status' | 'total' | 'valid_until' | 'valid_until_at' | 'view_count' | 'last_viewed_at' | 'accepted_at' | 'declined_at' | 'superseded_by' | 'version' | 'branch_id' | 'deposit_amount' | 'deposit_paid_at'> & {
@@ -87,6 +88,7 @@ export function QuoteList() {
               <StatTile icon="trophy-outline" tone="success" label="Win rate · 90 days" value={stats.winRate == null ? '—' : `${stats.winRate}%`} />
             </Row>
             {stats.winRate != null ? <T variant="small" style={{ marginTop: -space.sm, marginBottom: space.md }}>{stats.won} accepted · {stats.lost} declined in the last 90 days</T> : null}
+            <StartFromPhotosButton style={{ alignSelf: 'flex-start', marginBottom: space.md }} />
             <SearchBar value={search} onChange={setSearch} placeholder="Number, customer, tail" />
             <Segmented value={filter} onChange={setFilter} options={FILTERS.map((f) => ({ ...f, count: counts[f.value] }))} />
             <ToggleRow label="Show replaced versions" value={showOld} onChange={setShowOld} />

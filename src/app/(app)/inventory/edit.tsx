@@ -1,3 +1,4 @@
+import { hasMax3Decimals } from '../../../components/inventory/qty';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -49,7 +50,7 @@ export default function SupplyEdit() {
     { key: 'category', label: 'Category', type: 'text', placeholder: 'Chemicals, towels, ceramic, PPE' },
     { key: 'sku', label: 'SKU / part #', type: 'text' },
     { key: 'unit', label: 'Unit', type: 'text', required: true, placeholder: 'gallon, bottle, case, each' },
-    ...(!id ? [{ key: 'quantity', label: 'Starting quantity', type: 'number', hint: 'Whole units. Later changes go through Adjust, Mark received or Count so history stays accurate.' } as FieldDef] : []),
+    ...(!id ? [{ key: 'quantity', label: 'Starting quantity', type: 'number', hint: 'Decimals are fine (e.g. 2.5). Later changes go through Adjust, Mark received or Count so history stays accurate.' } as FieldDef] : []),
   ];
   const stockFields: FieldDef[] = [
     { key: 'par_level', label: 'Par level', type: 'number', hint: 'Alert and add to the reorder list when stock is at or below this.' },
@@ -87,7 +88,7 @@ export default function SupplyEdit() {
     if (msg) return setError(msg);
     const row = normalize(all, values);
     for (const k of ['par_level', 'reorder_qty', 'quantity'] as const) {
-      if (row[k] != null && (row[k] < 0 || !Number.isInteger(row[k]))) return setError('Quantities are whole numbers, zero or more');
+      if (row[k] != null && (row[k] < 0 || !hasMax3Decimals(row[k]))) return setError('Quantities are zero or more, with at most 3 decimals');
     }
     if (row.vendor_email && !/^\S+@\S+\.\S+$/.test(row.vendor_email)) return setError('That vendor email looks wrong');
     const payload: Record<string, any> = {

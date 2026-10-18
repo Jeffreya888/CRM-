@@ -55,7 +55,7 @@ export const PRIVACY: LegalSection[] = [
       [
         'Within your company: information in a company workspace is visible to that company’s team members according to the roles and permissions the company sets.',
         'With customers of a detailing company: when a company sends a quote, invoice, report or portal link, the recipient can see the information that company chose to include.',
-        'With service providers that help us run the Service, under contracts that limit their use of the information: Supabase (database, authentication, file storage and hosting), Stripe (payment processing and Stripe Connect payouts), RevenueCat, Apple and Google (in-app subscriptions), Resend (email delivery), Telnyx (text message delivery) and Expo (push notification delivery).',
+        'With service providers that help us run the Service, under contracts that limit their use of the information: Supabase (database, authentication, file storage and hosting), Stripe (payment processing and Stripe Connect payouts), RevenueCat, Apple and Google (in-app subscriptions), Resend (email delivery), Telnyx (text message delivery), Expo (push notification delivery) and Anthropic (AI reading of receipt photos and photo condition reports — only the photos you or your customers choose to check are sent).',
         'With integrations your company chooses to connect, such as scheduling software, according to that company’s instructions.',
         'For legal reasons: if required by law, subpoena or other legal process, or when we believe in good faith that disclosure is necessary to protect rights, property or safety, or to investigate fraud or security issues.',
         'In a business transfer: in connection with a merger, acquisition, financing or sale of assets, subject to this Privacy Policy.',
@@ -147,7 +147,7 @@ export const TERMS: LegalSection[] = [
   {
     title: 'The Service',
     body: [
-      'Flight Ready is business management software for detailing companies that care for aircraft, vehicles and watercraft. It includes tools for scheduling, job documentation, quotes, invoices, payments, customer communication, recurring care, supplies, team management and reporting, along with built-in service guides and price guides. We may add, change or remove features over time.',
+      'Flight Ready is business management software for detailing companies that care for aircraft, vehicles and watercraft. It includes tools for scheduling, job documentation, quotes, invoices, payments, customer communication, recurring care, supplies, team management and reporting, along with built-in SOPs (step-by-step service guides), price guides, FAA registry lookup and AI photo condition reports. We may add, change or remove features over time.',
     ],
   },
   {
@@ -216,13 +216,13 @@ export const TERMS: LegalSection[] = [
     title: 'Aviation and service disclaimer',
     body: [
       'Flight Ready is a business management tool. It does not provide aircraft maintenance, inspection or airworthiness advice, and nothing in the Service replaces the aircraft, vehicle, vessel or product manufacturer’s manuals, instructions or approved procedures, or applicable regulations.',
-      'The built-in service guides and price guides are general guidance only. Always follow the manufacturer’s manual and the owner or operator’s requirements, use products approved for the surface being treated, and rely on qualified personnel. Suggested prices are estimates and are not a promise of any price or profit; you set your own prices. You are solely responsible for the work your company performs and for its safety and quality.',
+      'The built-in SOPs (service guides) and price guides are general guidance only. Always follow the manufacturer’s manual and the owner or operator’s requirements, use products approved for the surface being treated, and rely on qualified personnel. Suggested prices are estimates and are not a promise of any price or profit; you set your own prices. AI photo condition reports are automated estimates that can be wrong; confirm the condition in person before quoting or starting work. FAA registry details come from public FAA data that may be out of date; confirm registration details with the owner or operator. You are solely responsible for the work your company performs and for its safety and quality.',
     ],
   },
   {
     title: 'Intellectual property',
     body: [
-      'The Service, including its software, design, service guides, price guides and other content we provide, is owned by [Legal company name] or its licensors and is protected by intellectual property laws. Subject to these Terms, we grant you a limited, non-exclusive, non-transferable right to use the Service for your internal business purposes during your subscription. If you send us feedback, we may use it without obligation to you.',
+      'The Service, including its software, design, SOPs, price guides and other content we provide, is owned by [Legal company name] or its licensors and is protected by intellectual property laws. Subject to these Terms, we grant you a limited, non-exclusive, non-transferable right to use the Service for your internal business purposes during your subscription. If you send us feedback, we may use it without obligation to you.',
     ],
   },
   {

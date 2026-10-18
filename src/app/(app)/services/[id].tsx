@@ -55,6 +55,9 @@ export default function ServiceDetail() {
     ? categoriesFor(s.asset_type).filter((c) => s.category_prices?.[c.value] != null).map((c) => ({ name: c.label, detail: c.examples, price: Number(s.category_prices[c.value]) }))
     : [];
   const tiers = s.pricing_tiers?.length ? s.pricing_tiers : classPrices;
+  const classHours = categoriesFor(s.asset_type).filter((c) => s.category_hours?.[c.value] != null && Number(s.category_hours[c.value]) > 0)
+    .map((c) => ({ name: c.label, hours: Number(s.category_hours[c.value]) }));
+  const hoursText = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : `${+h.toFixed(1)} h`);
   const lengthNoun = s.asset_type === 'aircraft' ? 'aircraft' : s.asset_type === 'vehicle' ? 'vehicle' : 'boat';
 
   return (
@@ -70,6 +73,7 @@ export default function ServiceDetail() {
             <T variant="small">{assetTypeLabel(s.asset_type)}</T>
           </Row>
           {!s.active ? <Badge label="Hidden from menu" tone="warning" raw /> : null}
+          {s.requires_cert && s.guide_key ? <Badge label="Certified technicians only" tone="purple" raw /> : null}
           {money && !s.taxable ? <Badge label="Not taxable" tone="neutral" raw /> : null}
         </Row>
         {s.description ? <T style={{ color: colors.textMuted, lineHeight: 22 }}>{s.description}</T> : null}
@@ -81,6 +85,11 @@ export default function ServiceDetail() {
           <T variant="small" style={{ marginTop: 6 }}>
             Priced by {lengthNoun} length{Number(s.base_price) ? `, minimum ${usd(s.base_price)}` : ''}.
             {s.asset_type === 'aircraft' ? ` A 50 ft light jet is ${usd(Math.max(Number(s.base_price), 50 * Number(s.price_per_foot)))}.` : ''}
+          </T>
+        ) : null}
+        {money && s.pricing_method === 'per_sqft' ? (
+          <T variant="small" style={{ marginTop: 6 }}>
+            Priced per square foot (length × {s.asset_type === 'watercraft' ? 'beam' : s.asset_type === 'vehicle' ? 'width' : 'wingspan'}){Number(s.base_price) ? `, minimum ${usd(s.base_price)}` : ''}.
           </T>
         ) : null}
         {money && s.pricing_method === 'hourly' && dur ? <T variant="small" style={{ marginTop: 6 }}>Charged by the hour; estimate {dur}.</T> : null}
@@ -106,6 +115,19 @@ export default function ServiceDetail() {
         </Section>
       ) : null}
 
+      {classHours.length ? (
+        <Section title="Time by size" icon="time-outline">
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {classHours.map((c, i) => (
+              <Row key={c.name} style={{ justifyContent: 'space-between', padding: space.md, paddingHorizontal: space.lg, borderTopWidth: i ? 1 : 0, borderTopColor: colors.border }}>
+                <T style={{ flex: 1 }}>{c.name}</T>
+                <T style={{ fontWeight: '700' }}>{hoursText(c.hours)}</T>
+              </Row>
+            ))}
+          </Card>
+        </Section>
+      ) : null}
+
       {recur ? (
         <Section title="Recurring care" icon="repeat-outline" iconColor={colors.info}>
           <Card>
@@ -122,7 +144,7 @@ export default function ServiceDetail() {
         </Section>
       ) : null}
 
-      <Section title="Step-by-step guide" icon="book-outline">
+      <Section title="SOP (standard operating procedure)" icon="book-outline">
         {guide ? (
           <Card onPress={() => router.push(`/guides/${guide.guide.key}`)}>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -133,16 +155,16 @@ export default function ServiceDetail() {
             <Row gap={space.lg} style={{ marginTop: space.md, flexWrap: 'wrap' }}>
               <Row gap={4}><Ionicons name="list-outline" size={16} color={colors.textMuted} /><T variant="muted">{guide.guide.steps.length} steps</T></Row>
               {guide.guide.crew ? <Row gap={4}><Ionicons name="people-outline" size={16} color={colors.textMuted} /><T variant="muted">{guide.guide.crew}</T></Row> : null}
-              <Row gap={4} style={{ marginLeft: 'auto' }}><T style={{ color: colors.primaryText, fontWeight: '600' }}>Open guide</T><Ionicons name="chevron-forward" size={16} color={colors.primaryText} /></Row>
+              <Row gap={4} style={{ marginLeft: 'auto' }}><T style={{ color: colors.primaryText, fontWeight: '600' }}>Open SOP</T><Ionicons name="chevron-forward" size={16} color={colors.primaryText} /></Row>
             </Row>
           </Card>
         ) : (
           <Card>
             <T variant="muted">
-              {s.guide_key ? 'The guide for this service is hidden or was removed.' : 'No guide linked to this service.'}
+              {s.guide_key ? 'The SOP for this service is hidden or was removed.' : 'No SOP linked to this service.'}
               {editor ? ' Choose one in Edit service.' : ''}
             </T>
-            <Button small kind="ghost" title="Browse guides" style={{ alignSelf: 'flex-start', marginTop: space.sm }} onPress={() => router.push('/guides')} />
+            <Button small kind="ghost" title="Browse SOPs" style={{ alignSelf: 'flex-start', marginTop: space.sm }} onPress={() => router.push('/guides')} />
           </Card>
         )}
       </Section>

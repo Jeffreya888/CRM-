@@ -32,7 +32,7 @@ export default function Pricing() {
             One price. <GradientText>Everything you need to run the job.</GradientText>
           </Heading>
           <P size="lg" center style={{ marginTop: 18, maxWidth: 640 }}>
-            Every plan includes the service guides, the aircraft price guide, the customer portal and card payments. Start with a {TRIAL_DAYS}-day free trial of every feature — no card required to start.
+            Every plan includes the SOPs, the aircraft price guide, the customer portal and card payments. Start with a {TRIAL_DAYS}-day free trial of every feature — no card required to start.
           </P>
           <PeriodToggle value={period} onChange={setPeriod} />
         </Container>
@@ -169,7 +169,11 @@ function compareRows(): { group: string; rows: RowDef[] }[] {
     {
       group: 'Included on every plan',
       rows: [
-        { label: `${GUIDE_COUNT} step-by-step service guides`, cells: all },
+        { label: `${GUIDE_COUNT} step-by-step SOPs`, cells: all },
+        { label: 'Technician certification & quality checks', cells: all },
+        { label: 'FAA tail-number autofill', cells: all },
+        { label: 'AI photo condition reports & photo quotes', cells: all },
+        { label: 'True job costing (estimate vs actual, profit by class and model)', cells: all },
         { label: `Aircraft price guide (${AIRCRAFT_MODELS} models)`, cells: all },
         { label: 'Before/after photos & condition sign-off', cells: all },
         { label: 'Good / Better / Best quotes & deposits', cells: all },

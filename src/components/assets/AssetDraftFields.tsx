@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { boatClassForLength, splitFreeText, widthLabel, type AssetDraft } from '../../lib/assets';
 import { categoriesFor } from '../../lib/pricing';
@@ -12,7 +12,12 @@ import { AssetModelPicker } from './AssetModelPicker';
  * - vehicle: make, model, year, plate, VIN, size class
  * - watercraft: catalog boat picker, vessel name, hull id, class, length, beam
  */
-export function AssetDraftFields({ draft, onChange }: { draft: AssetDraft; onChange: (d: AssetDraft) => void }) {
+export function AssetDraftFields({ draft, onChange, belowTail }: {
+  draft: AssetDraft;
+  onChange: (d: AssetDraft) => void;
+  /** Rendered right under the tail number / vessel name (e.g. the FAA card). */
+  belowTail?: ReactNode;
+}) {
   const set = (patch: Partial<AssetDraft>) => onChange({ ...draft, ...patch });
   const t = draft.asset_type;
   const [typeText, setTypeText] = useState([draft.manufacturer, draft.model].filter(Boolean).join(' '));
@@ -63,6 +68,7 @@ export function AssetDraftFields({ draft, onChange }: { draft: AssetDraft; onCha
         value={draft.tail_number}
         onChangeText={(v) => set({ tail_number: v })}
       />
+      {belowTail}
       {boats ? (
         <Row gap={space.sm}>
           <Field style={{ flex: 1 }} label="Hull ID (optional)" autoCapitalize="characters" value={draft.hull_id} onChangeText={(v) => set({ hull_id: v })} />

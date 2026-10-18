@@ -151,7 +151,7 @@ export function GuideStepSheet({ item, onClose, onToggle }: {
             <>
               {item?.step_index != null ? <T variant="overline">Step {item.step_index + 1}{g?.steps?.length ? ` of ${g.steps.length}` : ''}</T> : null}
               <T variant="h2" style={{ marginTop: 4 }}>{step?.title ?? item?.label}</T>
-              {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{step.detail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No guide is linked to this step.</T> : null}
+              {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{step.detail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No SOP is linked to this step.</T> : null}
               {step?.caution ? (
                 <Card style={{ backgroundColor: colors.warningSoft, marginTop: space.lg }}>
                   <Row style={{ alignItems: 'flex-start' }}>

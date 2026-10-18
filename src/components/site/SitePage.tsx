@@ -143,7 +143,7 @@ function Footer() {
         <View style={{ flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 32 }}>
           <View style={{ maxWidth: 380, gap: 14 }}>
             <Logo size={30} />
-            <P size="sm">{SITE_TAGLINE}. Scheduling, photo documentation, quotes, invoices, payments and profit — in one clear view.</P>
+            <P size="sm">{SITE_TAGLINE}. FAA autofill, AI condition reports, SOPs, scheduling, quotes, payments and true job costing — in one clear view.</P>
             <StoreBadges compact />
           </View>
           <View style={{ flexDirection: 'row', gap: 56, flexWrap: 'wrap' }}>

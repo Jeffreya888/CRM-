@@ -7,12 +7,15 @@
 //   { action: 'request', token, kind, aircraft_id?, service_id?, job_id?, preferred, notes? } → { ok: true }
 //   { action: 'files', token, paths }            → { urls: Record<path, signedUrl> }   (1 hour)
 //   { action: 'quote_photos', quote_token }      → { urls: string[] }   (1 hour; non-draft quotes)
+//   { action: 'upload_urls', token, count (1–6), ext } → { uploads: [{ path, url, token }] }   (signed upload URLs)
+//   { action: 'photo_quote', token, aircraft_id?, paths, notes? } → { ok: true, request_id }
 // Bad / expired / revoked sessions → HTTP 401 { error: 'Session expired' }.
 import { adminClient } from "../_shared/clients.ts";
 import type { SupabaseClient } from "../_shared/deps.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
 import type { Row } from "../_shared/automation.ts";
+import { MAX_PHOTOS, runAssessment } from "../_shared/assess.ts";
 
 const BUCKET = "org-files";
 const CODE_TTL_MS = 10 * 60e3;
@@ -63,6 +66,14 @@ Deno.serve(async (req) => {
         return s ? await files(db, s, body.paths) : sessionExpired();
       }
       case "quote_photos": return await quotePhotos(db, body.quote_token);
+      case "upload_urls": {
+        const s = await session(db, body.token);
+        return s ? await uploadUrls(db, s, body) : sessionExpired();
+      }
+      case "photo_quote": {
+        const s = await session(db, body.token);
+        return s ? await photoQuote(db, s, body) : sessionExpired();
+      }
       default: return error("Unknown action");
     }
   } catch (e) {
@@ -163,7 +174,7 @@ async function session(db: SupabaseClient, token: unknown): Promise<Session | nu
 
 async function portalData(db: SupabaseClient, s: Session) {
   const [orgR, custR, assetsR] = await Promise.all([
-    db.from("organizations").select("name, logo_url, phone, email, timezone, google_review_url, stripe_charges_enabled, payment_mode, is_demo, business_types").eq("id", s.org_id).single(),
+    db.from("organizations").select("name, logo_url, phone, email, timezone, google_review_url, stripe_charges_enabled, payment_mode, is_demo, business_types, photo_quotes_enabled").eq("id", s.org_id).single(),
     db.from("customers").select("id, name, email, phone, company").eq("id", s.customer_id).single(),
     db.from("aircraft").select("id, tail_number, asset_type, manufacturer, model, category").eq("customer_id", s.customer_id).eq("org_id", s.org_id).eq("active", true).order("tail_number"),
   ]);
@@ -191,6 +202,7 @@ async function portalData(db: SupabaseClient, s: Session) {
       name: o.name, logo_url: o.logo_url ?? null, phone: o.phone ?? null, email: o.email ?? null, timezone: o.timezone,
       google_review_url: o.google_review_url ?? null,
       accepts_cards: !!(o.stripe_charges_enabled && o.payment_mode === "stripe" && !o.is_demo),
+      photo_quotes_enabled: o.photo_quotes_enabled !== false,
     },
     customer: custR.data,
     assets: (assetsR.data ?? []).map((a) => ({
@@ -304,4 +316,89 @@ async function quotePhotos(db: SupabaseClient, token: unknown) {
   const { data, error: e } = await db.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_S);
   if (e) throw e;
   return json({ urls: (data ?? []).map((r) => r.signedUrl).filter(Boolean) });
+}
+
+// ---------------------------------------------------------------------------
+// Quote from photos (docs/competitive-edge.md §2)
+// ---------------------------------------------------------------------------
+const PHOTO_QUOTES_PER_DAY = 3;
+const PHOTO_EXT: Record<string, string> = { jpg: "jpg", jpeg: "jpg", png: "png", webp: "webp" };
+const portalFolder = (s: Session) => `${s.org_id}/portal/${s.customer_id}/`;
+
+/** Null when photo quotes are allowed for this customer right now, else the error response. */
+async function photoQuoteBlocked(db: SupabaseClient, s: Session): Promise<Response | null> {
+  const { data: org } = await db.from("organizations").select("photo_quotes_enabled").eq("id", s.org_id).maybeSingle();
+  if (org?.photo_quotes_enabled === false) return error("Quotes from photos aren't available. Please send a service request instead.", 403);
+  const { count } = await db.from("booking_requests").select("id", { count: "exact", head: true })
+    .eq("org_id", s.org_id).eq("customer_id", s.customer_id).eq("kind", "photo_quote")
+    .gte("created_at", new Date(Date.now() - 864e5).toISOString());
+  if ((count ?? 0) >= PHOTO_QUOTES_PER_DAY) return error("You've sent several photo quote requests today. We'll reply to those first.", 429);
+  return null;
+}
+
+async function uploadUrls(db: SupabaseClient, s: Session, body: Row) {
+  const raw = String(body.ext ?? "").toLowerCase().replace(/^\./, "");
+  if (raw === "heic" || raw === "heif") return error("That photo format (HEIC) isn't supported. Please choose JPG or PNG photos.");
+  const ext = PHOTO_EXT[raw];
+  if (!ext) return error("Please use JPG or PNG photos.");
+  const count = Number(body.count);
+  if (!Number.isInteger(count) || count < 1 || count > MAX_PHOTOS) return error(`Add 1 to ${MAX_PHOTOS} photos`);
+  const blocked = await photoQuoteBlocked(db, s);
+  if (blocked) return blocked;
+
+  const uploads: { path: string; url: string; token: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const path = `${portalFolder(s)}${crypto.randomUUID()}.${ext}`;
+    const { data, error: e } = await db.storage.from(BUCKET).createSignedUploadUrl(path);
+    if (e || !data) throw e ?? new Error("createSignedUploadUrl failed");
+    uploads.push({ path: data.path ?? path, url: data.signedUrl, token: data.token });
+  }
+  return json({ uploads });
+}
+
+async function photoQuote(db: SupabaseClient, s: Session, body: Row) {
+  const folder = portalFolder(s);
+  const list = Array.isArray(body.paths) ? [...new Set(body.paths)] : [];
+  if (list.length < 1 || list.length > MAX_PHOTOS) return error(`Add 1 to ${MAX_PHOTOS} photos`);
+  const fileRe = /^[0-9a-f-]{36}\.(jpg|png|webp)$/i;
+  for (const p of list) {
+    if (typeof p !== "string" || !p.startsWith(folder) || p.includes("..") || !fileRe.test(p.slice(folder.length))) {
+      return error("One of the photos didn't upload. Please add it again.");
+    }
+  }
+  const paths = list as string[];
+  const notes = body.notes == null ? null : String(body.notes).trim().slice(0, 1000) || null;
+  const aircraftId = typeof body.aircraft_id === "string" && body.aircraft_id ? body.aircraft_id : null;
+  if (aircraftId) {
+    const { data } = await db.from("aircraft").select("id").eq("id", aircraftId).eq("org_id", s.org_id).eq("customer_id", s.customer_id).maybeSingle();
+    if (!data) return error("That aircraft isn't on your account");
+  }
+  const blocked = await photoQuoteBlocked(db, s);
+  if (blocked) return blocked;
+
+  // Managers are notified by the booking_requests insert trigger, same as the 'request' action.
+  const { data: reqRow, error: e } = await db.from("booking_requests").insert({
+    org_id: s.org_id, customer_id: s.customer_id, aircraft_id: aircraftId, kind: "photo_quote", preferred: [], notes, photo_paths: paths,
+  }).select("id").single();
+  if (e || !reqRow) throw e ?? new Error("booking_requests insert failed");
+
+  // Best effort: the request stands even if the AI check fails.
+  const assess = (async () => {
+    try {
+      const row = await runAssessment(db, {
+        orgId: s.org_id, paths, aircraftId, customerId: s.customer_id, bookingRequestId: reqRow.id, source: "portal",
+      });
+      if (row?.id) {
+        const { error: uErr } = await db.from("booking_requests").update({ assessment_id: row.id }).eq("id", reqRow.id);
+        if (uErr) console.error("booking_requests.assessment_id update failed", uErr);
+      }
+    } catch (err) {
+      console.error("portal photo assessment failed", err);
+    }
+  })();
+  // Answer the customer right away and finish the check in the background when the runtime allows it.
+  const runtime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  if (runtime?.waitUntil) runtime.waitUntil(assess);
+  else await assess;
+  return json({ ok: true, request_id: reqRow.id });
 }

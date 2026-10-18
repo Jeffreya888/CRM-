@@ -1,4 +1,4 @@
-// Step-by-step service guides: platform defaults (org_id null) plus company copies.
+// SOPs (step-by-step service guides, "service_guides"): platform defaults (org_id null) plus company copies.
 // A company sees, for each guide key, its own copy first, else the platform default
 // unless it hid that default (public.hidden_guides). Mirrors public.guide_for().
 import { supabase } from './supabase';
@@ -27,10 +27,38 @@ const isUuid = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
 
 export function normalizeSteps(steps: unknown): GuideStep[] {
   if (!Array.isArray(steps)) return [];
-  return steps.map((s: any) => (typeof s === 'string'
-    ? { title: s, detail: '', caution: null }
-    : { title: String(s?.title ?? ''), detail: String(s?.detail ?? ''), caution: s?.caution ? String(s.caution) : null }));
+  return steps.map((s: any): GuideStep => {
+    if (typeof s === 'string') return { title: s, detail: '', caution: null };
+    const out: GuideStep = { title: String(s?.title ?? ''), detail: String(s?.detail ?? ''), caution: s?.caution ? String(s.caution) : null };
+    const m = Number(s?.minutes);
+    if (Number.isFinite(m) && m > 0) out.minutes = Math.round(m);
+    if (Array.isArray(s?.products)) {
+      const ps = s.products.map((x: unknown) => String(x ?? '').trim()).filter(Boolean);
+      if (ps.length) out.products = ps;
+    }
+    return out;
+  });
 }
+
+/** Total of the per-step minutes (0 when no step has a time). */
+export const stepMinutesTotal = (steps: GuideStep[]) => steps.reduce((t, s) => t + (Number(s.minutes) || 0), 0);
+
+/** "45m", "2h 45m", "3h". */
+export function minutesLabel(min: number): string {
+  const m = Math.max(0, Math.round(min));
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  if (!h) return `${r}m`;
+  return r ? `${h}h ${r}m` : `${h}h`;
+}
+
+export type SkillLevel = 'training' | 'certified' | 'trainer';
+export const SKILL_LEVELS: { value: SkillLevel; label: string }[] = [
+  { value: 'training', label: 'In training' },
+  { value: 'certified', label: 'Certified' },
+  { value: 'trainer', label: 'Trainer' },
+];
+export const skillLabel = (l: string | null | undefined) => SKILL_LEVELS.find((x) => x.value === l)?.label ?? 'Not certified';
 
 function clean(g: ServiceGuide): ServiceGuide {
   return {

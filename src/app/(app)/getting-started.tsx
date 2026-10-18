@@ -55,7 +55,7 @@ export default function GettingStarted() {
       <Card onPress={() => router.push('/training')}>
         <Row gap={space.md}>
           <Ionicons name="school-outline" size={22} color={colors.primaryText} />
-          <T style={{ flex: 1 }}>Train your crew with step-by-step service guides in the Training center.</T>
+          <T style={{ flex: 1 }}>Train your crew with step-by-step SOPs (standard operating procedures) in the Training center.</T>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Row>
       </Card>

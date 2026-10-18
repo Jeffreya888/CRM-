@@ -2,6 +2,7 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { confirmAction, notify } from '../../../components/FormSheet';
+import { MemberSops } from '../../../components/guides/MemberSops';
 import { ActivityFeed } from '../../../components/team/ActivityFeed';
 import { Certifications } from '../../../components/team/Certifications';
 import { INVITE_ROLES, MEMBER_COLORS, PAY_TYPES, roleLabel, SKILLS } from '../../../components/team/constants';
@@ -22,7 +23,7 @@ type Pending = { kind: 'role'; role: Role } | { kind: 'deactivate' } | null;
 
 export default function MemberProfile() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
-  const { orgId, role, session, can, refresh } = useOrg();
+  const { orgId, role, session, can, refresh, businessTypes } = useOrg();
   const admin = canAdmin(role);
   const owner = isOwner(role);
   const self = session?.user.id === userId;
@@ -118,6 +119,12 @@ export default function MemberProfile() {
       <Section title="Skills" icon="sparkles-outline">
         <SkillsEditor skills={m.skills ?? []} editable={editable} onSave={(skills) => updateMembership({ skills })} />
       </Section>
+
+      {m.role !== 'viewer' ? (
+        <Section title="Certified for" icon="book-outline" iconColor={colors.success}>
+          <MemberSops orgId={orgId} userId={userId} manager={isManager(role)} businessTypes={businessTypes} />
+        </Section>
+      ) : null}
 
       <Section title="Certifications" icon="ribbon-outline">
         <Certifications orgId={orgId} userId={userId} canEdit={isManager(role)} />

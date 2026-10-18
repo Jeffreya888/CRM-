@@ -4,22 +4,26 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
 import { Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AssessPhotosSheet } from '../../../components/ai/AssessPhotosSheet';
+import { EstimateVsActual } from '../../../components/costing/EstimateVsActual';
 import { confirmAction, FormSheet, notify } from '../../../components/FormSheet';
 import { ConditionCard, chooseSource, DamageSheet, GuideStepSheet, PhotoStrip, PhotoViewer, ProfitCard, type JobPhoto } from '../../../components/jobs/JobCards';
+import { QC_BLOCK_MESSAGE, QualityCheck, qcBlocksCompletion } from '../../../components/jobs/QualityCheck';
 import { ScheduleSheet } from '../../../components/jobs/ScheduleEditor';
+import { StepTimeLine, StepTimesSummary, stepItems, stepTimings } from '../../../components/jobs/StepTimes';
 import { SignaturePad } from '../../../components/SignaturePad';
 import { Avatar, Badge, Button, Card, Divider, ErrorBanner, Field, IconButton, IconTile, Ionicons, KeyValue, Loading, Row, Section, Stepper, T, ToggleRow } from '../../../components/ui';
 import { ask, confirmTentative } from '../../../lib/conflicts';
 import { sharePdf } from '../../../lib/documents';
 import { signedUrls } from '../../../lib/files';
 import { dateTime, duration, initials, money, relative } from '../../../lib/format';
-import { directionsUrl, errorCode, JOB_STATUS_LABEL, MAX_JOB_PHOTOS, pickJobPhoto, serviceReportHtml, statusTone, uploadJobPhoto } from '../../../lib/jobs';
+import { directionsUrl, errorCode, fetchGuide, JOB_STATUS_LABEL, MAX_JOB_PHOTOS, pickJobPhoto, serviceReportHtml, statusTone, uploadJobPhoto } from '../../../lib/jobs';
 import { canAdmin, canEdit, isManager } from '../../../lib/plans';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
 import { callFunction, friendlyError, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
-import type { PhotoKind } from '../../../lib/types';
+import type { PhotoKind, ServiceGuide } from '../../../lib/types';
 import { useQuery } from '../../../lib/useQuery';
 
 const minutesBetween = (a: string, b: string | null, now: number) => ((b ? new Date(b).getTime() : now) - new Date(a).getTime()) / 60000;
@@ -48,6 +52,7 @@ export default function JobDetail() {
   const [scheduleSheet, setScheduleSheet] = useState<null | { confirm: boolean }>(null);
   const [stepItem, setStepItem] = useState<any>(null);
   const [uploading, setUploading] = useState<PhotoKind | null>(null);
+  const [assessOpen, setAssessOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   const q = useQuery(async () => {
@@ -65,6 +70,10 @@ export default function JobDetail() {
     if (j.error) throw j.error;
     const job = j.data as any;
     const serviceIds = [...new Set(((items.data ?? []) as any[]).map((i) => i.service_id).filter(Boolean))] as string[];
+    // SOPs behind the checklist steps, for per-step time estimates.
+    const guideKeys = [...new Set(((checklist.data ?? []) as any[]).map((c) => c.guide_key).filter(Boolean))] as string[];
+    const guideList = await Promise.all(guideKeys.map((k) => fetchGuide(orgId, k).catch(() => null)));
+    const guides: Record<string, ServiceGuide | null> = Object.fromEntries(guideKeys.map((k, i) => [k, guideList[i] ?? null]));
     const [members, secret, invoice, expenses, inventory, followUp, menu] = await Promise.all([
       supabase.from('memberships').select('user_id, display_name, color').eq('org_id', orgId),
       manager && job.location_id ? supabase.from('location_secrets').select('gate_code, notes').eq('location_id', job.location_id).maybeSingle() : Promise.resolve({ data: null }),
@@ -81,7 +90,7 @@ export default function JobDetail() {
       time: (time.data ?? []) as any[], crew: (crew.data ?? []) as { user_id: string; is_primary: boolean; confirmed: boolean }[],
       members: (members.data ?? []) as any[], supplies: (supplies.data ?? []) as any[], activity: (activity.data ?? []) as any[],
       holds: (holds.data ?? []) as any[], secret: secret.data as any, invoice: invoice.data as any, expenses: (expenses.data ?? []) as any[],
-      inventory: (inventory.data ?? []) as any[], followUp: followUp.data as any,
+      inventory: (inventory.data ?? []) as any[], followUp: followUp.data as any, guides,
       categories: [...new Set(((menu.data ?? []) as any[]).map((m) => m.category).filter(Boolean))] as string[],
     };
   }, [id, showMoney, manager]);
@@ -95,7 +104,13 @@ export default function JobDetail() {
       </View>
     );
   }
-  const { j, items, checklist, photos, time, crew, members, supplies, activity, holds, secret, invoice, expenses, inventory, followUp, categories } = q.data;
+  const { j, items, checklist: allChecklist, photos, time, crew, members, supplies, activity, holds, secret, invoice, expenses, inventory, followUp, categories, guides } = q.data;
+  // Quality-check items live in the same table (kind = 'qc') but have their own section.
+  const checklist = stepItems(allChecklist);
+  const qcItems = allChecklist.filter((c) => c.kind === 'qc');
+  const timings = stepTimings(checklist, guides, j.actual_start);
+  const requireQc = !!org?.require_qc;
+  const qcBlocked = qcBlocksCompletion(requireQc, j.qc_status);
   const name = (u: string) => members.find((m) => m.user_id === u)?.display_name ?? 'Team member';
   const color = (u: string) => members.find((m) => m.user_id === u)?.color ?? colors.primary;
   const info = assetTypeInfo(j.aircraft?.asset_type ?? 'aircraft');
@@ -144,6 +159,7 @@ export default function JobDetail() {
       const code = errorCode(error.message);
       if (code === 'BEFORE_PHOTOS_REQUIRED') return needPhotos('before');
       if (code === 'AFTER_PHOTOS_REQUIRED') return needPhotos('after');
+      if (code === 'QC_REQUIRED') { notify('Quality check needed', QC_BLOCK_MESSAGE); q.reload(); return; }
       notify('Could not update the job', friendlyError(error.message));
       return;
     }
@@ -168,6 +184,7 @@ export default function JobDetail() {
   const done = checklist.filter((c) => c.done).length;
   const complete = () => {
     if (!after.length) return needPhotos('after');
+    if (qcBlocked) return notify('Quality check needed', `${QC_BLOCK_MESSAGE}${j.qc_status === 'pending' ? ' It has been sent and is waiting for a manager.' : ' Tap “Ready for quality check” below.'}`);
     if (done < checklist.length) confirmAction('Checklist incomplete', `${checklist.length - done} step(s) aren't checked. Complete anyway?`, () => setStatus('completed'));
     else setStatus('completed');
   };
@@ -239,7 +256,7 @@ export default function JobDetail() {
   const footer = !editable ? null
     : j.status === 'tentative' ? (manager ? <Button icon="checkmark-circle-outline" title="Confirm job" onPress={confirmJob} /> : null)
     : j.status === 'scheduled' || j.status === 'on_hold' ? <Button icon="play" title={j.status === 'on_hold' ? 'Resume job' : before.length ? 'Start job' : 'Add before photos to start'} kind={before.length ? 'primary' : 'secondary'} onPress={start} />
-    : j.status === 'in_progress' ? <Button icon="checkmark-circle-outline" title={after.length ? 'Complete job' : 'Add after photos to complete'} kind={after.length ? 'primary' : 'secondary'} onPress={complete} />
+    : j.status === 'in_progress' ? <Button icon={qcBlocked && after.length ? 'shield-checkmark-outline' : 'checkmark-circle-outline'} title={!after.length ? 'Add after photos to complete' : qcBlocked ? 'Complete job (quality check first)' : 'Complete job'} kind={after.length && !qcBlocked ? 'primary' : 'secondary'} onPress={complete} />
     : j.status === 'completed' && showMoney && !invoice && !j.covered_by_plan ? <Button icon="receipt-outline" title="Create invoice" onPress={invoiceIt} />
     : invoice ? <Button kind="secondary" icon="receipt-outline" title={`View invoice ${invoice.number}`} onPress={() => router.push(`/invoices/${invoice.id}`)} />
     : null;
@@ -377,6 +394,7 @@ export default function JobDetail() {
             {j.status === 'in_progress' ? <Button small kind="secondary" icon="pause" title="Put on hold" onPress={() => setStatus('on_hold')} /> : null}
             {['completed', 'invoiced'].includes(j.status) ? <Button small kind="secondary" icon="document-outline" title="Service report PDF" onPress={report} /> : null}
             {manager ? <Button small kind="secondary" icon="create-outline" title="Edit job" onPress={() => router.push({ pathname: '/jobs/edit', params: { id } })} /> : null}
+            {(manager || mine) && j.status !== 'cancelled' ? <Button small kind="secondary" icon="sparkles-outline" title="Check condition" onPress={() => setAssessOpen(true)} /> : null}
           </Row>
         ) : null}
 
@@ -506,6 +524,7 @@ export default function JobDetail() {
                 <View style={{ height: 4, width: `${(done / checklist.length) * 100}%`, backgroundColor: colors.success }} />
               </View>
             ) : null}
+            <StepTimesSummary items={checklist} timings={timings} />
             {checklist.map((c) => (
               <View key={c.id} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, borderBottomWidth: 1, borderBottomColor: colors.border }}>
                 <Pressable disabled={!editable} onPress={toggleStep(c)} hitSlop={8} accessibilityLabel={c.done ? 'Mark not done' : 'Mark done'}>
@@ -514,11 +533,12 @@ export default function JobDetail() {
                 <Pressable style={{ flex: 1 }} onPress={c.guide_key ? () => setStepItem(c) : editable ? toggleStep(c) : undefined}>
                   <T style={c.done ? { textDecorationLine: 'line-through', color: colors.textMuted } : undefined}>{c.label}</T>
                   {c.done && c.done_by ? <T variant="small">{name(c.done_by)} · {relative(c.done_at)}</T> : null}
+                  <StepTimeLine t={timings[c.id]} />
                 </Pressable>
                 {c.guide_key ? <IconButton icon="book-outline" color={colors.primaryText} label="How to do this step" onPress={() => setStepItem(c)} /> : null}
               </View>
             ))}
-            {!checklist.length ? <T variant="muted" style={{ padding: space.lg }}>No checklist steps. Steps come from each service&apos;s guide.</T> : null}
+            {!checklist.length ? <T variant="muted" style={{ padding: space.lg }}>No checklist steps. Steps come from each service&apos;s SOP.</T> : null}
             {editable ? (
               <Row style={{ padding: space.sm }}>
                 <Field style={{ flex: 1, marginBottom: 0 }} placeholder="Add a step" value={newStep} onChangeText={setNewStep} />
@@ -532,6 +552,9 @@ export default function JobDetail() {
             ) : null}
           </Card>
         </Section>
+
+        <QualityCheck job={j} items={qcItems} requireQc={requireQc} manager={manager} name={name} uid={uid} onChanged={q.reload}
+          canCheck={editable && OPEN(j.status) && (manager || !!mine)} canSubmit={editable && (manager || !!mine)} />
 
         {can('inventory') ? (
           <Section title="Supplies used" icon="flask-outline" action={editable ? <Button small kind="ghost" icon="add" title="Log" onPress={() => setSupplySheet(true)} /> : null}>
@@ -561,6 +584,7 @@ export default function JobDetail() {
             <ProfitCard jobId={id} currency={org.currency} refreshKey={q.data} />
           </Section>
         ) : null}
+        <EstimateVsActual jobId={id} />
 
         <Section title="Customer sign-off" icon="create-outline">
           <Card>
@@ -602,6 +626,8 @@ export default function JobDetail() {
 
       <DamageSheet visible={damageSheet} onClose={() => setDamageSheet(false)} onSave={async (desc, photo) => { await addPhoto('damage', desc, photo); }} />
 
+      <AssessPhotosSheet visible={assessOpen} onClose={() => { setAssessOpen(false); q.reload(); }} jobId={id} aircraftId={j.aircraft_id} customerId={j.customer_id} />
+
       <GuideStepSheet item={stepItem} onClose={() => setStepItem(null)} onToggle={editable && stepItem ? toggleStep(stepItem) : undefined} />
 
       <ScheduleSheet visible={!!scheduleSheet} jobId={id} confirm={!!scheduleSheet?.confirm} categories={categories}
@@ -621,12 +647,12 @@ export default function JobDetail() {
       <FormSheet visible={supplySheet} title="Log supplies used" onClose={() => setSupplySheet(false)}
         fields={[
           { key: 'item_id', label: 'Product', type: 'select', options: inventory.map((i) => ({ value: i.id, label: i.name, hint: `${Number(i.quantity)} ${i.unit} on hand` })), required: true },
-          { key: 'qty', label: 'Units used (whole numbers)', type: 'number', required: true, placeholder: '1' },
+          { key: 'qty', label: 'Amount used', type: 'number', required: true, placeholder: '1', hint: 'Decimals are fine, e.g. 0.25 (in the product\'s unit).' },
         ]}
         initial={{ qty: '1' }}
         onSubmit={async (v) => {
-          const n = Number(v.qty);
-          if (!Number.isInteger(n) || n < 1) throw new Error('Enter a whole number of units (1, 2, 3…).');
+          const n = Math.round(Number(String(v.qty).replace(',', '.')) * 1000) / 1000;
+          if (!Number.isFinite(n) || n <= 0) throw new Error('Enter how much you used, e.g. 1 or 0.25.');
           const { error } = await supabase.from('inventory_movements').insert({ org_id: orgId, item_id: v.item_id, delta: -n, reason: 'job_use', job_id: id, created_by: uid });
           if (error) throw error;
           q.reload();

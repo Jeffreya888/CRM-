@@ -1,13 +1,16 @@
 import { format } from 'date-fns';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AssessmentCard } from '../../components/ai/AssessmentCard';
 import { DateTimeField } from '../../components/DateTimeField';
 import { notify } from '../../components/FormSheet';
 import { ConflictList, useSaveRules } from '../../components/jobs/ScheduleEditor';
 import { Avatar, Badge, Button, Card, EmptyState, ErrorBanner, Loading, Row, Screen, Segmented, T } from '../../components/ui';
 import { ask, fetchConflicts, EMPTY_SCHEDULE, localScheduleProblems } from '../../lib/conflicts';
+import { quoteFromAssessment } from '../../lib/assess';
+import { signedUrls } from '../../lib/files';
 import { dateTime, initials, relative } from '../../lib/format';
 import { skillScore } from '../../lib/jobs';
 import { useLookups } from '../../lib/lookups';
@@ -15,7 +18,7 @@ import { isManager } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, radius, space } from '../../lib/theme';
-import type { BookingRequest, Conflict } from '../../lib/types';
+import type { BookingRequest, ConditionAssessment, Conflict } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 
 type Req = BookingRequest & {
@@ -26,14 +29,15 @@ type Req = BookingRequest & {
   quote: { number: string } | null;
 };
 
-const KIND_LABEL: Record<string, string> = { booking: 'New booking', reschedule: 'Reschedule', quote_dates: 'Accepted quote — dates' };
+const KIND_LABEL: Record<string, string> = { booking: 'New booking', reschedule: 'Reschedule', quote_dates: 'Accepted quote — dates', photo_quote: 'Quote from photos' };
 
 /** Customer booking / reschedule / quote-date requests waiting for approval. */
 export default function Requests() {
-  const { orgId, role } = useOrg();
+  const { org, orgId, role, perm, branchId } = useOrg();
   const lk = useLookups();
   const [tab, setTab] = useState<'pending' | 'handled'>('pending');
   const [approving, setApproving] = useState<Req | null>(null);
+  const [viewer, setViewer] = useState<string | null>(null);
 
   const q = useQuery(async () => {
     const { data, error } = await supabase.from('booking_requests')
@@ -43,7 +47,17 @@ export default function Requests() {
     const rows = (data ?? []) as unknown as Req[];
     const sids = [...new Set(rows.map((r) => r.service_id).filter(Boolean))] as string[];
     const menu = sids.length ? await supabase.from('service_menu').select('id, name, category, est_hours').in('id', sids) : { data: [] };
-    return { rows, services: (menu.data ?? []) as { id: string; name: string; category: string; est_hours: number | null }[] };
+    // Quote-from-photos requests: photo links and the AI condition report.
+    const photoRows = rows.filter((r) => r.kind === 'photo_quote');
+    const aids = photoRows.map((r) => r.assessment_id).filter(Boolean) as string[];
+    const [urls, assessments] = await Promise.all([
+      signedUrls([...new Set(photoRows.flatMap((r) => r.photo_paths ?? []))]).catch(() => ({} as Record<string, string>)),
+      aids.length ? supabase.from('condition_assessments').select('*').in('id', aids).then((r) => (r.data ?? []) as ConditionAssessment[]) : Promise.resolve([] as ConditionAssessment[]),
+    ]);
+    return {
+      rows, services: (menu.data ?? []) as { id: string; name: string; category: string; est_hours: number | null }[],
+      urls, assessments: Object.fromEntries(assessments.map((a) => [a.id, a])) as Record<string, ConditionAssessment>,
+    };
   }, [orgId]);
 
   if (!isManager(role)) {
@@ -60,6 +74,22 @@ export default function Requests() {
     if (!ok) return;
     const { error } = await supabase.rpc('decline_booking_request', { p_request: r.id });
     if (error) notify('Could not decline', friendlyError(error.message)); else q.reload();
+  };
+
+  const createQuote = async (r: Req) => {
+    try {
+      const a = r.assessment_id ? q.data?.assessments[r.assessment_id] ?? null : null;
+      const aircraft = r.aircraft_id ? lk.aircraft.find((x) => x.id === r.aircraft_id) ?? null : null;
+      const quoteId = await quoteFromAssessment({
+        org, assessment: a?.status === 'done' ? a : null, customerId: r.customer_id, aircraft, services: lk.services, branchId,
+      });
+      const { error } = await supabase.rpc('link_request_quote', { p_request: r.id, p_quote: quoteId });
+      if (error) console.warn('link_request_quote failed', error.message);
+      q.reload();
+      router.push({ pathname: '/quotes/edit', params: { id: quoteId } });
+    } catch (e: any) {
+      notify('Could not create the quote', friendlyError(e.message));
+    }
   };
 
   const list = tab === 'pending' ? pending : handled;
@@ -89,7 +119,9 @@ export default function Requests() {
             {s ? <T style={{ marginTop: space.sm }}>Service: {s.name}</T> : null}
             {r.quote ? <T variant="small">From quote {r.quote.number}</T> : null}
             {r.job ? <T variant="small">Job {r.job.number}{r.job.scheduled_start ? ` · now ${dateTime(r.job.scheduled_start)}` : ''}</T> : null}
-            {r.preferred?.length ? (
+            {r.kind === 'photo_quote' ? (
+              <PhotoQuoteDetails r={r} urls={q.data?.urls ?? {}} assessment={r.assessment_id ? q.data?.assessments[r.assessment_id] ?? null : null} onOpen={setViewer} />
+            ) : r.preferred?.length ? (
               <View style={{ marginTop: space.sm }}>
                 <T variant="small" style={{ fontWeight: '600' }}>Preferred times</T>
                 {r.preferred.map((p, i) => <T key={i} variant="muted">{i + 1}. {format(new Date(p), 'EEE, MMM d · h:mm a')}</T>)}
@@ -97,11 +129,18 @@ export default function Requests() {
             ) : <T variant="small" style={{ marginTop: space.sm }}>No preferred times given.</T>}
             {r.notes ? <T style={{ marginTop: space.sm, fontStyle: 'italic' }}>“{r.notes}”</T> : null}
             <T variant="small" style={{ marginTop: 6 }}>Received {relative(r.created_at)}</T>
-            {r.status === 'pending' ? (
+            {r.status === 'pending' && r.kind === 'photo_quote' ? (
+              <Row style={{ marginTop: space.md }}>
+                <Button small kind="ghost" title="Decline" onPress={() => decline(r)} />
+                {perm('see_prices') ? <Button small icon="document-text-outline" title="Create quote" onPress={() => createQuote(r)} style={{ flex: 1 }} /> : null}
+              </Row>
+            ) : r.status === 'pending' ? (
               <Row style={{ marginTop: space.md }}>
                 <Button small kind="ghost" title="Decline" onPress={() => decline(r)} />
                 <Button small icon="checkmark" title="Approve" onPress={() => setApproving(r)} style={{ flex: 1 }} />
               </Row>
+            ) : r.quote_id && r.kind === 'photo_quote' && perm('see_prices') ? (
+              <Button small kind="secondary" icon="document-text-outline" title="Open quote" style={{ marginTop: space.md, alignSelf: 'flex-start' }} onPress={() => router.push(`/quotes/${r.quote_id}`)} />
             ) : r.result_job_id ? (
               <Button small kind="secondary" icon="briefcase-outline" title="Open job" style={{ marginTop: space.md, alignSelf: 'flex-start' }} onPress={() => router.push(`/jobs/${r.result_job_id}`)} />
             ) : null}
@@ -111,7 +150,45 @@ export default function Requests() {
       <ApproveSheet req={approving} est={approving ? svc(approving.service_id)?.est_hours ?? null : null}
         category={approving ? svc(approving.service_id)?.category ?? null : null}
         members={lk.members} onClose={() => setApproving(null)} onDone={(jobId) => { setApproving(null); q.reload(); router.push(`/jobs/${jobId}`); }} />
+      <Modal visible={!!viewer} animationType="fade" onRequestClose={() => setViewer(null)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }}>
+          <Row style={{ justifyContent: 'flex-end', padding: space.md }}>
+            <Button small kind="secondary" title="Close" onPress={() => setViewer(null)} />
+          </Row>
+          {viewer ? <Image source={{ uri: viewer }} style={{ flex: 1 }} resizeMode="contain" /> : null}
+        </SafeAreaView>
+      </Modal>
     </Screen>
+  );
+}
+
+function PhotoQuoteDetails({ r, urls, assessment, onOpen }: {
+  r: Req; urls: Record<string, string>; assessment: ConditionAssessment | null; onOpen: (url: string) => void;
+}) {
+  const paths = r.photo_paths ?? [];
+  return (
+    <View style={{ marginTop: space.sm }}>
+      {paths.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: space.sm, marginBottom: space.sm }}>
+          {paths.map((p) => {
+            const u = urls[p];
+            return (
+              <Pressable key={p} disabled={!u} onPress={() => u && onOpen(u)} accessibilityRole="imagebutton" accessibilityLabel="Open photo">
+                {u ? <Image source={{ uri: u }} style={{ width: 104, height: 84, borderRadius: radius.md }} resizeMode="cover" />
+                  : <View style={{ width: 104, height: 84, borderRadius: radius.md, backgroundColor: colors.cardRaised }} />}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+      {assessment ? (
+        <View style={{ padding: space.md, borderRadius: radius.md, backgroundColor: colors.bgDeep }}>
+          <AssessmentCard assessment={assessment} bare />
+        </View>
+      ) : (
+        <T variant="small">{r.assessment_id ? 'Condition report not available.' : 'The condition report is on its way. Pull down to refresh.'}</T>
+      )}
+    </View>
   );
 }
 

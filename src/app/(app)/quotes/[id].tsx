@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { copyLink, emailDocument, exportPdf, shareLink } from '../../../components/DocumentActions';
 import { confirmAction, FormSheet, notify } from '../../../components/FormSheet';
+import { QuoteMarginBanner } from '../../../components/costing/QuoteMarginBanner';
 import { QuotePhotos } from '../../../components/quotes/QuotePhotos';
 import { countdown, deadlineOf, declineLabel, DECLINE_REASONS, effectiveStatus, viewedLabel } from '../../../components/quotes/quoteUtils';
 import { quoteTone } from '../../../components/status';
@@ -12,6 +13,7 @@ import { Badge, Button, Card, Divider, EmptyState, ErrorBanner, IconButton, Ioni
 import { safeSignatureSvg } from '../../../lib/documents';
 import { date, dateTime, money } from '../../../lib/format';
 import { isManager } from '../../../lib/plans';
+import { conditionLabel } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
 import { colors, radius, space } from '../../../lib/theme';
@@ -149,12 +151,15 @@ export default function QuoteDetail() {
         <KeyValue label="Customer" value={d.customer?.name} onPress={d.customer ? () => router.push(`/customers/${d.customer!.id}`) : undefined} />
         <KeyValue label="Asset" value={d.aircraft ? [d.aircraft.tail_number, d.aircraft.manufacturer, d.aircraft.model].filter(Boolean).join(' ') : null}
           onPress={d.aircraft ? () => router.push(`/aircraft/${d.aircraft!.id}`) : undefined} />
+        {d.condition_level ? <KeyValue label="Condition" value={`${conditionLabel(d.condition_level)}${Number(d.condition_pct) ? ` · +${Number(d.condition_pct)}% on service prices` : ''}`} /> : null}
         <KeyValue label="Facility" value={d.location ? [d.location.airport_code, d.location.name].filter(Boolean).join(' · ') : null} />
         <KeyValue label="Location" value={d.branch?.name} />
         <KeyValue label="Quote date" value={date(d.issue_date)} />
         <KeyValue label="Approve by" value={deadline ? `${dateTime(deadline)}${openStatus ? ` · ${countdown(deadline)}` : ''}` : null} />
         {job ? <KeyValue label="Job" value={`${job.number} · ${job.status.replace('_', ' ')}`} onPress={() => router.push(`/jobs/${job.id}`)} /> : null}
       </Card>
+
+      <QuoteMarginBanner quoteId={id} selectedOptionId={d.selected_option_id} refreshKey={`${d.total}-${d.selected_option_id ?? ''}`} />
 
       <Row style={{ flexWrap: 'wrap', marginBottom: space.sm }}>
         {!superseded && d.status !== 'accepted' && d.status !== 'declined' ? (

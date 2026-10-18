@@ -11,7 +11,7 @@ import {
 import { APP_NAME } from '../../lib/config';
 import { PLANS } from '../../lib/plans';
 import {
-  AIRCRAFT_MODELS, BOAT_MODELS, BUSINESS_TYPES, DEMO_HREF, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, SECURITY, SIGN_UP_HREF, TRIAL_DAYS, WORKFLOW,
+  AIRCRAFT_MODELS, BOAT_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, SECURITY, SIGN_UP_HREF, TRIAL_DAYS, WORKFLOW,
 } from '../../lib/site';
 
 export default function Welcome() {
@@ -19,11 +19,12 @@ export default function Welcome() {
   return (
     <SitePage
       title={APP_NAME}
-      description={`${APP_NAME} is the all-in-one CRM for aircraft, auto and marine detailers: scheduling, before/after photos, Good/Better/Best quotes, invoices, card payments, service guides and a ${AIRCRAFT_MODELS}-model aircraft price guide. Start a ${TRIAL_DAYS}-day free trial.`}
+      description={`${APP_NAME} is the operating system for professional detailing — aviation, marine and automotive: FAA tail-number autofill, AI photo condition reports, SOPs with technician certification and quality checks, true job costing, scheduling, quotes, invoices and card payments. Start a ${TRIAL_DAYS}-day free trial.`}
       initialSection={typeof section === 'string' ? section : undefined}
     >
       <Hero />
       <ProofBand />
+      <Edge />
       <Workflow />
       <Included />
       <Features />
@@ -44,14 +45,14 @@ function Hero() {
       <Container style={{ paddingTop: isMobile ? 40 : 84, paddingBottom: isMobile ? 56 : 104 }}>
         <View style={{ flexDirection: isDesktop ? 'row' : 'column', alignItems: 'center', gap: isDesktop ? 48 : 56 }}>
           <View style={{ flex: isDesktop ? 1.15 : undefined, alignItems: isDesktop ? 'flex-start' : 'center', maxWidth: 640 }}>
-            <Pill icon="sparkles" label="For aircraft, auto & marine detailers" tone="gold" />
+            <Pill icon="sparkles" label="Aviation · Marine · Automotive" tone="gold" />
             <View style={{ height: 24 }} />
             <Heading level={1} center={!isDesktop}>
-              Your work is flawless.{'\n'}
-              <GradientText>Now run the business that way.</GradientText>
+              The operating system for{'\n'}
+              <GradientText>professional detailing.</GradientText>
             </Heading>
             <P size="lg" center={!isDesktop} style={{ marginTop: 22, maxWidth: 560 }}>
-              {APP_NAME} is the all-in-one CRM for detailing companies. Schedule your crew, document every surface, send quotes customers love to approve, and get paid by card — with service guides and an aircraft price guide built in.
+              Aviation, marine and automotive — run on one system. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.
             </P>
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 32, alignSelf: isMobile ? 'stretch' : isDesktop ? 'flex-start' : 'center' }}>
               <CTAButton href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" full={isMobile} />
@@ -74,9 +75,9 @@ function Hero() {
               <PhoneMockup style={isDesktop ? webStyle({ transform: 'rotate(-2deg)' }) : undefined} />
               {!isMobile ? (
                 <>
-                  <FloatCard icon="checkmark-done" title="Invoice paid" body="INV-2207 · $2,350.00 by card" tone="green" style={{ top: 120, left: -196 }} />
-                  <FloatCard icon="images" title="12 after photos" body="N512FR · condition signed" tone="blue" style={{ top: 330, right: -196 }} />
-                  <FloatCard icon="repeat" title="Care plan renewed" body="Monthly wash · next visit Nov 11" tone="gold" style={{ bottom: 36, left: -196 }} />
+                  <FloatCard icon="airplane" title="FAA: 2008 Gulfstream G550" body="N550GV · S/N 5190 · filled in" tone="blue" style={{ top: 120, left: -196 }} />
+                  <FloatCard icon="sparkles" title="Condition: Heavy" body="6 photos · 4 services suggested" tone="gold" style={{ top: 330, right: -196 }} />
+                  <FloatCard icon="trending-up" title="True profit $1,108" body="69% margin · QC passed" tone="green" style={{ bottom: 36, left: -196 }} />
                 </>
               ) : null}
             </View>
@@ -91,7 +92,7 @@ function ProofBand() {
   const { isMobile } = useBreakpoint();
   const items = [
     { value: String(AIRCRAFT_MODELS), label: 'aircraft models in the price guide' },
-    { value: String(GUIDE_COUNT), label: 'step-by-step service guides' },
+    { value: String(GUIDE_COUNT), label: 'step-by-step SOPs built in' },
     { value: String(BOAT_MODELS), label: 'boat models in the catalog' },
     { value: '1', label: 'app for the office, the ramp and your customers' },
   ];
@@ -108,6 +109,33 @@ function ProofBand() {
         </Grid>
       </Container>
     </View>
+  );
+}
+
+function Edge() {
+  const { isMobile, isTablet } = useBreakpoint();
+  return (
+    <Section>
+      <SectionIntro eyebrow="What sets it apart" title="Built for the work only professionals do."
+        body="Four things you will not find in a generic field-service app — each works the day you sign up, with sensible defaults and one tap to apply." />
+      <Grid cols={isMobile ? 1 : isTablet ? 2 : 4} gap={isMobile ? 16 : 20}>
+        {EDGE.map((e) => (
+          <Glass key={e.title} hover style={{ flex: 1 }} padding={24}>
+            <IconBadge icon={e.icon} tone={e.tone} />
+            <Heading level={3} style={{ marginTop: 18, fontSize: 19 }}>{e.title}</Heading>
+            <P size="sm" style={{ marginTop: 8, marginBottom: 18 }}>{e.body}</P>
+            <View style={{ marginTop: 'auto', borderRadius: 14, borderWidth: 1, borderColor: site.line, backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 6, paddingHorizontal: 12 }}>
+              {e.sample.map((x, i) => (
+                <View key={x.label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10, paddingVertical: 7, borderTopWidth: i ? 1 : 0, borderTopColor: site.line }}>
+                  <Text style={{ fontFamily, color: site.faint, fontSize: 12.5, fontWeight: '700' }}>{x.label}</Text>
+                  <Text style={{ fontFamily, color: e.tone === 'gold' ? site.goldText : e.tone === 'green' ? '#7FDDB0' : site.blueText, fontSize: 13, fontWeight: '700', textAlign: 'right', flexShrink: 1 }}>{x.value}</Text>
+                </View>
+              ))}
+            </View>
+          </Glass>
+        ))}
+      </Grid>
+    </Section>
   );
 }
 
@@ -155,7 +183,7 @@ function Included() {
             <GradientText>{APP_NAME} includes both.</GradientText>
           </Heading>
           <P size="lg" center style={{ marginTop: 16 }}>
-            Bring a new technician up to standard with step-by-step service guides, and quote with confidence using a price guide built for aviation — no add-ons, no extra subscriptions.
+            Bring a new technician up to standard with step-by-step SOPs, and quote with confidence using a price guide built for aviation — no add-ons, no extra subscriptions.
           </P>
         </View>
         <Grid cols={isDesktop ? 2 : 1} gap={isMobile ? 16 : 24}>
@@ -163,8 +191,8 @@ function Included() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 }}>
               <IconBadge icon="school-outline" tone="gold" />
               <View style={{ flex: 1 }}>
-                <Heading level={3}>Step-by-step service guides</Heading>
-                <P size="sm">{GUIDE_COUNT} guides across aircraft, vehicles and watercraft</P>
+                <Heading level={3}>Step-by-step SOPs</Heading>
+                <P size="sm">{GUIDE_COUNT} standard operating procedures across aircraft, vehicles and watercraft</P>
               </View>
             </View>
             <View style={{ gap: 8 }}>
@@ -175,7 +203,7 @@ function Included() {
                   <Ionicons name="chevron-forward" size={15} color={site.faint} />
                 </View>
               ))}
-              <P size="sm" style={{ marginTop: 6 }}>…and more, each with supplies, steps and safety notes your crew can follow on the job.</P>
+              <P size="sm" style={{ marginTop: 6 }}>…and more, each with supplies, timed steps, safety notes and quality checks — plus technician certification per SOP.</P>
             </View>
           </Glass>
           <Glass style={{ flex: 1 }} padding={isMobile ? 22 : 32}>
@@ -217,7 +245,7 @@ function Features() {
   return (
     <View onLayout={onLayout}>
       <Section>
-        <SectionIntro eyebrow="Everything in one place" title="Every part of the business, finally in one app." body="Replace the calendar app, the spreadsheet, the invoicing tool and the group text. Each piece knows about the others." />
+        <SectionIntro eyebrow="Everything in one place" title="Every part of the business, finally in one app." body="Replace the calendar app, the spreadsheet, the invoicing tool and the group text. Each piece knows about the others — from the tail number to the true profit." />
         <Grid cols={isMobile ? 1 : isTablet ? 2 : 3} gap={isMobile ? 16 : 20}>
           {FEATURES.map((f) => (
             <Glass key={f.id} hover style={{ flex: 1 }} padding={26}>
@@ -295,7 +323,7 @@ function PlansTeaser() {
   const { isMobile, isDesktop } = useBreakpoint();
   return (
     <Section tint>
-      <SectionIntro eyebrow="Pricing" title="Simple plans that grow with your crew." body={`Every plan includes the service guides, the price guide and the customer portal. Try everything free for ${TRIAL_DAYS} days.`} />
+      <SectionIntro eyebrow="Pricing" title="Simple plans that grow with your crew." body={`Every plan includes the SOPs, the price guide and the customer portal. Try everything free for ${TRIAL_DAYS} days.`} />
       <Grid cols={isDesktop ? 3 : 1} gap={isMobile ? 14 : 20}>
         {PLANS.map((p) => {
           const featured = p.id === 'team';

@@ -93,7 +93,7 @@ export default function More() {
     { label: 'Profit & loss', icon: 'bar-chart-outline', tone: 'success', href: '/reports', show: perm('see_reports') },
   ];
   const help: Item[] = [
-    { label: 'Training center', subtitle: 'Step-by-step service guides and videos', icon: 'school-outline', tone: 'success', href: '/training' },
+    { label: 'Training center', subtitle: 'SOPs (standard operating procedures) and videos', icon: 'school-outline', tone: 'success', href: '/training' },
     { label: 'Getting started', subtitle: 'Your first 7 steps', icon: 'rocket-outline', tone: 'primary', href: '/getting-started', show: admin },
     { label: 'Flight Ready website & plan information', subtitle: 'Plans, privacy, terms and support', icon: 'globe-outline', tone: 'info', href: '/about' },
     { label: 'Plans & billing', subtitle: plan === 'trial' ? 'Free trial' : titleCase(plan), icon: 'card-outline', tone: 'warning', href: '/paywall', show: admin },

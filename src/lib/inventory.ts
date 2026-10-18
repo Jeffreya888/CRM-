@@ -156,7 +156,7 @@ export function maintenanceState(m: Pick<MaintenanceDue, 'next_due_on' | 'next_d
 
 export const fmtNum = (n: number | string | null | undefined) => {
   const v = Number(n ?? 0);
-  return Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, '');
+  return Number.isInteger(v) ? String(v) : String(Math.round(v * 1000) / 1000);  // supplies can be fractional (0.25 gal)
 };
 
 /** Accepts only whole, non-negative numbers typed by a person ("12", " 3 "). */

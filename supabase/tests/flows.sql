@@ -120,10 +120,14 @@ insert into ctx select 'job', public.convert_quote_to_job((select v from ctx whe
 do $$ begin
   assert (select status from quotes where id = (select v from ctx where k='quote2')) = 'accepted';
   assert (select count(*) from job_items) = 2, 'job items copied';
-  assert (select count(*) from job_checklist_items) =
+  assert (select count(*) from job_checklist_items where kind = 'step') =
          (select cardinality(checklist) from services where guide_key = 'exterior_wash')
        + (select cardinality(checklist) from services where guide_key = 'interior_detail'), 'checklists copied';
-  assert (select count(*) from job_checklist_items where guide_key is not null and step_index is not null) = (select count(*) from job_checklist_items), 'checklist linked to guide steps';
+  assert (select count(*) from job_checklist_items where guide_key is not null and step_index is not null) = (select count(*) from job_checklist_items where kind = 'step'), 'checklist linked to guide steps';
+  assert (select count(*) from job_checklist_items where kind = 'qc') =
+         (select cardinality(quality_checks) from service_guides where org_id is null and key = 'exterior_wash')
+       + (select cardinality(quality_checks) from service_guides where org_id is null and key = 'interior_detail'), 'QC items from SOP quality checks';
+  assert (select sum(est_hours) from job_items) > 0, 'job lines get estimated hours';
   assert (select number from jobs) = 'WO-1001';
   assert (select status from jobs) = 'scheduled';
 end $$;
@@ -765,5 +769,225 @@ do $$ begin
   assert (select count(*) from notification_outbox where kind = 'email_limit') = 1, 'alert not repeated';
 end $$;
 delete from organizations where id = '00000000-0000-0000-0000-00000000e0a2';
+
+-- ---------- Competitive edge (20261018000100) ------------------------------
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000a1', 'edge-owner@edge.test', '{}', now()),
+  ('00000000-0000-0000-0000-0000000000a2', 'edge-tech@edge.test', '{}', now());
+-- A slice of the FAA registry.
+insert into faa_aircraft_ref (code, mfr, model, type_acft, no_eng, no_seats) values
+  ('G550', 'GULFSTREAM AEROSPACE', 'GV-SP (G550)', '5', 2, 19), ('CJ3', 'TEXTRON AVIATION INC', '525B', '5', 2, 9),
+  ('C172', 'CESSNA', '172S', '4', 1, 4), ('P300', 'EMBRAER S A', 'EMB-505', '5', 2, 11),
+  ('F2EX', 'DASSAULT AVIATION', 'FALCON 2000EX', '5', 2, 12), ('LJ45', 'LEARJET INC', '45', '5', 2, 10),
+  ('PA46', 'PIPER', 'PA-46-500TP', '4', 1, 6);
+insert into faa_registry (n_number, serial, mfr_mdl_code, year_mfr, name, city, state, status_code, expiration_date, type_aircraft) values
+  ('550GV', '5190', 'G550', 2008, 'SKY HOLDINGS LLC', 'WILMINGTON', 'DE', 'V', current_date + 400, '5'),
+  ('123CJ', '525B-0500', 'CJ3', 2016, 'CJ OWNER', 'DALLAS', 'TX', 'V', current_date + 400, '5'),
+  ('172SP', '17281234', 'C172', 2005, 'FLY CLUB', 'MIAMI', 'FL', 'V', current_date - 1, '4'),
+  ('300EM', '50500400', 'P300', 2019, 'PHENOM LLC', 'AUSTIN', 'TX', 'V', null, '5'),
+  ('2000X', '123', 'F2EX', 2010, null, null, null, 'V', null, '5'),
+  ('45LJ', '45-100', 'LJ45', 2001, null, null, null, 'V', null, '5'),
+  ('500TP', '4697001', 'PA46', 2012, null, null, null, 'V', null, '4');
+insert into faa_meta (id, imported_at, aircraft_rows, model_rows) values (true, now(), 7, 7)
+  on conflict (id) do update set imported_at = now();
+
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+insert into ctx select 'edge', public.create_organization('Edge Co', true);
+reset role;
+insert into memberships (org_id, user_id, role, display_name) select v, '00000000-0000-0000-0000-0000000000a2', 'technician', 'Ana' from ctx where k = 'edge';
+set role authenticated;
+
+-- FAA autofill: aliases, names, years, learned choices.
+do $$
+declare
+  o uuid := (select v from ctx where k = 'edge');
+  r jsonb;
+begin
+  r := public.faa_lookup(o, 'N550GV');
+  assert (r ->> 'found')::boolean and r -> 'catalog' ->> 'model' = 'G550' and r ->> 'match' = 'alias', 'G550 via alias: ' || r::text;
+  assert r ->> 'owner' = 'SKY HOLDINGS LLC' and r ->> 'status' = 'Valid' and r ->> 'serial' = '5190' and (r ->> 'year')::int = 2008, 'FAA details';
+  assert public.faa_lookup(o, '123cj') -> 'catalog' ->> 'model' = 'Citation CJ3+', 'CJ3+ by year';
+  r := public.faa_lookup(o, 'N172SP');
+  assert r -> 'catalog' ->> 'model' = '172 Skyhawk' and r ->> 'status' = 'Expired', 'Skyhawk, expired registration';
+  assert public.faa_lookup(o, 'N300EM') -> 'catalog' ->> 'model' = 'Phenom 300E', 'Phenom 300E';
+  assert public.faa_lookup(o, 'N2000X') -> 'catalog' ->> 'model' = 'Falcon 2000EX', 'Falcon by name';
+  assert public.faa_lookup(o, 'N45LJ') -> 'catalog' ->> 'model' = 'Learjet 45', 'Learjet by name';
+  assert public.faa_lookup(o, 'N500TP') -> 'catalog' ->> 'model' = 'PA-46-500TP Meridian', 'Meridian by designation';
+  assert public.faa_lookup(o, 'C-GABC') ->> 'reason' = 'not_us', 'foreign tails are not looked up';
+  assert public.faa_lookup(o, 'N9999Z') ->> 'reason' = 'not_found', 'unknown tail';
+  perform public.remember_faa_model(o, 'N550GV', (select id from aircraft_models where manufacturer = 'Gulfstream' and model = 'G500 (GV-SP)'));
+  r := public.faa_lookup(o, 'N550GV');
+  assert r -> 'catalog' ->> 'model' = 'G500 (GV-SP)' and r ->> 'match' = 'learned', 'company choice remembered';
+end $$;
+do $$ begin
+  begin
+    perform 1 from faa_registry limit 1;
+    raise exception 'registry table must not be readable directly';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- Setup: pay, true-cost settings, an aircraft, a service with hours by class and fractional supplies.
+update organizations set labor_burden_pct = 20, overhead_per_hour = 10 where id = (select v from ctx where k = 'edge');
+insert into member_pay (org_id, user_id, hourly_rate) select v, '00000000-0000-0000-0000-0000000000a2', 30 from ctx where k = 'edge';
+insert into customers (org_id, name) select v, 'Edge Customer' from ctx where k = 'edge';
+insert into aircraft (org_id, customer_id, tail_number, category, length_ft, wingspan_ft)
+  select org_id, id, 'N50EJ', 'light_jet', 50, 50 from customers where name = 'Edge Customer';
+update services set category_hours = '{"light_jet": 4}', requires_cert = true
+  where org_id = (select v from ctx where k = 'edge') and guide_key = 'exterior_wash' and asset_type = 'aircraft';
+insert into inventory_items (org_id, name, unit, unit_cost) select v, n, u, c from ctx, (values ('Edge concentrate', 'gal', 40), ('Edge wax', 'oz', 1)) x(n, u, c) where k = 'edge';
+insert into inventory_movements (org_id, item_id, delta, reason) select org_id, id, 10, 'purchase' from inventory_items where name like 'Edge %';
+insert into service_supplies (org_id, service_id, item_id, quantity, per_foot)
+  select s.org_id, s.id, i.id, case when i.name = 'Edge wax' then 0.1 else 0.25 end, i.name = 'Edge wax'
+  from services s join inventory_items i on i.org_id = s.org_id and i.name like 'Edge %'
+  where s.org_id = (select v from ctx where k = 'edge') and s.guide_key = 'exterior_wash' and s.asset_type = 'aircraft';
+insert into jobs (org_id, number, title, customer_id, aircraft_id, status, scheduled_start, scheduled_end)
+  select a.org_id, 'EDGE-1', 'Wash', a.customer_id, a.id, 'scheduled', now() + interval '1 day', now() + interval '1 day 4 hours'
+  from aircraft a where tail_number = 'N50EJ';
+insert into job_items (org_id, job_id, service_id, description, quantity, unit_price)
+  select j.org_id, j.id, s.id, s.name, 1, 1000 from jobs j join services s on s.org_id = j.org_id and s.guide_key = 'exterior_wash' and s.asset_type = 'aircraft'
+  where j.number = 'EDGE-1';
+insert into job_assignments (job_id, user_id, org_id) select id, '00000000-0000-0000-0000-0000000000a2', org_id from jobs where number = 'EDGE-1';
+do $$
+declare
+  j jobs := (select x from jobs x where number = 'EDGE-1');
+  v jsonb;
+begin
+  assert (select est_hours from job_items where job_id = j.id) = 4, 'hours by size class';
+  assert (select est_supply_cost from job_items where job_id = j.id) = 15, '0.25 gal × $40 + 0.1 oz/ft × 50 ft × $1';
+  assert (select count(*) from job_checklist_items where job_id = j.id and kind = 'qc') > 0, 'QC items from the SOP';
+  v := public.schedule_conflicts(j.org_id, j.id, j.scheduled_start, j.scheduled_end, array['00000000-0000-0000-0000-0000000000a2'::uuid]);
+  assert exists (select 1 from jsonb_array_elements(v) e where e ->> 'type' = 'not_certified'), 'uncertified tech flagged: ' || v::text;
+  perform public.set_skill(j.org_id, '00000000-0000-0000-0000-0000000000a2', 'exterior_wash', 'certified');
+  v := public.schedule_conflicts(j.org_id, j.id, j.scheduled_start, j.scheduled_end, array['00000000-0000-0000-0000-0000000000a2'::uuid]);
+  assert not exists (select 1 from jsonb_array_elements(v) e where e ->> 'type' = 'not_certified'), 'certified tech ok';
+end $$;
+update organizations set require_qc = true where id = (select v from ctx where k = 'edge');
+
+-- Technician: requests sign-off, submits for QC, cannot fake QC.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', false);
+do $$
+declare j jobs := (select x from jobs x where number = 'EDGE-1');
+begin
+  perform public.request_skill_signoff(j.org_id, 'interior_detail');
+  assert (select level from service_skills where user_id = auth.uid() and guide_key = 'interior_detail') = 'training', 'sign-off requested';
+  assert public.test_outbox('skill_request') >= 1, 'managers told about the request';
+  assert (select count(*) from faa_lookup(j.org_id, 'N550GV')) = 1, 'technicians can look up tails';
+  perform public.submit_for_qc(j.id);
+  assert (select qc_status from jobs where id = j.id) = 'pending', 'QC pending';
+  begin
+    update jobs set qc_status = 'passed' where id = j.id;
+    raise exception 'QC cannot be passed directly';
+  exception when raise_exception then
+    if sqlerrm not like 'PERMISSION%' then raise; end if;
+  end;
+  begin
+    perform public.qc_decision(j.id, true, null);
+    raise exception 'technicians cannot pass QC';
+  exception when raise_exception then
+    if sqlerrm not like 'Only managers%' then raise; end if;
+  end;
+  begin
+    perform public.set_skill(j.org_id, auth.uid(), 'interior_detail', 'certified');
+    raise exception 'technicians cannot certify';
+  exception when raise_exception then
+    if sqlerrm not like 'Only managers%' then raise; end if;
+  end;
+end $$;
+
+-- Five hours of work, photos, then completion needs a passed QC.
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into time_entries (org_id, user_id, job_id, started_at, ended_at)
+  select org_id, '00000000-0000-0000-0000-0000000000a2', id, now() - interval '5 hours', now() from jobs where number = 'EDGE-1';
+insert into job_photos (org_id, job_id, kind, storage_path)
+  select org_id, id, k::photo_kind, org_id || '/jobs/' || id || '/' || k || '.jpg' from jobs, (values ('before'), ('after')) x(k) where number = 'EDGE-1';
+insert into expenses (org_id, category, amount, description) select v, 'rent', 500, 'Hangar rent' from ctx where k = 'edge';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+update jobs set status = 'in_progress' where number = 'EDGE-1';
+do $$
+declare
+  j jobs := (select x from jobs x where number = 'EDGE-1');
+  p jsonb; r jsonb; q uuid; e jsonb;
+begin
+  begin
+    update jobs set status = 'completed' where id = j.id;
+    raise exception 'QC is required before completing';
+  exception when raise_exception then
+    if sqlerrm not like 'QC_REQUIRED%' then raise; end if;
+  end;
+  perform public.qc_decision(j.id, false, 'Streaks on the left wing');
+  assert (select qc_status from jobs where id = j.id) = 'failed' and public.test_outbox('qc_failed') = 1, 'crew told what needs work';
+  perform public.qc_decision(j.id, true, null);
+  update jobs set status = 'completed' where id = j.id;
+  assert (select quantity from inventory_items where name = 'Edge concentrate') = 9.75, 'fractional deduction';
+  assert (select quantity from inventory_items where name = 'Edge wax') = 5, 'per-foot deduction (0.1 × 50 ft)';
+  assert public.record_count((select id from inventory_items where name = 'Edge wax'), 4.5) = -0.5, 'decimal counts';
+
+  p := public.job_profitability(j.id);
+  assert (p ->> 'est_hours')::numeric = 4 and (p ->> 'actual_hours')::numeric = 5 and (p ->> 'hours_variance_pct')::numeric = 25, 'estimate vs actual: ' || p::text;
+  assert (p ->> 'true_labor')::numeric = 230, 'true labor = 5 h × ($30 × 1.2 + $10)';
+  assert (p ->> 'true_cost')::numeric = 245 and (p ->> 'true_profit')::numeric = 755, 'true cost and profit';
+  assert (p ->> 'est_cost')::numeric = 199, 'estimated cost = 4 h × $46 + $15';
+
+  r := public.job_costing_report(j.org_id, current_date - 1, current_date + 1);
+  assert r -> 'by_class' -> 0 ->> 'label' = 'Light Jet' and (r -> 'by_class' -> 0 ->> 'profit')::numeric = 755, 'profit by class: ' || r::text;
+  assert (r -> 'by_type' -> 0 ->> 'key') = 'aircraft' and (r -> 'totals' ->> 'jobs')::int = 1, 'by type and totals';
+  assert (r -> 'by_service' -> 0 ->> 'variance_pct')::numeric = 25, 'estimate accuracy by service';
+
+  insert into quotes (org_id, number, customer_id, aircraft_id) values (j.org_id, 'EQ-1', j.customer_id, j.aircraft_id) returning id into q;
+  insert into quote_items (org_id, quote_id, service_id, description, quantity, unit_price)
+    select j.org_id, q, service_id, description, 1, 1000 from job_items where job_id = j.id;
+  e := public.quote_estimate(q);
+  assert (e -> 'options' -> 0 ->> 'est_hours')::numeric = 4 and (e -> 'options' -> 0 ->> 'cost')::numeric = 199
+     and (e -> 'options' -> 0 ->> 'margin_pct')::numeric = 80.1, 'quote margin: ' || e::text;
+  assert (public.suggest_overhead_per_hour(j.org_id) ->> 'overhead_per_hour')::numeric = 100, '$500 non-job expenses / 5 h';
+end $$;
+
+-- AI condition reports are written by the server; managers apply them.
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into booking_requests (org_id, customer_id, aircraft_id, kind, photo_paths)
+  select org_id, customer_id, id, 'photo_quote', array[org_id || '/portal/' || customer_id || '/a.jpg'] from aircraft where tail_number = 'N50EJ';
+insert into condition_assessments (org_id, aircraft_id, customer_id, booking_request_id, source, photo_paths, status, overall, score, summary)
+  select b.org_id, b.aircraft_id, b.customer_id, b.id, 'portal', b.photo_paths, 'done', 'heavy', 4, 'Heavy exhaust soot'
+  from booking_requests b where b.kind = 'photo_quote';
+update booking_requests set assessment_id = (select id from condition_assessments limit 1) where kind = 'photo_quote';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', false);
+do $$ begin
+  assert (select count(*) from condition_assessments) = 1, 'crew can read condition reports';
+  begin
+    perform public.apply_assessment((select id from condition_assessments));
+    raise exception 'technicians cannot apply';
+  exception when raise_exception then
+    if sqlerrm not like 'Not allowed%' then raise; end if;
+  end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ begin
+  perform public.apply_assessment((select id from condition_assessments));
+  assert (select condition_level from aircraft where tail_number = 'N50EJ') = 'heavy', 'condition saved to the aircraft';
+  perform public.link_request_quote((select id from booking_requests where kind = 'photo_quote'), (select id from quotes where number = 'EQ-1'));
+  assert (select status from booking_requests where kind = 'photo_quote') = 'approved', 'photo request answered with a quote';
+  assert (select quote_id from condition_assessments) = (select id from quotes where number = 'EQ-1'), 'report linked to quote';
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+do $$ begin
+  assert (select count(*) from condition_assessments) = 0, 'other companies see no condition reports';
+  assert (select count(*) from service_skills) = 0, 'other companies see no skills';
+  begin
+    perform public.faa_lookup((select v from ctx where k = 'edge'), 'N550GV');
+    raise exception 'non-members cannot use another company''s lookup';
+  exception when raise_exception then
+    if sqlerrm not like 'Not a member%' then raise; end if;
+  end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
 
 \echo ALL FLOW TESTS PASSED

@@ -1,14 +1,18 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
+import { AssessPhotosSheet } from '../../../components/ai/AssessPhotosSheet';
+import { ConditionBadge } from '../../../components/assets/Condition';
+import { FaaRegistrationCard } from '../../../components/assets/FaaCard';
 import { FormSheet } from '../../../components/FormSheet';
 import { jobTone } from '../../../components/status';
 import { Badge, Button, Card, ErrorBanner, IconButton, KeyValue, ListRow, Loading, Row, Screen, Section, Select, T } from '../../../components/ui';
 import { assetModelName, facilityKindInfo, facilityTitle, widthLabel } from '../../../lib/assets';
+import { isUsTail, lookupFaa } from '../../../lib/faa';
 import { signedUrls } from '../../../lib/files';
 import { date, dateTime } from '../../../lib/format';
 import { useLookups } from '../../../lib/lookups';
-import { isManager } from '../../../lib/plans';
+import { canEdit, isManager } from '../../../lib/plans';
 import { assetTypeInfo, categoryLabel } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
@@ -26,6 +30,8 @@ export default function AssetDetail() {
   const editable = perm('edit_customers');
   const [reminderSheet, setReminderSheet] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [assessOpen, setAssessOpen] = useState(false);
+  const [faaMsg, setFaaMsg] = useState<string | null>(null);
 
   const q = useQuery(async () => {
     const none = Promise.resolve({ data: [] as any[], error: null });
@@ -62,6 +68,24 @@ export default function AssetDetail() {
     else q.reload();
   };
 
+  const refreshFaa = async () => {
+    setError(null);
+    setFaaMsg(null);
+    try {
+      const r = await lookupFaa(orgId, a.tail_number);
+      if (!r.found) {
+        setFaaMsg(r.reason === 'no_data' ? 'FAA registry data is not available yet.' : r.reason === 'not_us' ? 'Only US registrations (N-numbers) can be checked.' : 'Not found in FAA registry.');
+        return;
+      }
+      const { error: e } = await supabase.from('aircraft').update({ faa: r, faa_checked_at: new Date().toISOString() }).eq('id', id);
+      if (e) throw e;
+      q.reload();
+    } catch (e: any) {
+      setError(friendlyError(e?.message ?? ''));
+    }
+  };
+  const showFaa = t === 'aircraft' && isUsTail(a.tail_number) && (!!a.faa || manager);
+
   return (
     <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
       <Stack.Screen options={{
@@ -83,6 +107,7 @@ export default function AssetDetail() {
           {a.wingspan_ft ? <Badge label={`${widthLabel(t)} ${a.wingspan_ft} ft`} raw /> : null}
           {a.model_id ? <Badge label="Catalog model" tone="success" raw /> : null}
         </Row>
+        {a.condition_level ? <View style={{ marginTop: space.sm }}><ConditionBadge level={a.condition_level} updatedAt={a.condition_updated_at} /></View> : null}
         {manager ? (
           <Row style={{ marginTop: space.md, flexWrap: 'wrap' }}>
             {perm('see_prices') ? <Button small icon="document-text-outline" title="Quote" onPress={() => router.push({ pathname: '/quotes/edit', params: { customer_id: a.customer_id ?? '', aircraft_id: id } })} /> : null}
@@ -91,6 +116,10 @@ export default function AssetDetail() {
               <Button small kind="secondary" icon="repeat-outline" title="Recurring" onPress={() => router.push({ pathname: '/recurring/edit', params: { customer_id: a.customer_id, aircraft_id: id } })} />
             ) : null}
           </Row>
+        ) : null}
+        {canEdit(role) ? (
+          <Button small kind="ghost" icon="camera-outline" title="Check condition from photos" onPress={() => setAssessOpen(true)}
+            style={{ marginTop: space.sm, alignSelf: 'flex-start' }} />
         ) : null}
       </Card>
 
@@ -111,6 +140,12 @@ export default function AssetDetail() {
           <KeyValue label="Notes" value={a.notes} />
         </Card>
       </Section>
+
+      {showFaa ? (
+        <Section title="Registration (FAA)" icon="document-text-outline">
+          <FaaRegistrationCard faa={a.faa} checkedAt={a.faa_checked_at} message={faaMsg} onRefresh={manager ? refreshFaa : undefined} />
+        </Section>
+      ) : null}
 
       <Section title={t === 'aircraft' ? 'Home airport / FBO' : t === 'watercraft' ? 'Home marina' : 'Usual service site'} icon="location-outline">
         <Card>
@@ -177,6 +212,9 @@ export default function AssetDetail() {
           )) : <T variant="muted" style={{ padding: space.lg }}>No jobs yet.</T>}
         </Card>
       </Section>
+
+      <AssessPhotosSheet visible={assessOpen} aircraftId={id} customerId={a.customer_id}
+        onClose={() => { setAssessOpen(false); q.reload(); }} />
 
       <FormSheet visible={reminderSheet} title="New reminder" onClose={() => setReminderSheet(false)}
         fields={[

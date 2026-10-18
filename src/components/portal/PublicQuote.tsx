@@ -15,6 +15,7 @@ import { Notice } from './PortalShell';
 import { goToCheckout, publicError, type PublicDoc } from './publicDoc';
 
 type Reason = (typeof DECLINE_REASONS)[number]['value'];
+const CONDITION_WORDS: Record<string, string> = { light: 'light', moderate: 'moderate', heavy: 'heavy', severe: 'severe' };
 
 /** Customer view of a quote: packages, accept + sign, deposit, preferred dates, decline. */
 export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: string; depositReturn?: 'paid' | 'cancelled' | null }) {
@@ -125,6 +126,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
             <T variant="h1">{options.length > 1 && !chosen ? `From ${money(Math.min(...options.map((o) => Number(o.total))), cur)}` : money(shownTotal, cur)}</T>
             <T variant="muted">For {d.customer.name}{d.customer.company ? ` · ${d.customer.company}` : ''}</T>
             {d.aircraft ? <T variant="muted">{d.aircraft.tail_number}{d.aircraft.model ? ` · ${d.aircraft.model}` : ''}</T> : null}
+            {CONDITION_WORDS[doc.condition_level as string] ? <T variant="small" style={{ marginTop: 2 }}>Pricing reflects {CONDITION_WORDS[doc.condition_level as string]} condition</T> : null}
           </View>
           <Badge label={expired && status !== 'expired' ? 'expired' : status} tone={quoteTone[expired ? 'expired' : status]} />
         </Row>

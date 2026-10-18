@@ -1,10 +1,10 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { confirmAction } from '../../../components/FormSheet';
 import { ask, ListEditor, move } from '../../../components/guides/ListEditor';
 import { Button, Card, EmptyState, ErrorBanner, Field, IconButton, Loading, Row, Screen, Section, Select, T } from '../../../components/ui';
-import { assetTypeLabel, GUIDE_DISCLAIMER, newGuideKey, normalizeSteps, stepTitles } from '../../../lib/guides';
+import { assetTypeLabel, GUIDE_DISCLAIMER, minutesLabel, newGuideKey, normalizeSteps, stepMinutesTotal, stepTitles } from '../../../lib/guides';
 import { canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
@@ -24,7 +24,7 @@ const fromGuide = (g: ServiceGuide): Draft => ({
 });
 
 /**
- * Company guide editor.
+ * Company SOP editor (table service_guides).
  *  - `?id=<company copy id>` edits the company's copy.
  *  - `?from=<platform guide id>` duplicates a Flight Ready guide (saved as a copy with the same key).
  *  - no params writes a brand-new company guide.
@@ -43,26 +43,40 @@ export default function GuideEdit() {
     const src = id ?? from;
     if (!src) return;
     supabase.from('service_guides').select('*').eq('id', src).maybeSingle().then(({ data, error: e }) => {
-      if (e || !data) { setError(e ? friendlyError(e.message) : 'Guide not found'); return; }
+      if (e || !data) { setError(e ? friendlyError(e.message) : 'SOP not found'); return; }
       const g = data as ServiceGuide;
       setDraft(from ? { ...fromGuide(g), based_on: g.id } : fromGuide(g));
     });
   }, [id, from]);
 
-  if (!manager) return <Screen><EmptyState icon="lock-closed-outline" title="Managers only" body="Ask your manager to edit service guides." /></Screen>;
+  if (!manager) return <Screen><EmptyState icon="lock-closed-outline" title="Managers only" body="Ask your manager to edit SOPs." /></Screen>;
   if (!draft) return error ? <Screen><ErrorBanner message={error} /></Screen> : <Loading />;
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
   const setStep = (i: number, patch: Partial<GuideStep>) => set('steps', draft.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 
+  const list = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
+  const productNames = list(draft.products);
+  const totalMin = stepMinutesTotal(draft.steps);
+  const toggleProduct = (i: number, p: string) => {
+    const cur = draft.steps[i]?.products ?? [];
+    setStep(i, { products: cur.includes(p) ? cur.filter((x) => x !== p) : [...cur, p] });
+  };
+
   const save = async () => {
     setError(null);
-    if (!draft.title.trim()) return setError('Give the guide a title');
+    if (!draft.title.trim()) return setError('Give the SOP a title');
     if (!draft.summary.trim()) return setError('Add a short summary of what this service is');
     const steps = draft.steps
-      .map((s) => ({ title: s.title.trim(), detail: s.detail.trim(), caution: s.caution?.trim() ? s.caution.trim() : null }))
+      .map((s) => {
+        const out: GuideStep = { title: s.title.trim(), detail: s.detail.trim(), caution: s.caution?.trim() ? s.caution.trim() : null };
+        const m = Math.round(Number(s.minutes) || 0);
+        if (m > 0) out.minutes = m;
+        const ps = (s.products ?? []).filter((p) => productNames.includes(p));
+        if (ps.length) out.products = ps;
+        return out;
+      })
       .filter((s) => s.title);
     if (!steps.length) return setError('Add at least one step with a title');
-    const list = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
     const row = {
       key: draft.key, asset_type: draft.asset_type, title: draft.title.trim(), summary: draft.summary.trim(),
       time_estimate: draft.time_estimate.trim() || null, crew: draft.crew.trim() || null,
@@ -83,7 +97,7 @@ export default function GuideEdit() {
     if (using?.length) {
       const yes = await ask(
         'Update service checklists?',
-        `${using.length} service${using.length === 1 ? ' uses' : 's use'} this guide. Update the checklist on ${using.length === 1 ? 'it' : 'them'} to match the new steps? Jobs already created keep their checklist.`,
+        `${using.length} service${using.length === 1 ? ' uses' : 's use'} this SOP. Update the checklist on ${using.length === 1 ? 'it' : 'them'} to match the new steps? Jobs already created keep their checklist.`,
         'Update checklists',
       );
       if (yes) {
@@ -95,11 +109,11 @@ export default function GuideEdit() {
   };
 
   return (
-    <Screen footer={<Button title={id ? 'Save guide' : from ? 'Save my copy' : 'Create guide'} onPress={save} />}>
-      <Stack.Screen options={{ title: id ? 'Edit guide' : from ? 'Duplicate guide' : 'New guide' }} />
+    <Screen footer={<Button title={id ? 'Save SOP' : from ? 'Save my copy' : 'Create SOP'} onPress={save} />}>
+      <Stack.Screen options={{ title: id ? 'Edit SOP' : from ? 'Duplicate SOP' : 'New SOP' }} />
       {from ? (
         <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
-          <T>Your company copy replaces the Flight Ready guide for your team. Delete your copy any time to go back to the original.</T>
+          <T>Your company copy replaces the Flight Ready SOP for your team. Delete your copy any time to go back to the original.</T>
         </Card>
       ) : null}
       <ErrorBanner message={error} />
@@ -116,8 +130,8 @@ export default function GuideEdit() {
       <ListEditor title="Tools & equipment" items={draft.tools} onChange={(v) => set('tools', v)} placeholder="Microfiber towels" />
       <ListEditor title="Prep & protection" items={draft.prep} onChange={(v) => set('prep', v)} placeholder="Install pitot/static covers" />
 
-      <Section title="Steps" action={<Button small kind="ghost" icon="add" title="Step" onPress={() => set('steps', [...draft.steps, { title: '', detail: '', caution: null }])} />}>
-        <T variant="small" style={{ marginBottom: space.sm }}>Step titles become the job checklist.</T>
+      <Section title="Steps" count={totalMin ? `~${minutesLabel(totalMin)} total` : undefined} action={<Button small kind="ghost" icon="add" title="Step" onPress={() => set('steps', [...draft.steps, { title: '', detail: '', caution: null }])} />}>
+        <T variant="small" style={{ marginBottom: space.sm }}>Step titles become the job checklist. Add minutes and products per step so the crew can compare their time with the plan.</T>
         {draft.steps.map((s, i) => (
           <Card key={i} style={{ padding: space.md }}>
             <Row style={{ justifyContent: 'space-between', marginBottom: space.sm }}>
@@ -130,7 +144,25 @@ export default function GuideEdit() {
             </Row>
             <Field placeholder="Title (shown on the checklist)" value={s.title} onChangeText={(v) => setStep(i, { title: v })} style={{ marginBottom: space.sm }} />
             <Field placeholder="How to do it" multiline value={s.detail} onChangeText={(v) => setStep(i, { detail: v })} style={{ marginBottom: space.sm }} />
-            <Field placeholder="Caution (optional, highlighted)" icon="warning-outline" iconColor={colors.warning} value={s.caution ?? ''} onChangeText={(v) => setStep(i, { caution: v })} style={{ marginBottom: 0 }} />
+            <Field placeholder="Caution (optional, highlighted)" icon="warning-outline" iconColor={colors.warning} value={s.caution ?? ''} onChangeText={(v) => setStep(i, { caution: v })} style={{ marginBottom: space.sm }} />
+            <Field placeholder="Minutes (optional)" icon="time-outline" keyboardType="number-pad" value={s.minutes ? String(s.minutes) : ''}
+              onChangeText={(v) => { const n = Number(v.replace(/\D/g, '')); setStep(i, { minutes: n > 0 ? n : null }); }} style={{ marginBottom: productNames.length ? space.sm : 0 }} />
+            {productNames.length ? (
+              <View>
+                <T variant="small" style={{ marginBottom: 6 }}>Products used in this step</T>
+                <Row gap={6} style={{ flexWrap: 'wrap' }}>
+                  {productNames.map((p) => {
+                    const on = (s.products ?? []).includes(p);
+                    return (
+                      <Pressable key={p} onPress={() => toggleProduct(i, p)} accessibilityRole="checkbox" accessibilityState={{ checked: on }}
+                        style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, borderWidth: 1, borderColor: on ? colors.primary : colors.border, backgroundColor: on ? colors.primarySoft : 'transparent' }}>
+                        <T variant="small" style={{ color: on ? colors.primaryText : colors.textMuted, fontWeight: on ? '700' : '400' }}>{p}</T>
+                      </Pressable>
+                    );
+                  })}
+                </Row>
+              </View>
+            ) : null}
           </Card>
         ))}
       </Section>
@@ -142,9 +174,9 @@ export default function GuideEdit() {
       <T variant="small" style={{ marginTop: space.lg }}>{GUIDE_DISCLAIMER}</T>
       {id ? (
         <View style={{ marginTop: space.lg }}>
-          <Button kind="ghost" icon="trash-outline" title={draft.based_on ? 'Delete my copy' : 'Delete guide'} onPress={() => confirmAction(
-            draft.based_on ? 'Delete your copy?' : 'Delete this guide?',
-            draft.based_on ? 'The Flight Ready guide will be used again.' : 'This guide will be removed for everyone in your company.',
+          <Button kind="ghost" icon="trash-outline" title={draft.based_on ? 'Delete my copy' : 'Delete SOP'} onPress={() => confirmAction(
+            draft.based_on ? 'Delete your copy?' : 'Delete this SOP?',
+            draft.based_on ? 'The Flight Ready SOP will be used again.' : 'This SOP will be removed for everyone in your company.',
             async () => {
               const { error: e } = await supabase.from('service_guides').delete().eq('id', id);
               if (e) return setError(friendlyError(e.message));
