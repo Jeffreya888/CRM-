@@ -17,7 +17,7 @@ export function useLookups() {
   const q = useQuery(async () => {
     const [c, a, l, s, m, b] = await Promise.all([
       supabase.from('customers').select('id, name, company, discount_pct, tax_exempt').eq('org_id', orgId).neq('status', 'inactive').order('name'),
-      supabase.from('aircraft').select('id, tail_number, manufacturer, model, category, length_ft, customer_id, asset_type, home_location_id, model_id')
+      supabase.from('aircraft').select('id, tail_number, manufacturer, model, category, length_ft, wingspan_ft, customer_id, asset_type, home_location_id, model_id, condition_level')
         .eq('org_id', orgId).eq('active', true).order('tail_number'),
       supabase.from('locations').select('id, name, airport_code, fbo_name, kind, hangar_capacity, access_notes').eq('org_id', orgId).eq('active', true).order('name'),
       money
@@ -28,7 +28,8 @@ export function useLookups() {
     ]);
     const services = ((s.data ?? []) as Partial<Service>[]).map((x) => ({
       pricing_method: 'flat', base_price: 0, price_per_foot: 0, hourly_rate: 0, category_prices: {}, pricing_tiers: [],
-      taxable: true, asset_type: 'aircraft', guide_key: null, recur_every: null, recur_unit: null, est_hours_max: null, ...x,
+      taxable: true, asset_type: 'aircraft', guide_key: null, recur_every: null, recur_unit: null, est_hours_max: null,
+      price_per_sqft: 0, category_hours: {}, requires_cert: false, ...x,
     })) as Service[];
     return {
       customers: (c.data ?? []) as Pick<Customer, 'id' | 'name' | 'company' | 'discount_pct' | 'tax_exempt'>[],

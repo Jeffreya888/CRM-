@@ -1,37 +1,37 @@
 // Pure pricing logic shared by quotes, jobs and invoices. No React Native
 // imports so it can be unit-tested with plain Node (see pricing.test.ts).
-import type { AircraftCategory, AssetType, LineItem, PricingMethod } from './types';
+import type { AircraftCategory, AssetType, ConditionLevel, LineItem, PricingMethod } from './types';
 
-export const AIRCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
-  { value: 'piston_single', label: 'Piston Single', typicalLengthFt: 27, examples: 'Cessna 172, Cirrus SR22, Bonanza' },
-  { value: 'piston_twin', label: 'Piston Twin', typicalLengthFt: 32, examples: 'Baron, Seneca, Aztec' },
-  { value: 'turboprop', label: 'Turboprop', typicalLengthFt: 40, examples: 'King Air, PC-12, TBM' },
-  { value: 'very_light_jet', label: 'Very Light Jet', typicalLengthFt: 40, examples: 'Phenom 100, HondaJet, Citation M2' },
-  { value: 'light_jet', label: 'Light Jet', typicalLengthFt: 50, examples: 'CJ3/CJ4, Phenom 300, Learjet 45' },
-  { value: 'midsize_jet', label: 'Midsize Jet', typicalLengthFt: 60, examples: 'Citation XLS, Hawker 800, Latitude' },
-  { value: 'super_midsize_jet', label: 'Super-Mid Jet', typicalLengthFt: 68, examples: 'Challenger 350, Citation X, G280' },
-  { value: 'large_jet', label: 'Large Cabin Jet', typicalLengthFt: 96, examples: 'G650, Global 6000, Falcon 7X' },
-  { value: 'airliner', label: 'Airliner / BBJ', typicalLengthFt: 110, examples: 'BBJ, ACJ, Embraer Lineage' },
-  { value: 'helicopter', label: 'Helicopter', typicalLengthFt: 42, examples: 'AS350, Bell 407, S-76' },
-  { value: 'other', label: 'Other', typicalLengthFt: 40, examples: '' },
+export const AIRCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; typicalSpanFt: number; examples: string }[] = [
+  { value: 'piston_single', label: 'Piston Single', typicalLengthFt: 27, typicalSpanFt: 36, examples: 'Cessna 172, Cirrus SR22, Bonanza' },
+  { value: 'piston_twin', label: 'Piston Twin', typicalLengthFt: 32, typicalSpanFt: 38, examples: 'Baron, Seneca, Aztec' },
+  { value: 'turboprop', label: 'Turboprop', typicalLengthFt: 40, typicalSpanFt: 50, examples: 'King Air, PC-12, TBM' },
+  { value: 'very_light_jet', label: 'Very Light Jet', typicalLengthFt: 40, typicalSpanFt: 40, examples: 'Phenom 100, HondaJet, Citation M2' },
+  { value: 'light_jet', label: 'Light Jet', typicalLengthFt: 50, typicalSpanFt: 50, examples: 'CJ3/CJ4, Phenom 300, Learjet 45' },
+  { value: 'midsize_jet', label: 'Midsize Jet', typicalLengthFt: 60, typicalSpanFt: 56, examples: 'Citation XLS, Hawker 800, Latitude' },
+  { value: 'super_midsize_jet', label: 'Super-Mid Jet', typicalLengthFt: 68, typicalSpanFt: 63, examples: 'Challenger 350, Citation X, G280' },
+  { value: 'large_jet', label: 'Large Cabin Jet', typicalLengthFt: 96, typicalSpanFt: 94, examples: 'G650, Global 6000, Falcon 7X' },
+  { value: 'airliner', label: 'Airliner / BBJ', typicalLengthFt: 110, typicalSpanFt: 117, examples: 'BBJ, ACJ, Embraer Lineage' },
+  { value: 'helicopter', label: 'Helicopter', typicalLengthFt: 42, typicalSpanFt: 36, examples: 'AS350, Bell 407, S-76' },
+  { value: 'other', label: 'Other', typicalLengthFt: 40, typicalSpanFt: 40, examples: '' },
 ];
 
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
-export const VEHICLE_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
-  { value: 'car', label: 'Car', typicalLengthFt: 15, examples: 'Sedan, coupe, hatchback' },
-  { value: 'suv', label: 'SUV', typicalLengthFt: 16, examples: 'Range Rover, Tahoe, Model X' },
-  { value: 'truck', label: 'Truck', typicalLengthFt: 19, examples: 'F-150, Silverado, RAM' },
-  { value: 'van', label: 'Van', typicalLengthFt: 20, examples: 'Sprinter, Transit' },
-  { value: 'rv', label: 'RV / Motorhome', typicalLengthFt: 35, examples: 'Class A, B, C' },
-  { value: 'motorcycle', label: 'Motorcycle', typicalLengthFt: 7, examples: '' },
+export const VEHICLE_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; typicalSpanFt: number; examples: string }[] = [
+  { value: 'car', label: 'Car', typicalLengthFt: 15, typicalSpanFt: 6.2, examples: 'Sedan, coupe, hatchback' },
+  { value: 'suv', label: 'SUV', typicalLengthFt: 16, typicalSpanFt: 6.6, examples: 'Range Rover, Tahoe, Model X' },
+  { value: 'truck', label: 'Truck', typicalLengthFt: 19, typicalSpanFt: 6.8, examples: 'F-150, Silverado, RAM' },
+  { value: 'van', label: 'Van', typicalLengthFt: 20, typicalSpanFt: 6.7, examples: 'Sprinter, Transit' },
+  { value: 'rv', label: 'RV / Motorhome', typicalLengthFt: 35, typicalSpanFt: 8.5, examples: 'Class A, B, C' },
+  { value: 'motorcycle', label: 'Motorcycle', typicalLengthFt: 7, typicalSpanFt: 3, examples: '' },
 ];
 
-export const WATERCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; examples: string }[] = [
-  { value: 'boat_small', label: 'Small boat (under 25 ft)', typicalLengthFt: 22, examples: 'Center console, bowrider, PWC' },
-  { value: 'boat_medium', label: 'Medium boat (25–40 ft)', typicalLengthFt: 32, examples: 'Express cruiser, sportfish' },
-  { value: 'boat_large', label: 'Large boat (40–65 ft)', typicalLengthFt: 50, examples: 'Flybridge, motor yacht' },
-  { value: 'yacht', label: 'Yacht (65 ft+)', typicalLengthFt: 80, examples: 'Superyacht' },
+export const WATERCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; typicalSpanFt: number; examples: string }[] = [
+  { value: 'boat_small', label: 'Small boat (under 25 ft)', typicalLengthFt: 22, typicalSpanFt: 8.5, examples: 'Center console, bowrider, PWC' },
+  { value: 'boat_medium', label: 'Medium boat (25–40 ft)', typicalLengthFt: 32, typicalSpanFt: 11.5, examples: 'Express cruiser, sportfish' },
+  { value: 'boat_large', label: 'Large boat (40–65 ft)', typicalLengthFt: 50, typicalSpanFt: 15.5, examples: 'Flybridge, motor yacht' },
+  { value: 'yacht', label: 'Yacht (65 ft+)', typicalLengthFt: 80, typicalSpanFt: 22, examples: 'Superyacht' },
 ];
 
 export const ASSET_TYPES: { value: AssetType; label: string; plural: string; idLabel: string; icon: 'airplane-outline' | 'car-outline' | 'boat-outline' }[] = [
@@ -66,6 +66,7 @@ export interface PriceableService {
   pricing_method: PricingMethod;
   base_price: number;
   price_per_foot: number;
+  price_per_sqft?: number;
   hourly_rate: number;
   category_prices: Partial<Record<AircraftCategory, number>>;
   est_hours: number | null;
@@ -74,6 +75,20 @@ export interface PriceableService {
 export interface PriceableAircraft {
   category: AircraftCategory;
   length_ft: number | null;
+  wingspan_ft?: number | null;
+}
+
+const ALL_CATEGORIES = [...AIRCRAFT_CATEGORIES, ...VEHICLE_CATEGORIES, ...WATERCRAFT_CATEGORIES];
+
+/** Length in feet: the asset's own, else the typical length for its size class. */
+export function lengthOf(a?: PriceableAircraft | null): number {
+  return Number(a?.length_ft) || ALL_CATEGORIES.find((c) => c.value === a?.category)?.typicalLengthFt || 0;
+}
+
+/** Footprint in square feet: length × wingspan (beam for boats, width for vehicles), typical size when unknown. */
+export function footprintOf(a?: PriceableAircraft | null): number {
+  const span = Number(a?.wingspan_ft) || ALL_CATEGORIES.find((c) => c.value === a?.category)?.typicalSpanFt || 0;
+  return Math.round(lengthOf(a) * span);
 }
 
 
@@ -82,6 +97,7 @@ export interface PriceableAircraft {
  * - flat: base_price
  * - per_foot: max(base_price, length × price_per_foot) — base acts as a minimum charge
  * - per_category: category_prices[category], falling back to base_price
+ * - per_sqft: max(base_price, length × wingspan/beam × price_per_sqft)
  * - hourly: est_hours × hourly_rate (quantity can be adjusted on the line)
  */
 export function priceService(service: PriceableService, aircraft?: PriceableAircraft | null): number {
@@ -89,11 +105,10 @@ export function priceService(service: PriceableService, aircraft?: PriceableAirc
   switch (service.pricing_method) {
     case 'flat':
       return round2(base);
-    case 'per_foot': {
-      const length = Number(aircraft?.length_ft)
-        || [...AIRCRAFT_CATEGORIES, ...VEHICLE_CATEGORIES, ...WATERCRAFT_CATEGORIES].find((c) => c.value === aircraft?.category)?.typicalLengthFt || 0;
-      return round2(Math.max(base, length * (Number(service.price_per_foot) || 0)));
-    }
+    case 'per_foot':
+      return round2(Math.max(base, lengthOf(aircraft) * (Number(service.price_per_foot) || 0)));
+    case 'per_sqft':
+      return round2(Math.max(base, footprintOf(aircraft) * (Number(service.price_per_sqft) || 0)));
     case 'per_category': {
       const p = aircraft ? service.category_prices?.[aircraft.category] : undefined;
       return round2(p != null ? Number(p) : base);
@@ -107,6 +122,7 @@ export function pricingSummary(s: PriceableService): string {
   switch (s.pricing_method) {
     case 'flat': return `$${s.base_price} flat`;
     case 'per_foot': return `$${s.price_per_foot}/ft${s.base_price ? ` (min $${s.base_price})` : ''}`;
+    case 'per_sqft': return `$${s.price_per_sqft ?? 0}/sq ft${s.base_price ? ` (min $${s.base_price})` : ''}`;
     case 'per_category': return 'By size class';
     case 'hourly': return `$${s.hourly_rate}/hr`;
   }
@@ -141,6 +157,7 @@ export function headlinePrice(s: PriceableService & { pricing_tiers?: { price: n
   const tiers = (s.pricing_tiers ?? []).map((t) => Number(t.price)).filter((n) => n > 0);
   if (tiers.length) return tiers.length > 1 ? `From ${usd(Math.min(...tiers))}` : usd(tiers[0]!);
   if (s.pricing_method === 'per_foot') return `${usd(s.price_per_foot)}/ft`;
+  if (s.pricing_method === 'per_sqft') return `$${Number(s.price_per_sqft ?? 0).toFixed(2)}/sq ft`;
   if (s.pricing_method === 'hourly') return `${usd(s.hourly_rate)}/hr`;
   if (s.pricing_method === 'per_category') {
     const ps = Object.values(s.category_prices ?? {}).map(Number).filter((n) => n > 0);
@@ -165,4 +182,41 @@ const CLASS_HINTS: [RegExp, AircraftCategory][] = [
 
 export function guessCategory(type: string): AircraftCategory {
   return CLASS_HINTS.find(([re]) => re.test(type))?.[1] ?? 'other';
+}
+
+// ---------------------------------------------------------------------------
+// Condition-based pricing and labor estimates (docs/competitive-edge.md §6–7)
+// ---------------------------------------------------------------------------
+export const CONDITION_LEVELS: { value: ConditionLevel; label: string; hint: string }[] = [
+  { value: 'light', label: 'Light', hint: 'Well kept, routine dirt' },
+  { value: 'moderate', label: 'Moderate', hint: 'Visible grime, light oxidation or staining' },
+  { value: 'heavy', label: 'Heavy', hint: 'Heavy exhaust, bugs, oxidation or wear' },
+  { value: 'severe', label: 'Severe', hint: 'Neglected; extra correction work needed' },
+];
+
+export const DEFAULT_CONDITION_MULTIPLIERS: Record<ConditionLevel, number> = { light: 0, moderate: 15, heavy: 35, severe: 60 };
+
+export const conditionLabel = (c: ConditionLevel | null | undefined) => CONDITION_LEVELS.find((x) => x.value === c)?.label ?? 'Not set';
+
+/** Percent added for a condition, using the company's multipliers. */
+export function conditionPct(level: ConditionLevel | null | undefined, multipliers?: Partial<Record<ConditionLevel, number>> | null): number {
+  if (!level) return 0;
+  const v = multipliers?.[level];
+  return Number(v ?? DEFAULT_CONDITION_MULTIPLIERS[level]) || 0;
+}
+
+/** Applies a condition percentage to a unit price. */
+export function withCondition(price: number, pct: number | null | undefined): number {
+  return round2(price * (1 + (Number(pct) || 0) / 100));
+}
+
+/** Estimated labor hours for one unit of a service on an asset (mirrors public._service_estimate). */
+export function estimateHours(
+  service: Pick<PriceableService, 'pricing_method' | 'est_hours'> & { category_hours?: Partial<Record<AircraftCategory, number>> | null },
+  aircraft?: PriceableAircraft | null,
+): number | null {
+  if (service.pricing_method === 'hourly') return 1;
+  const byClass = aircraft ? service.category_hours?.[aircraft.category] : undefined;
+  const h = byClass != null ? Number(byClass) : Number(service.est_hours);
+  return Number.isFinite(h) && h > 0 ? h : null;
 }

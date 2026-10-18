@@ -1,7 +1,7 @@
 // Run: npm test   (uses Node's built-in test runner with type stripping)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeTotals, priceService } from './pricing.ts';
+import { computeTotals, conditionPct, estimateHours, priceService, withCondition } from './pricing.ts';
 import { effectivePlan, hasFeature, trialDaysLeft } from './plans.ts';
 
 const svc = { base_price: 150, price_per_foot: 9, hourly_rate: 95, category_prices: { light_jet: 650 }, est_hours: 3 };
@@ -63,4 +63,22 @@ test('aircraft class guessing', async () => {
   assert.equal(guessCategory('Beechcraft Baron 58'), 'piston_twin');
   assert.equal(guessCategory('Bell 407'), 'helicopter');
   assert.equal(guessCategory('Some Homebuilt'), 'other');
+});
+
+test('per_sqft uses length × wingspan with a minimum', () => {
+  const s = { ...svc, pricing_method: 'per_sqft' as const, price_per_sqft: 0.5 };
+  assert.equal(priceService(s, { category: 'light_jet', length_ft: 50, wingspan_ft: 50 }), 1250);
+  assert.equal(priceService({ ...s, base_price: 2000 }, { category: 'light_jet', length_ft: 50, wingspan_ft: 50 }), 2000);
+  // Falls back to the typical size of the class.
+  assert.equal(priceService(s, { category: 'light_jet', length_ft: null }), 1250);
+});
+
+test('condition pricing and hour estimates', () => {
+  assert.equal(conditionPct('heavy', null), 35);
+  assert.equal(conditionPct('heavy', { heavy: 40 }), 40);
+  assert.equal(conditionPct(null, null), 0);
+  assert.equal(withCondition(1000, 35), 1350);
+  assert.equal(estimateHours({ pricing_method: 'flat', est_hours: 3, category_hours: { large_jet: 8 } }, { category: 'large_jet', length_ft: 90 }), 8);
+  assert.equal(estimateHours({ pricing_method: 'flat', est_hours: 3, category_hours: {} }, { category: 'light_jet', length_ft: 50 }), 3);
+  assert.equal(estimateHours({ pricing_method: 'hourly', est_hours: 3 }, null), 1);
 });

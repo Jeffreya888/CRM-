@@ -10,7 +10,8 @@ export type AircraftCategory =
   | 'midsize_jet' | 'super_midsize_jet' | 'large_jet' | 'airliner' | 'helicopter' | 'other'
   | 'car' | 'suv' | 'truck' | 'van' | 'rv' | 'motorcycle'
   | 'boat_small' | 'boat_medium' | 'boat_large' | 'yacht';
-export type PricingMethod = 'flat' | 'per_foot' | 'per_category' | 'hourly';
+export type PricingMethod = 'flat' | 'per_foot' | 'per_sqft' | 'per_category' | 'hourly';
+export type ConditionLevel = 'light' | 'moderate' | 'heavy' | 'severe';
 export type JobStatus = 'tentative' | 'scheduled' | 'in_progress' | 'on_hold' | 'completed' | 'invoiced' | 'cancelled';
 export type JobPriority = 'low' | 'normal' | 'high' | 'aog';
 export type QuoteStatus = 'draft' | 'sent' | 'viewed' | 'accepted' | 'declined' | 'expired';
@@ -43,6 +44,9 @@ export interface Organization {
   quiet_hours_start: number; quiet_hours_end: number;
   require_2fa: boolean;
   price_adjust_pct: number;
+  labor_burden_pct: number; overhead_per_hour: number;
+  condition_multipliers: Record<ConditionLevel, number>;
+  require_qc: boolean; photo_quotes_enabled: boolean;
   public_slug: string;
 }
 
@@ -90,6 +94,8 @@ export interface Aircraft {
   exterior_colors: string | null; paint_condition: string | null; interior_notes: string | null; coating_type: string | null;
   coating_applied_on: string | null; home_location_id: string | null; photo_path: string | null; notes: string | null; active: boolean;
   asset_type: AssetType; model_id: string | null; vin: string | null; plate: string | null; hull_id: string | null;
+  condition_level: ConditionLevel | null; condition_updated_at: string | null;
+  faa: FaaLookupFound | null; faa_checked_at: string | null;
   customer?: Pick<Customer, 'id' | 'name'> | null;
 }
 export type Asset = Aircraft;
@@ -102,13 +108,14 @@ export interface Service {
   est_hours: number | null; est_hours_max: number | null; taxable: boolean; checklist: string[]; active: boolean; sort_order: number;
   pricing_tiers: PricingTier[]; equipment: string[];
   asset_type: AssetType; guide_key: string | null; recur_every: number | null; recur_unit: RecurUnit | null;
+  price_per_sqft: number; category_hours: Partial<Record<AircraftCategory, number>>; requires_cert: boolean;
 }
 /** Price-free view of a service for technicians (public.service_menu). */
 export type ServiceMenuItem = Pick<Service, 'id' | 'org_id' | 'name' | 'description' | 'category' | 'est_hours' | 'active' | 'sort_order' | 'checklist' | 'equipment'>;
 
 export interface PricingTier { name: string; detail?: string | null; price: number }
 
-export interface GuideStep { title: string; detail: string; caution: string | null }
+export interface GuideStep { title: string; detail: string; caution: string | null; minutes?: number | null; products?: string[] }
 export interface ServiceGuide {
   id: string; org_id: string | null; key: string; asset_type: AssetType; title: string; summary: string;
   time_estimate: string | null; crew: string | null; products: string[]; tools: string[]; prep: string[];
@@ -125,6 +132,7 @@ export interface TrainingMedia {
 export interface LineItem {
   id?: string; service_id: string | null; description: string; quantity: number; unit_price: number; taxable: boolean; sort_order?: number;
   option_id?: string | null;
+  est_hours?: number | null; est_supply_cost?: number | null;
 }
 
 export interface QuoteOption { id: string; quote_id: string; name: string; description: string | null; sort_order: number; subtotal: number; tax: number; total: number }
@@ -137,6 +145,7 @@ export interface Quote {
   deposit_type: 'none' | 'percent' | 'fixed'; deposit_value: number; deposit_amount: number; deposit_paid_at: string | null;
   view_count: number; first_viewed_at: string | null; last_viewed_at: string | null; sent_at: string | null;
   declined_at: string | null; decline_reason: 'price' | 'timing' | 'went_elsewhere' | 'other' | null; decline_note: string | null;
+  condition_level: ConditionLevel | null; condition_pct: number;
   customer?: Pick<Customer, 'id' | 'name' | 'email'> | null; aircraft?: Pick<Aircraft, 'id' | 'tail_number'> | null;
 }
 
@@ -150,6 +159,7 @@ export interface Job {
   condition_report: string | null; condition_signature_svg: string | null; condition_signed_by: string | null; condition_signed_at: string | null; condition_version: number;
   flagged: boolean; flag_reason: string | null;
   recurring_schedule_id: string | null; covered_by_plan: boolean; follow_up_of: string | null;
+  qc_status: 'not_required' | 'pending' | 'passed' | 'failed'; qc_by: string | null; qc_at: string | null; qc_notes: string | null;
   customer?: Pick<Customer, 'id' | 'name' | 'phone' | 'email'> | null;
   aircraft?: Pick<Aircraft, 'id' | 'tail_number' | 'model' | 'manufacturer' | 'category' | 'length_ft' | 'asset_type'> | null;
   location?: Pick<Location, 'id' | 'name' | 'airport_code' | 'fbo_name' | 'access_notes'> | null;
@@ -188,7 +198,32 @@ export interface Message {
 
 export interface BookingRequest {
   id: string; org_id: string; customer_id: string; aircraft_id: string | null; service_id: string | null; job_id: string | null; quote_id: string | null;
-  kind: 'booking' | 'reschedule' | 'quote_dates'; preferred: string[]; notes: string | null; status: 'pending' | 'approved' | 'declined'; created_at: string;
+  kind: 'booking' | 'reschedule' | 'quote_dates' | 'photo_quote'; preferred: string[]; notes: string | null; status: 'pending' | 'approved' | 'declined'; created_at: string;
+  photo_paths: string[]; assessment_id: string | null;
+}
+
+/** public.faa_lookup result. */
+export type FaaLookup = { found: false; reason: 'not_us' | 'not_found' | 'no_data' } | FaaLookupFound;
+export interface FaaLookupFound {
+  found: true; n_number: string; serial: string | null; year: number | null; faa_manufacturer: string; faa_model: string;
+  owner: string | null; city: string | null; state: string | null; country: string | null; status: string | null; expires: string | null;
+  cert_issued: string | null; engines: number | null; seats: number | null; type: string | null;
+  model_id: string | null; catalog: Pick<AircraftModel, 'manufacturer' | 'model' | 'category' | 'length_ft' | 'wingspan_ft'> | null;
+  match: 'learned' | 'alias' | 'name' | null; data_as_of: string | null;
+}
+
+export interface ConditionFinding { area: string; issue: string; severity: 'low' | 'medium' | 'high'; note: string | null }
+export interface ConditionSuggestion { service_id: string | null; guide_key: string | null; name: string; reason: string }
+export interface ConditionAssessment {
+  id: string; org_id: string; aircraft_id: string | null; customer_id: string | null; job_id: string | null; quote_id: string | null;
+  booking_request_id: string | null; source: 'staff' | 'portal'; photo_paths: string[]; status: 'pending' | 'done' | 'failed';
+  overall: ConditionLevel | null; score: number | null; summary: string | null; findings: ConditionFinding[]; suggestions: ConditionSuggestion[];
+  error: string | null; created_by: string | null; created_at: string; applied_at: string | null; applied_by: string | null;
+}
+
+export interface ServiceSkill {
+  org_id: string; user_id: string; guide_key: string; level: 'training' | 'certified' | 'trainer';
+  certified_by: string | null; certified_at: string | null; requested_at: string | null; notes: string | null;
 }
 
 /** A problem returned by public.schedule_conflicts. */
