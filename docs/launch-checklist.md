@@ -12,7 +12,7 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 
 ## 2. Supabase (production database)
 - [ ] Create the project on the **Pro plan** (daily backups; add Point-in-Time Recovery for production).
-- [ ] `npx supabase@2 link --project-ref <ref>` then `npx supabase@2 db push`.
+- [ ] GitHub repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD`, then Actions → **Deploy backend** → Run workflow (applies the database and deploys the functions; run it again after each update). Terminal alternative: `npx supabase@2 link --project-ref <ref>` then `npx supabase@2 db push`.
 - [ ] Authentication settings (Dashboard → Authentication):
   - Anonymous sign-ins **on** (demo workspace and App Review).
   - Minimum password length **10**; email confirmation **on**.
