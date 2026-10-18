@@ -158,7 +158,9 @@ function PLScreen() {
       {tab === 'pl' ? <Segmented value={basis} onChange={setBasis} options={[{ value: 'cash', label: 'Cash basis' }, { value: 'accrual', label: 'Accrual basis' }]} /> : null}
       {fleet ? <Select label="Company location" value={branch} options={branchOptions} onChange={setBranch} allowClear placeholder="All locations" icon="business-outline" /> : null}
       {tab === 'costing' ? (
-        <JobCostingPanel orgId={orgId} from={range.from} to={range.to} branch={branch} currency={org.currency} admin={admin} />
+        <Gate feature="job_costing" inline body="See true profit by aircraft class, model and type, and how accurate your time estimates are.">
+          <JobCostingPanel orgId={orgId} from={range.from} to={range.to} branch={branch} currency={org.currency} admin={admin} />
+        </Gate>
       ) : (
       <>
       <ToggleRow label="Compare to previous period" hint={rangeLabel(prevRange.from, prevRange.to)} value={compare} onChange={setCompare} />

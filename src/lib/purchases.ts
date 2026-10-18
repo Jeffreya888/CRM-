@@ -39,10 +39,14 @@ function planOf(id: string): StorePackage['planId'] {
   return s.includes('fleet') ? 'fleet' : s.includes('team') ? 'team' : s.includes('solo') ? 'solo' : null;
 }
 
+// Consumable add-ons (not subscriptions): extra texts and extra AI checks.
+const isTextPack = (id: string) => id.toLowerCase().includes('texts');
+const isAiPack = (id: string) => id.toLowerCase().includes('ai_checks');
+
 export async function loadPackages(): Promise<StorePackage[]> {
   if (!ensure()) return [];
   const offerings = await Purchases.getOfferings();
-  const pkgs = (offerings.current?.availablePackages ?? []).filter((p) => !p.product.identifier.toLowerCase().includes('texts'));
+  const pkgs = (offerings.current?.availablePackages ?? []).filter((p) => !isTextPack(p.product.identifier) && !isAiPack(p.product.identifier));
   return pkgs.map((p) => {
     const intro = p.product.introPrice;
     return {
@@ -57,40 +61,51 @@ export async function loadPackages(): Promise<StorePackage[]> {
   });
 }
 
-export interface TextPack {
+/** A consumable add-on product (text pack or AI check pack). */
+interface ConsumablePack {
   identifier: string;
   productId: string;
-  texts: number | null;
   priceString: string;
   title: string;
   raw: PurchasesPackage;
 }
 
+export interface TextPack extends ConsumablePack {
+  texts: number | null;
+}
+
+export interface AiPack extends ConsumablePack {
+  checks: number | null;
+}
+
+/** Reads the pack size from a product id like flightready_ai_checks_50. */
+function packCount(id: string): number | null {
+  const n = /(\d[\d,]*)\D*$/.exec(id)?.[1];
+  return n ? Number(n.replace(/,/g, '')) : null;
+}
+
 /**
- * Extra text packs: consumable products whose id contains "texts", e.g.
- * flightready_texts_500. Looks through every offering so the packs can live in
- * their own offering. Returns [] when none are configured.
+ * Consumable packs whose product id matches `match`. Looks through every
+ * offering so the packs can live in their own offering. [] when none exist.
  */
-export async function loadTextPacks(): Promise<TextPack[]> {
+async function loadConsumables(match: (id: string) => boolean): Promise<(ConsumablePack & { count: number | null })[]> {
   if (!ensure()) return [];
   const offerings = await Purchases.getOfferings();
   const seen = new Set<string>();
-  const out: TextPack[] = [];
+  const out: (ConsumablePack & { count: number | null })[] = [];
   const all = [offerings.current, ...Object.values(offerings.all ?? {})].filter(Boolean);
   for (const o of all) {
     for (const p of o!.availablePackages) {
       const id = p.product.identifier;
-      if (!id.toLowerCase().includes('texts') || seen.has(id)) continue;
+      if (!match(id) || seen.has(id)) continue;
       seen.add(id);
-      const n = /(\d[\d,]*)/.exec(id.replace(/^\D+/, ''))?.[1];
-      out.push({ identifier: p.identifier, productId: id, texts: n ? Number(n.replace(/,/g, '')) : null, priceString: p.product.priceString, title: p.product.title, raw: p });
+      out.push({ identifier: p.identifier, productId: id, count: packCount(id), priceString: p.product.priceString, title: p.product.title, raw: p });
     }
   }
-  return out.sort((a, b) => (a.texts ?? 0) - (b.texts ?? 0));
+  return out.sort((a, b) => (a.count ?? 0) - (b.count ?? 0));
 }
 
-/** Buys a text pack; the revenuecat-webhook adds the credits to the company. */
-export async function buyTextPack(pack: TextPack): Promise<CustomerInfo | null> {
+async function buyConsumable(pack: ConsumablePack): Promise<CustomerInfo | null> {
   if (!ensure()) return null;
   try {
     const { customerInfo } = await Purchases.purchasePackage(pack.raw);
@@ -100,6 +115,22 @@ export async function buyTextPack(pack: TextPack): Promise<CustomerInfo | null> 
     throw e;
   }
 }
+
+/** Extra text packs: consumable products whose id contains "texts", e.g. flightready_texts_500. */
+export async function loadTextPacks(): Promise<TextPack[]> {
+  return (await loadConsumables(isTextPack)).map(({ count, ...p }) => ({ ...p, texts: count }));
+}
+
+/** Buys a text pack; the revenuecat-webhook adds the credits to the company. */
+export const buyTextPack = (pack: TextPack) => buyConsumable(pack);
+
+/** Extra AI photo check packs: consumable products whose id contains "ai_checks", e.g. flightready_ai_checks_50. */
+export async function loadAiPacks(): Promise<AiPack[]> {
+  return (await loadConsumables(isAiPack)).map(({ count, ...p }) => ({ ...p, checks: count }));
+}
+
+/** Buys an AI check pack; the revenuecat-webhook adds the checks to the company. */
+export const buyAiPack = (pack: AiPack) => buyConsumable(pack);
 
 export async function buy(pkg: StorePackage): Promise<CustomerInfo | null> {
   if (!ensure()) return null;

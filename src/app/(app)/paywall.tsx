@@ -1,11 +1,12 @@
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { notify } from '../../components/FormSheet';
+import { allowanceLine, useAiAllowance } from '../../components/ai/AiAllowance';
 import { openSite, SITE } from '../../components/settings/links';
 import { Badge, Button, Card, ErrorBanner, Ionicons, ListRow, Loading, Row, Screen, Section, Segmented, T } from '../../components/ui';
 import { annualSavings, PLANS, type PlanInfo } from '../../lib/plans';
-import { buy, buyTextPack, loadPackages, loadTextPacks, purchasesAvailable, restore, type StorePackage, type TextPack } from '../../lib/purchases';
+import { buy, buyAiPack, buyTextPack, loadAiPacks, loadPackages, loadTextPacks, purchasesAvailable, restore, type AiPack, type StorePackage, type TextPack } from '../../lib/purchases';
 import { useSession } from '../../lib/session';
 import { colors, space } from '../../lib/theme';
 
@@ -19,6 +20,10 @@ export default function Paywall() {
   const { plan, trialDays, role, refresh, org } = useSession();
   const [pkgs, setPkgs] = useState<StorePackage[] | null>(null);
   const [packs, setPacks] = useState<TextPack[]>([]);
+  const [aiPacks, setAiPacks] = useState<AiPack[]>([]);
+  const { section } = useLocalSearchParams<{ section?: string }>();
+  const focusAi = section === 'ai';
+  const allowance = useAiAllowance();
   const [period, setPeriod] = useState<Period>(() => org?.billing_period ?? 'monthly');
   const [error, setError] = useState<string | null>(null);
   const isOwner = role === 'owner' || role === 'admin';
@@ -30,6 +35,7 @@ export default function Paywall() {
       .then((p) => { if (alive) setPkgs(p); })
       .catch((e) => { if (alive) { setError(e.message); setPkgs([]); } });
     loadTextPacks().then((p) => { if (alive) setPacks(p); }).catch(() => {});
+    loadAiPacks().then((p) => { if (alive) setAiPacks(p); }).catch(() => {});
     return () => { alive = false; };
   }, []);
 
@@ -66,6 +72,19 @@ export default function Paywall() {
     }
   };
 
+  const purchaseAiPack = async (p: AiPack) => {
+    setError(null);
+    try {
+      const info = await buyAiPack(p);
+      if (!info) return;
+      notify('AI checks added', 'Your extra AI checks will be added to your company in a few seconds.');
+      await awaitUpgrade();
+      allowance.reload();
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+
   const doRestore = async () => {
     setError(null);
     try {
@@ -89,6 +108,32 @@ export default function Paywall() {
       ? 'Your plan has ended. Your data is safe. Choose a plan to keep working.'
       : `You're on ${PLANS.find((p) => p.id === plan)?.name ?? plan}, billed ${currentPeriod === 'annual' ? 'yearly' : 'monthly'}.`;
 
+  const extraAi = org?.ai_extra_credits ?? 0;
+  const aiSection = (
+    <View style={focusAi ? { borderWidth: 2, borderColor: colors.primary, borderRadius: 16, padding: space.md, marginTop: space.lg } : undefined}>
+      <Section title="Extra AI checks" icon="sparkles-outline">
+        <T variant="muted" style={{ marginBottom: space.sm }}>
+          {allowance.data ? `${allowanceLine(allowance.data)}. ` : ''}
+          Extra checks are used after your monthly checks run out and never expire.{extraAi ? ` You have ${extraAi.toLocaleString('en-US')} extra AI checks.` : ''}
+        </T>
+        {aiPacks.length ? (
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            {aiPacks.map((p) => (
+              <ListRow key={p.productId} icon="sparkles-outline" tone="purple"
+                title={p.checks ? `${p.checks.toLocaleString('en-US')} AI checks` : p.title} subtitle={p.checks ? 'One-time purchase' : null}
+                right={<Button small kind="secondary" title={p.priceString} disabled={!isOwner} onPress={() => purchaseAiPack(p)} />} />
+            ))}
+          </Card>
+        ) : (
+          <T variant="small">
+            {purchasesAvailable ? 'Extra AI check packs are not available right now. Please try again later.' : 'Extra AI checks are purchased in the Flight Ready iPhone or Android app.'}
+          </T>
+        )}
+        {!isOwner ? <T variant="small" style={{ marginTop: space.sm }}>Ask your owner to add more AI checks.</T> : null}
+      </Section>
+    </View>
+  );
+
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Plans', presentation: 'modal' }} />
@@ -102,6 +147,8 @@ export default function Paywall() {
       {!purchasesAvailable ? (
         <ErrorBanner message={Platform.OS === 'web' ? 'Subscriptions are purchased in the Flight Ready iPhone or Android app.' : 'In-app purchases are not available right now. Please try again later.'} />
       ) : null}
+
+      {focusAi ? aiSection : null}
 
       <Segmented value={period} onChange={setPeriod} options={[{ value: 'monthly', label: 'Monthly' }, { value: 'annual', label: `Yearly · save up to $${maxSave}` }]} />
 
@@ -134,7 +181,7 @@ export default function Paywall() {
               </Row>
             ))}
             <T variant="small" style={{ marginTop: space.sm }}>
-              {p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? '1 user' : `Up to ${p.seats} team members`} · {p.texts.toLocaleString('en-US')} texts / month · {(p.feeBps / 100).toFixed(1)}% platform fee on card payments
+              {p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? '1 user' : `Up to ${p.seats} team members`} · {p.texts.toLocaleString('en-US')} texts / month · {p.aiChecks.toLocaleString('en-US')} AI photo checks / month · {(p.feeBps / 100).toFixed(1)}% platform fee on card payments
             </T>
             <Button style={{ marginTop: space.md }} kind={popular ? 'primary' : 'secondary'}
               title={isCurrent ? 'Current plan' : !pkg ? 'Available in the app' : isCurrentPlan ? `Switch to ${period === 'annual' ? 'yearly' : 'monthly'}` : `Choose ${p.name}`}
@@ -164,6 +211,8 @@ export default function Paywall() {
           </Card>
         </Section>
       ) : null}
+
+      {focusAi ? null : aiSection}
 
       <Button style={{ marginTop: space.md }} kind="ghost" title="Restore purchases" onPress={doRestore} disabled={!purchasesAvailable} />
       <T variant="small" style={{ textAlign: 'center', marginTop: space.md }}>

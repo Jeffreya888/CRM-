@@ -41,6 +41,8 @@ export interface Organization {
   pay_period_cadence: 'weekly' | 'biweekly' | 'semimonthly';
   pay_period_anchor: string;
   sms_enabled: boolean; sms_number: string | null; sms_status: 'not_requested' | 'pending' | 'active' | 'suspended'; sms_extra_credits: number;
+  /** Purchased AI photo checks left (never expire; used after the monthly allowance). */
+  ai_extra_credits: number;
   quiet_hours_start: number; quiet_hours_end: number;
   require_2fa: boolean;
   price_adjust_pct: number;

@@ -109,7 +109,8 @@ export default function JobDetail() {
   const checklist = stepItems(allChecklist);
   const qcItems = allChecklist.filter((c) => c.kind === 'qc');
   const timings = stepTimings(checklist, guides, j.actual_start);
-  const requireQc = !!org?.require_qc;
+  // Quality checks are a Team+ feature; on other plans the setting is ignored.
+  const requireQc = !!org?.require_qc && can('quality_check');
   const qcBlocked = qcBlocksCompletion(requireQc, j.qc_status);
   const name = (u: string) => members.find((m) => m.user_id === u)?.display_name ?? 'Team member';
   const color = (u: string) => members.find((m) => m.user_id === u)?.color ?? colors.primary;

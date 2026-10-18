@@ -12,6 +12,7 @@ import { useOrg } from '../../lib/session';
 import { friendlyError } from '../../lib/supabase';
 import { colors, radius, space } from '../../lib/theme';
 import type { ConditionAssessment } from '../../lib/types';
+import { AiAllowance, isAiLimitError, useAiAllowance } from './AiAllowance';
 import { AssessmentCard } from './AssessmentCard';
 
 type Step = 'pick' | 'running' | 'result';
@@ -35,12 +36,17 @@ export function AssessPhotosSheet(props: {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [wasVisible, setWasVisible] = useState(false);
+  const [outOfChecks, setOutOfChecks] = useState(false);
+  // Bumped on open and after each check so the allowance reloads.
+  const [allowanceKey, setAllowanceKey] = useState(0);
+  const allowance = useAiAllowance(allowanceKey);
 
   // Start fresh each time the sheet opens.
   if (visible !== wasVisible) {
     setWasVisible(visible);
-    if (visible) { setPhotos([]); setStep('pick'); setResult(null); setError(null); setSaved(false); setProgress(''); }
+    if (visible) { setPhotos([]); setStep('pick'); setResult(null); setError(null); setSaved(false); setProgress(''); setOutOfChecks(false); setAllowanceKey((k) => k + 1); }
   }
+  const noChecksLeft = outOfChecks || (!!allowance.data && allowance.data.left <= 0);
 
   const aircraft = aircraftId ? lk.aircraft.find((a) => a.id === aircraftId) ?? null : null;
   const customerId = props.customerId ?? aircraft?.customer_id ?? null;
@@ -70,8 +76,11 @@ export function AssessPhotosSheet(props: {
       setResult(row);
       setStep('result');
     } catch (e: any) {
-      setError(friendlyError(e.message));
+      if (isAiLimitError(e)) setOutOfChecks(true);
+      else setError(friendlyError(e.message));
       setStep('pick');
+    } finally {
+      setAllowanceKey((k) => k + 1);
     }
   };
 
@@ -118,6 +127,7 @@ export function AssessPhotosSheet(props: {
 
             {step === 'pick' ? (
               <>
+                <AiAllowance allowance={allowance.data} outOfChecks={outOfChecks} />
                 <T variant="muted" style={{ marginBottom: space.md }}>
                   Add up to {MAX_ASSESS_PHOTOS} clear photos: the whole exterior, close-ups of dirty or worn areas, and the interior.
                 </T>
@@ -128,7 +138,7 @@ export function AssessPhotosSheet(props: {
                     <Button kind="secondary" icon="images-outline" title="Choose photos" onPress={() => add('library')} style={{ flex: 1 }} />
                   </Row>
                 ) : null}
-                <Button icon="sparkles-outline" title="Check condition" disabled={!photos.length} onPress={check} />
+                <Button icon="sparkles-outline" title="Check condition" disabled={!photos.length || noChecksLeft} onPress={check} />
                 <T variant="small" style={{ marginTop: space.md }}>AI estimate — please confirm on site.</T>
               </>
             ) : null}
@@ -143,6 +153,7 @@ export function AssessPhotosSheet(props: {
 
             {step === 'result' && result ? (
               <>
+                {allowance.data ? <AiAllowance allowance={allowance.data} /> : null}
                 <AssessmentCard assessment={{ ...result, applied_at: saved ? new Date().toISOString() : result.applied_at }} />
                 {done && canQuote ? <Button icon="document-text-outline" title="Create quote" onPress={createQuote} style={{ marginBottom: space.sm }} /> : null}
                 {done && canSave && result.overall ? (

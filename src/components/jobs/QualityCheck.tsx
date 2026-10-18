@@ -3,6 +3,7 @@ import { format, isToday } from 'date-fns';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { relative } from '../../lib/format';
+import { useSession } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
 import type { Job } from '../../lib/types';
@@ -19,7 +20,8 @@ export const QC_BLOCK_MESSAGE = 'A manager must pass the quality check first.';
 /**
  * QC items (job_checklist_items.kind = 'qc') as checkboxes, then:
  * crew → Ready for quality check (submit_for_qc); manager → Pass / Needs work (qc_decision).
- * Hidden when the job has no QC items and the company does not require QC.
+ * Hidden when the job has no QC items and the company does not require QC,
+ * and on plans without quality checks (Team and above; upsell lives in Settings).
  */
 export function QualityCheck({ job, items, requireQc, canCheck, canSubmit, manager, name, uid, onChanged }: {
   job: Pick<Job, 'id' | 'status' | 'qc_status' | 'qc_by' | 'qc_at' | 'qc_notes'>;
@@ -36,6 +38,8 @@ export function QualityCheck({ job, items, requireQc, canCheck, canSubmit, manag
 }) {
   const [failing, setFailing] = useState(false);
   const [note, setNote] = useState('');
+  const { can } = useSession();
+  if (!can('quality_check')) return null;
   if (!items.length && !requireQc) return null;
 
   const status = job.qc_status ?? 'not_required';

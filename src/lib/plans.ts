@@ -6,7 +6,8 @@ import type { Organization, Plan, Role } from './types';
 export type Feature =
   | 'unlimited_customers' | 'team' | 'timesheet_approvals' | 'online_payments' | 'inventory' | 'reports'
   | 'pipeline' | 'reminders' | 'customer_portal' | 'branches' | 'integrations' | 'stock_locations'
-  | 'expenses' | 'texting' | 'recurring';
+  | 'expenses' | 'texting' | 'recurring'
+  | 'photo_quotes' | 'certification' | 'quality_check' | 'job_costing';
 
 export interface PlanInfo {
   id: Exclude<Plan, 'trial' | 'expired'>;
@@ -17,31 +18,38 @@ export interface PlanInfo {
   customerLimit: number | null;
   feeBps: number;      // platform fee on card payments
   texts: number;       // included customer texts per month
+  aiChecks: number;    // included AI photo checks per month (staff)
   features: Feature[];
   blurb: string;
   highlights: string[];
 }
 
+/** AI photo checks included during the free trial (the demo workspace gets 5). */
+export const TRIAL_AI_CHECKS = 15;
+
+/** Team and above: customer photo quotes, technician certification, quality checks, job costing report. */
+const TEAM_EXTRAS: Feature[] = ['photo_quotes', 'certification', 'quality_check', 'job_costing'];
+
 const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'expenses', 'recurring', 'texting', 'inventory', 'reports', 'pipeline', 'unlimited_customers'];
 
 export const PLANS: PlanInfo[] = [
   {
-    id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250,
+    id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250, aiChecks: 25,
     features: CORE,
     blurb: 'For an independent detailer running the whole business from one phone.',
-    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs & price guide', 'Customer portal & card payments', '250 customer texts / month'],
+    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal & card payments', '25 AI photo checks / month', '250 customer texts / month'],
   },
   {
-    id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000,
-    features: [...CORE, 'team', 'timesheet_approvals'],
+    id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000, aiChecks: 150,
+    features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS],
     blurb: 'For a company coordinating a detailing crew.',
-    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', '1,000 customer texts / month'],
+    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification & quality checks', 'Job costing: profit by class, model & type', 'Customer photo quotes in the portal', '150 AI photo checks / month', '1,000 customer texts / month'],
   },
   {
-    id: 'fleet', name: 'Fleet', monthly: 189.99, annual: 1899.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000,
-    features: [...CORE, 'team', 'timesheet_approvals', 'branches', 'integrations', 'stock_locations'],
+    id: 'fleet', name: 'Fleet', monthly: 189.99, annual: 1899.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000, aiChecks: 500,
+    features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS, 'branches', 'integrations', 'stock_locations'],
     blurb: 'For multi-location operations and aircraft management partners.',
-    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations', 'Scheduling-software integrations', '3,000 customer texts / month'],
+    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations & stock by location', 'Scheduling-software integrations', '500 AI photo checks / month', '3,000 customer texts / month'],
   },
 ];
 
@@ -61,6 +69,10 @@ export const FEATURE_LABELS: Record<Feature, string> = {
   expenses: 'Business expenses & mileage',
   texting: 'Customer texting',
   recurring: 'Recurring care schedules',
+  photo_quotes: 'Customer photo quotes',
+  certification: 'Technician certification',
+  quality_check: 'Quality check sign-off',
+  job_costing: 'Job costing report',
 };
 
 export const planInfo = (plan: Plan) => PLANS.find((p) => p.id === plan) ?? null;
@@ -87,6 +99,13 @@ export function hasFeature(plan: Plan, feature: Feature): boolean {
 /** The cheapest plan that includes a feature (for upgrade prompts). */
 export function planFor(feature: Feature): PlanInfo {
   return PLANS.find((p) => p.features.includes(feature)) ?? PLANS[PLANS.length - 1]!;
+}
+
+/** Included AI photo checks per month for a plan (trial = TRIAL_AI_CHECKS). */
+export function aiChecksFor(plan: Plan): number {
+  if (plan === 'trial') return TRIAL_AI_CHECKS;
+  if (plan === 'expired') return 0;
+  return planInfo(plan)?.aiChecks ?? 0;
 }
 
 export function seatLimit(plan: Plan): number {
