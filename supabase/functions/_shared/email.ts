@@ -4,6 +4,7 @@
 // bare address). Emails sent for a company go out as
 // "Company via Flight Ready <address>" with Reply-To set to the company email,
 // so customer replies reach the company, not the platform.
+import type { SupabaseClient } from "./deps.ts";
 import { env } from "./http.ts";
 
 export type EmailAttachment = { filename: string; content: string /* base64 */; content_type?: string };
@@ -18,7 +19,21 @@ export type EmailInput = {
   attachments?: EmailAttachment[];
   /** Company name shown as "<name> via Flight Ready". Omit for platform emails. */
   fromName?: string | null;
+  /** Counts against the company's daily email limit (anti-abuse). Omit for platform emails. */
+  quota?: { db: SupabaseClient; orgId: string };
 };
+
+/**
+ * Reserves room in a company's rolling 24-hour email allowance (set per plan in
+ * public.claim_email_quota). Throws DAILY_EMAIL_LIMIT when it is used up.
+ */
+export async function claimEmailQuota(db: SupabaseClient, orgId: string, recipients: number) {
+  const { data, error } = await db.rpc("claim_email_quota", { p_org: orgId, p_count: Math.max(1, recipients) });
+  if (error) throw new Error(`Email limit check failed: ${error.message}`);
+  if (data !== true) {
+    throw new Error("DAILY_EMAIL_LIMIT: this company reached its daily email limit. Emails resume within 24 hours; contact support if you need more.");
+  }
+}
 
 export const esc = (s: unknown) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
@@ -45,6 +60,7 @@ export async function sendEmail(input: EmailInput): Promise<string> {
   const to = (Array.isArray(input.to) ? input.to : [input.to]).map((t) => t.trim()).filter(Boolean);
   if (!to.length || !to.every(isEmail)) throw new Error("Invalid email address");
   const cc = input.cc ? (Array.isArray(input.cc) ? input.cc : [input.cc]).filter(isEmail) : [];
+  if (input.quota) await claimEmailQuota(input.quota.db, input.quota.orgId, to.length + cc.length);
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },

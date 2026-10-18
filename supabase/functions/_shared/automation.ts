@@ -221,6 +221,7 @@ export async function deliverMessage(db: SupabaseClient, id: string, opts: Deliv
       const providerId = await sendEmail({
         to, subject: m.subject || `Message from ${org.name}`, html, text: String(m.body).replace(/\\n/g, "\n"),
         replyTo: org.email, fromName: org.name, attachments: opts.attachments, cc: opts.cc,
+        quota: { db, orgId: m.org_id },
       });
       return finish({
         status: "sent", provider_id: providerId || null, sent_at: new Date().toISOString(), to_address: to,

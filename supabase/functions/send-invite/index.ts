@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       footerHtml: `<p style="color:#64748b;font-size:13px;line-height:1.5">This invitation expires ${esc(expires)}. If you weren't expecting it, you can ignore this email.</p>`,
     });
     const text = `${who} invited you to join ${org?.name} on Flight Ready as ${role}.\n\nAccept: ${link}\nOr open Flight Ready → Join your company and enter code ${inv.code}.\n\nThis invitation expires ${expires}.`;
-    await sendEmail({ to: inv.email, subject: `You're invited to join ${org?.name} on Flight Ready`, html, text, replyTo: org?.email, fromName: org?.name });
+    await sendEmail({ to: inv.email, subject: `You're invited to join ${org?.name} on Flight Ready`, html, text, replyTo: org?.email, fromName: org?.name, quota: { db, orgId: inv.org_id } });
     await db.from("invitations").update({ sent_at: new Date().toISOString() }).eq("id", inv.id);
     return json({ sent: true });
   } catch (e) {

@@ -56,6 +56,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
   await step("cleanup", async () => {
     const r = await db.rpc("cleanup_demo_workspaces");
     if (r.error) throw r.error;
+    await db.rpc("prune_email_quota_log");
     return { demo_workspaces_removed: r.data };
   });
 

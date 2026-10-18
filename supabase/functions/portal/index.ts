@@ -112,7 +112,7 @@ async function requestCode(db: SupabaseClient, body: Row) {
       <p style="color:#64748b;font-size:13px;line-height:1.5">The code expires in 10 minutes. If you didn't ask for it, you can ignore this email.</p>`,
   });
   await sendEmail({
-    to: email, subject: `${code} is your ${org.name} portal code`, html, replyTo: org.email, fromName: org.name,
+    to: email, subject: `${code} is your ${org.name} portal code`, html, replyTo: org.email, fromName: org.name, quota: { db, orgId: org.id },
     text: `Your ${org.name} customer portal code is ${code}. It expires in 10 minutes.`,
   }).catch((err) => console.error("code email failed", err));
   return ok;

@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     const html = emailLayout({ brand: org, bodyHtml: textToHtml(text) });
     const { data: me } = await db.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
     const replyTo = user.email && isEmail(user.email) ? user.email : org.email;
-    const id = await sendEmail({ to: recipient, subject: subject.trim(), html, text, replyTo, cc: replyTo !== recipient ? replyTo : null, fromName: org.name, attachments: out });
+    const id = await sendEmail({ to: recipient, subject: subject.trim(), html, text, replyTo, cc: replyTo !== recipient ? replyTo : null, fromName: org.name, attachments: out, quota: { db, orgId: org_id } });
     await queueMessage(db, {
       org_id, channel: "email", to_address: recipient, subject: subject.trim(),
       // The message log is visible to managers who may not see reports: log only what was sent, not the figures.

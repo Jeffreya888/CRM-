@@ -655,7 +655,7 @@ do $$ begin assert (select count(*) from invoices) = 0; end $$;
 reset role;
 insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
   ('00000000-0000-0000-0000-0000000000f1', 'sec-owner@sec.test', '{}', now()),
-  ('00000000-0000-0000-0000-0000000000f2', 'sec-admin@sec.test', '{}', now()),
+  ('00000000-0000-0000-0000-00000000e0a2', 'sec-admin@sec.test', '{}', now()),
   ('00000000-0000-0000-0000-0000000000f3', 'sec-tech@sec.test', '{}', now()),
   ('00000000-0000-0000-0000-0000000000f4', 'sec-other@sec.test', '{}', now());
 set role authenticated;
@@ -664,7 +664,7 @@ insert into ctx select 'sec_other', public.create_organization('Sec Other Co', f
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f1', false);
 insert into ctx select 'sec', public.create_organization('Sec Co', false);
 reset role;
-insert into memberships (org_id, user_id, role) select v, '00000000-0000-0000-0000-0000000000f2', 'admin' from ctx where k = 'sec';
+insert into memberships (org_id, user_id, role) select v, '00000000-0000-0000-0000-00000000e0a2', 'admin' from ctx where k = 'sec';
 insert into memberships (org_id, user_id, role) select v, '00000000-0000-0000-0000-0000000000f3', 'technician' from ctx where k = 'sec';
 insert into customers (org_id, name) select v, n from ctx, (values ('Sec Cust A'), ('Sec Cust B')) x(n) where k = 'sec';
 insert into jobs (org_id, number, title, customer_id, status)
@@ -704,7 +704,7 @@ do $$ begin
 end $$;
 
 -- Admin
-select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f2', false);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000e0a2', false);
 do $$ begin
   begin
     insert into invitations (org_id, email, role) select v, 'second-owner@sec.test', 'owner' from ctx where k = 'sec';
@@ -750,5 +750,20 @@ do $$ begin
 end $$;
 reset role;
 
+
+-- Daily email limit per company.
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+insert into organizations (id, name) values ('00000000-0000-0000-0000-00000000e0a2', 'Quota Co');
+do $$ begin
+  assert public.email_daily_limit('00000000-0000-0000-0000-00000000e0a2') = 150, 'trial limit';
+  assert public.claim_email_quota('00000000-0000-0000-0000-00000000e0a2', 149), 'within limit';
+  assert public.claim_email_quota('00000000-0000-0000-0000-00000000e0a2', 1), 'reaches limit';
+  assert not public.claim_email_quota('00000000-0000-0000-0000-00000000e0a2', 1), 'over limit refused';
+  assert (select count(*) from notification_outbox where kind = 'email_limit') = 1, 'owner alerted once';
+  perform public.claim_email_quota('00000000-0000-0000-0000-00000000e0a2', 1);
+  assert (select count(*) from notification_outbox where kind = 'email_limit') = 1, 'alert not repeated';
+end $$;
+delete from organizations where id = '00000000-0000-0000-0000-00000000e0a2';
 
 \echo ALL FLOW TESTS PASSED

@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
       const text = `Hi ${vendor},\n\nPlease send us the following items:\n\n${lines.map((l) => `- ${l.name}${l.sku ? ` (SKU ${l.sku})` : ""}: ${l.qty} ${l.unit}`).join("\n")}\n\nPlease reply to confirm availability, price and delivery date.\n\nThank you,\n${sender}`;
       const subject = `Order request from ${org.name}`;
       try {
-        const id = await sendEmail({ to: email, cc: org.email, replyTo: org.email, fromName: org.name, subject, html, text });
+        const id = await sendEmail({ to: email, cc: org.email, replyTo: org.email, fromName: org.name, subject, html, text, quota: { db, orgId: org_id } });
         emailed++;
         await queueMessage(db, {
           org_id, channel: "email", to_address: email, subject, body: text, status: "sent", provider_id: id || null,
