@@ -1,7 +1,7 @@
 # Flight Ready — feature plan (from the original app walkthrough)
 
 Decisions agreed with the owner while reviewing screenshots of the original
-Flight Ready app. Status: **built** (owner said "sending complete"). See README for the feature summary.
+Flight Ready app. Status: **built** (owner said "sending complete"). See README for the feature summary. Phase 2 (competitive edge: FAA autofill, AI photo reports, SOP certification & QC, true job costing) is specified and built per docs/competitive-edge.md.
 
 ## Plans & pricing
 | Plan | Price | Notes |

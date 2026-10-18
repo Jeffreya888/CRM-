@@ -19,12 +19,25 @@ Full feature spec agreed with the owner: [docs/feature-plan.md](docs/feature-pla
 
 **Business types & assets** — aircraft, vehicles and watercraft (choose at sign-up, add later).
 Built-in catalog of 545 aircraft and 604 boat models with size class, length and wingspan/beam;
-Flight Ready price guide per model (company regional adjustment).
+Flight Ready price guide per model (company regional adjustment). **FAA tail number autofill**: type
+an N-number and the public FAA registry fills in make, model (matched to the catalog), year, serial
+and registered owner (registry imported weekly by `.github/workflows/faa-registry.yml`).
 
-**Service guides & training** — 26 step-by-step service guides (Dry Wash Level 1 Trip Clean /
+**AI photo condition reports** — take up to 6 photos (or customers send them from the portal for a
+quote); the AI grades condition, lists findings and suggests services; one tap creates a quote priced
+for that condition. Always labelled as an estimate to confirm on site.
+
+**SOPs & training** — 26 step-by-step SOPs (service guides) (Dry Wash Level 1 Trip Clean /
 Level 2 Full Exterior, Exterior Wet Wash, Interior Level 1 / Level 2, Leather Shampoo &
 Conditioning, ceramic, paint correction, brightwork, …). Guide steps become the job checklist;
-videos can be attached to steps; companies can hide, copy and edit guides.
+videos can be attached to steps; companies can hide, copy and edit them. Steps carry time and
+materials; technicians are certified per SOP (certified-only services warn when scheduling); an
+optional quality check sign-off by a manager before jobs can be completed.
+
+**True job costing** — hours per size class, pricing by length or footprint (sq ft), condition-based
+pricing, fractional supply usage (0.25 gal, per foot), estimated cost & margin on quotes, estimate vs
+actual on every job, profit by aircraft class / model / boat size, and true labor cost (wages +
+payroll taxes & insurance + overhead per hour).
 
 **Jobs & scheduling** — tentative/scheduled jobs, crew (primary + additional), travel buffers,
 equipment and hangar reservations, live conflict checks (double booking, time off, working

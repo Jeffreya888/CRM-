@@ -38,6 +38,15 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
   ```
 - **Check:** Platform admin screen shows "automation" worker runs as OK within 10 minutes.
 
+## 3b. FAA registry (tail number autofill)
+- [ ] GitHub repository secret `SUPABASE_DB_URL` = the database connection string (Supabase → Project Settings → Database → Session pooler URI, with password).
+- [ ] Actions → "FAA registry import" → **Run workflow** once (then it runs every Monday).
+- **Check:** in the app, add an aircraft and type a real N-number; the FAA card appears with make, model and owner.
+
+## 3c. AI photo condition reports
+- [ ] `ANTHROPIC_API_KEY` is set in the function secrets (same key as receipt scanning). Each check sends up to 6 photos; caps: 40 per company per day (5 in demo), 3 per customer per day from the portal.
+- **Check:** on an aircraft, "Check condition from photos" returns a report; in the portal, "Get a quote from photos" creates a request on the Requests screen.
+
 ## 4. Email (Resend)
 - [ ] Add and verify your domain (SPF/DKIM DNS records exactly as Resend shows).
 - [ ] `EMAIL_FROM` on that domain; `RESEND_API_KEY`; webhook → `/functions/v1/resend-webhook`, secret in `RESEND_WEBHOOK_SECRET`.

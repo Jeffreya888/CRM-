@@ -43,8 +43,23 @@ export function AssetDraftFields({ draft, onChange, belowTail }: {
   }
 
   const boats = t === 'watercraft';
+  const tailField = (
+    <>
+      <Field
+        label={boats ? 'Vessel name *' : 'Tail number *'}
+        placeholder={boats ? 'Sea Breeze' : 'N123AB'}
+        autoCapitalize={boats ? 'words' : 'characters'}
+        autoCorrect={false}
+        value={draft.tail_number}
+        onChangeText={(v) => set({ tail_number: v })}
+      />
+      {belowTail}
+    </>
+  );
   return (
     <View>
+      {/* Aircraft: the tail number comes first so the FAA lookup can fill in the rest. */}
+      {boats ? null : tailField}
       <AssetModelPicker
         assetType={boats ? 'watercraft' : 'aircraft'}
         text={typeText}
@@ -60,15 +75,7 @@ export function AssetDraftFields({ draft, onChange, belowTail }: {
           wingspan_ft: m.wingspan_ft != null ? String(m.wingspan_ft) : draft.wingspan_ft,
         }); }}
       />
-      <Field
-        label={boats ? 'Vessel name *' : 'Tail number *'}
-        placeholder={boats ? 'Sea Breeze' : 'N123AB'}
-        autoCapitalize={boats ? 'words' : 'characters'}
-        autoCorrect={false}
-        value={draft.tail_number}
-        onChangeText={(v) => set({ tail_number: v })}
-      />
-      {belowTail}
+      {boats ? tailField : null}
       {boats ? (
         <Row gap={space.sm}>
           <Field style={{ flex: 1 }} label="Hull ID (optional)" autoCapitalize="characters" value={draft.hull_id} onChangeText={(v) => set({ hull_id: v })} />
