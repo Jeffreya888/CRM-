@@ -31,7 +31,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a
 insert into ctx select 'alpha', public.create_organization('Alpha Aero Detailing', true, array['aircraft','vehicle']);
 do $$ begin
   assert (select count(*) from services where asset_type = 'aircraft') = 14, 'aircraft services seeded';
-  assert (select count(*) from services where asset_type = 'vehicle') = 6, 'vehicle services seeded';
+  assert (select count(*) from services where asset_type = 'vehicle') = 17, 'vehicle services seeded (6 + 11 new)';
   assert (select count(*) from services where asset_type = 'watercraft') = 0, 'no watercraft yet';
   assert (select plan from organizations) = 'trial', 'starts on trial';
   assert (select cardinality(checklist) from services where guide_key = 'exterior_wash')
@@ -46,7 +46,10 @@ end $$;
 -- Business types can be added (seeding services) but not removed.
 update organizations set business_types = array['aircraft','vehicle','watercraft'];
 do $$ begin
-  assert (select count(*) from services where asset_type = 'watercraft') = 6, 'watercraft services seeded on add';
+  assert (select count(*) from services where asset_type = 'watercraft') = 18, 'watercraft services seeded on add (6 + 12 new)';
+  assert not exists (select 1 from services s where s.guide_key is not null and s.asset_type in ('vehicle','watercraft')
+                     and not exists (select 1 from service_guides g where g.org_id is null and g.key = s.guide_key)), 'every starter service has its SOP';
+  assert not exists (select 1 from services where asset_type in ('vehicle','watercraft') and guide_key is not null and cardinality(checklist) = 0), 'starter services get SOP checklists';
   begin
     update organizations set business_types = array['aircraft'];
     raise exception 'removing a business type should fail';
@@ -287,7 +290,7 @@ do $$ begin
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
   assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
   assert (select count(*) from services) = 0, 'tech cannot read service prices';
-  assert (select count(*) from service_menu) = 26, 'tech reads the service menu without prices';
+  assert (select count(*) from service_menu) = 49, 'tech reads the service menu without prices';
   assert (select count(*) from member_pay) = 0, 'tech cannot see pay rates';
   assert (select count(*) from location_secrets) = 0, 'tech cannot see gate codes';
   assert (select count(*) from crew_hours where user_id = auth.uid()) = 5, 'new member gets default hours';
@@ -338,7 +341,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d
 select public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
 do $$ begin
   assert (select count(*) from invoices) = 1, 'manager sees invoices';
-  assert (select count(*) from services) = 26, 'manager sees prices';
+  assert (select count(*) from services) = 49, 'manager sees prices';
   assert (select count(*) from member_pay) = 0, 'manager cannot see pay rates';
   assert (select count(*) from location_secrets) = 1, 'manager sees gate codes';
   begin
@@ -529,7 +532,7 @@ do $$ begin
   assert (select count(*) from training_media) = 0, 'isolation: training';
   assert (select count(*) from messages) = 0, 'isolation: messages';
   assert (select count(*) from audit_log) = 0, 'isolation: audit log';
-  assert (select count(*) from service_guides) = 26, 'platform guides visible to all';
+  assert (select count(*) from service_guides) = 49, 'platform guides visible to all';
   begin
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');
@@ -604,7 +607,7 @@ do $$ begin
   assert (select is_demo and plan = 'fleet' from organizations), 'demo is Fleet';
   assert (select count(*) from branches) = 2, 'demo branches';
   assert (select count(*) from jobs) >= 3, 'demo jobs';
-  assert (select count(*) from services) = 26, 'demo has all business types';
+  assert (select count(*) from services) = 49, 'demo has all business types';
   assert public.create_demo_workspace() = (select v from ctx where k='demo'), 'demo is reused';
   begin
     perform public.invite_member((select v from ctx where k='demo'), 'x@example.com', 'technician');
