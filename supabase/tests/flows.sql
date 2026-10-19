@@ -22,7 +22,7 @@ grant all on ctx to authenticated, anon;
 do $$ begin
   assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
   assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
-  assert (select count(*) from service_guides where org_id is null) = 26, 'platform guides loaded';
+  assert (select count(*) from service_guides where org_id is null) = 49, 'platform guides loaded (26 + 11 auto + 12 marine)';
 end $$;
 
 -- ---------- Alice creates an org with aircraft + vehicles ------------------

@@ -27,9 +27,12 @@ and registered owner (registry imported weekly by `.github/workflows/faa-registr
 quote); the AI grades condition, lists findings and suggests services; one tap creates a quote priced
 for that condition. Always labelled as an estimate to confirm on site.
 
-**SOPs & training** — 26 step-by-step SOPs (service guides) (Dry Wash Level 1 Trip Clean /
-Level 2 Full Exterior, Exterior Wet Wash, Interior Level 1 / Level 2, Leather Shampoo &
-Conditioning, ceramic, paint correction, brightwork, …). Guide steps become the job checklist;
+**SOPs & training** — 49 step-by-step SOPs (service guides): 14 aviation (Dry Wash Level 1 Trip
+Clean / Level 2 Full Exterior, Exterior Wet Wash, Interior Level 1 / Level 2, Leather Shampoo &
+Conditioning, ceramic, paint correction, brightwork, …), 17 automotive (wash and interior levels,
+waterless wash, clay, wax/sealant, wheels, leather, extraction, headlights, odor, PPF care, …) and
+18 marine (wash and interior levels, non-skid, metal polish, canvas & isinglass, waterline stains,
+mildew, engine room & bilge, outboard & trailer, gelcoat polish, bottom inspection, hull wax, …). Guide steps become the job checklist;
 videos can be attached to steps; companies can hide, copy and edit them. Steps carry time and
 materials; technicians are certified per SOP (certified-only services warn when scheduling); an
 optional quality check sign-off by a manager before jobs can be completed.
