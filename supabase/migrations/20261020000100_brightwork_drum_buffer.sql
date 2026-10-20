@@ -100,6 +100,13 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
+    "title": "Rake (fluff) the new pad",
+    "detail": "Away from the aircraft, crack the throttle open so the drum spins lightly and hold the pad rake against the new pad across its full width to fluff the fibers and remove loose lint before first use.",
+    "caution": "Keep fingers behind the rake and the drum pointed away from your body; never rake near the aircraft.",
+    "minutes": 2,
+    "products": []
+  },
+  {
     "title": "Apply cutting compound to the metal",
     "detail": "Apply a small amount of cutting compound directly to the metal on the first section (not to the drum pad), spread thin over about a 2 ft length. Reapply to the metal for each new section; add product sparingly so it does not sling or smear.",
     "caution": "Do not load compound onto the drum pad itself.",
@@ -134,13 +141,20 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
-    "title": "Wipe residue & rake the drum pad",
-    "detail": "Wipe the black residue off each section before it dries using clean cloths, folding to a clean face often. Rake or comb the drum pad regularly to remove spent compound and metal so it keeps cutting cleanly.",
-    "caution": "A glazed, dirty pad overheats the metal and leaves streaks. Clean it before it loads up.",
-    "minutes": 30,
+    "title": "Wipe residue off each section",
+    "detail": "Wipe the black residue off each section before it dries using clean cloths, folding to a clean face often.",
+    "caution": null,
+    "minutes": 20,
     "products": [
       "Clean cotton polishing cloths and microfiber towels"
     ]
+  },
+  {
+    "title": "Rake the drum pad every 2 sections",
+    "detail": "After every 2 sections (and sooner if the pad starts to load up or glaze), step away from the aircraft, crack the throttle open so the drum spins lightly, and hold the pad rake firmly against the spinning pad, moving it across the full width of the drum until spent compound and metal stop coming out and the fibers stand up again. Return to cutting with a clean, fluffed pad.",
+    "caution": "Rake only away from the aircraft with the drum spinning slowly, rake held flat against the pad and fingers behind the rake; keep the hose, clothing and hands clear. A glazed, dirty pad overheats the metal and leaves streaks.",
+    "minutes": 10,
+    "products": []
   },
   {
     "title": "Inspect under light & repeat cut where needed",
@@ -153,7 +167,7 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
   },
   {
     "title": "Polish: change to the polish drum pad — or finish with a dual-action",
-    "detail": "Choose one finishing method. Option A (drum): close the throttle, twist the buffer to off and disconnect the air hose, remove the spring pins, swap the cut pad for a clean polish pad (fold the ends in and re-secure with the spring pins), then reconnect the air. Apply finishing polish to the metal and refine every section with lighter pressure and overlapping passes in the same direction. Option B (dual-action): finish with a dual-action polisher, a clean finishing pad and finishing polish, working small sections with slow overlapping passes. Either way, continue until the haze is gone and a mirror finish develops.",
+    "detail": "Choose one finishing method. Option A (drum): close the throttle, twist the buffer to off and disconnect the air hose, remove the spring pins, swap the cut pad for a clean polish pad (fold the ends in and re-secure with the spring pins), reconnect the air and rake (fluff) the new polish pad with the drum spinning lightly, away from the aircraft. Apply finishing polish to the metal and refine every section with lighter pressure and overlapping passes in the same direction. Option B (dual-action): finish with a dual-action polisher, a clean finishing pad and finishing polish, working small sections with slow overlapping passes. Either way, continue until the haze is gone and a mirror finish develops.",
     "caution": "Never finish with the cut pad or mix polish grades on one pad; it will re-scratch the surface. Keep the dual-action pad flat and off paint lines and edges.",
     "minutes": 60,
     "products": [
@@ -215,7 +229,7 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   }
 ]'::jsonb,
-  array['Never install or change a pad, or connect air, with the buffer switched on or the throttle open', 'Never disconnect a hose under pressure; close the throttle and bleed the line first', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never load cutting compound onto the drum pad; apply it to the metal', 'Never mix polish grades on one pad or use a dirty, glazed pad', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never run the compressor or hoses near fuel vents or during fueling']::text[],
+  array['Never install or change a pad, or connect air, with the buffer switched on or the throttle open', 'Never disconnect a hose under pressure; close the throttle and bleed the line first', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never load cutting compound onto the drum pad; apply it to the metal', 'Never mix polish grades on one pad or keep cutting with a loaded, glazed pad; rake it every 2 sections', 'Never rake a pad near the aircraft or with fingers in front of the rake', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never run the compressor or hoses near fuel vents or during fueling']::text[],
   array['Uniform mirror finish with no haze, holograms, drum marks or streaks', 'No burns, discoloration or heat marks on skins, edges or rivet heads', 'No polish residue in seams, rivets, vents or on paint, seals and boots', 'Paint lines, decals and sealant beads undamaged', 'Protectant applied evenly and fully buffed off', 'All covers and tape reconciled']::text[],
   array['Before: close-up of oxidation on each polished area', 'Before: masking setup and drum buffer setup', 'Before/after: 50/50 section on a leading edge', 'After: finished brightwork in good light from the same angles', 'After: paint lines and edges next to polished metal']::text[]
 ),
@@ -278,6 +292,13 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
+    "title": "Rake (fluff) the new pad",
+    "detail": "Away from the aircraft, run the drum at its lowest speed and hold the pad rake against the new pad across its full width to fluff the fibers and remove loose lint before first use.",
+    "caution": "Keep fingers behind the rake and the drum pointed away from your body; never rake near the aircraft.",
+    "minutes": 2,
+    "products": []
+  },
+  {
     "title": "Apply cutting compound to the metal",
     "detail": "Apply a small amount of cutting compound directly to the metal on the first section (not to the drum pad), spread thin over about a 2 ft length. Reapply to the metal for each new section; add product sparingly so it does not sling or smear.",
     "caution": "Do not load compound onto the drum pad itself.",
@@ -312,13 +333,20 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
-    "title": "Wipe residue & rake the drum pad",
-    "detail": "Wipe the black residue off each section before it dries using clean cloths, folding to a clean face often. Rake or comb the drum pad regularly to remove spent compound and metal so it keeps cutting cleanly.",
-    "caution": "A glazed, dirty pad overheats the metal and leaves streaks. Clean it before it loads up.",
-    "minutes": 30,
+    "title": "Wipe residue off each section",
+    "detail": "Wipe the black residue off each section before it dries using clean cloths, folding to a clean face often.",
+    "caution": null,
+    "minutes": 20,
     "products": [
       "Clean cotton polishing cloths and microfiber towels"
     ]
+  },
+  {
+    "title": "Rake the drum pad every 2 sections",
+    "detail": "After every 2 sections (and sooner if the pad starts to load up or glaze), step away from the aircraft, run the drum at its lowest speed, and hold the pad rake firmly against the spinning pad, moving it across the full width of the drum until spent compound and metal stop coming out and the fibers stand up again. Return to cutting with a clean, fluffed pad.",
+    "caution": "Rake only away from the aircraft with the drum spinning slowly, rake held flat against the pad and fingers behind the rake; keep the hose, clothing and hands clear. A glazed, dirty pad overheats the metal and leaves streaks.",
+    "minutes": 10,
+    "products": []
   },
   {
     "title": "Inspect under light & repeat cut where needed",
@@ -331,7 +359,7 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
   },
   {
     "title": "Polish: change to the polish drum pad — or finish with a dual-action",
-    "detail": "Choose one finishing method. Option A (drum): unplug the buffer, swap the cut pad for a clean polish drum pad, then plug back in. Apply finishing polish to the metal and refine every section with lighter pressure and overlapping passes in the same direction. Option B (dual-action): finish with a dual-action polisher, a clean finishing pad and finishing polish, working small sections with slow overlapping passes. Either way, continue until the haze is gone and a mirror finish develops.",
+    "detail": "Choose one finishing method. Option A (drum): unplug the buffer, swap the cut pad for a clean polish drum pad, plug back in and rake (fluff) the new polish pad at the lowest speed, away from the aircraft. Apply finishing polish to the metal and refine every section with lighter pressure and overlapping passes in the same direction. Option B (dual-action): finish with a dual-action polisher, a clean finishing pad and finishing polish, working small sections with slow overlapping passes. Either way, continue until the haze is gone and a mirror finish develops.",
     "caution": "Never finish with the cut pad or mix polish grades on one pad; it will re-scratch the surface. Keep the dual-action pad flat and off paint lines and edges.",
     "minutes": 60,
     "products": [
@@ -393,7 +421,7 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   }
 ]'::jsonb,
-  array['Never run a drum buffer without the guard and side handle, or with loose clothing, hair or cords near the drum', 'Never change a pad with the buffer plugged in', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never load cutting compound onto the drum pad; apply it to the metal', 'Never mix polish grades on one pad or use a dirty, glazed pad', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never use electric tools near fuel vapors or during fueling']::text[],
+  array['Never run a drum buffer without the guard and side handle, or with loose clothing, hair or cords near the drum', 'Never change a pad with the buffer plugged in', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never load cutting compound onto the drum pad; apply it to the metal', 'Never mix polish grades on one pad or keep cutting with a loaded, glazed pad; rake it every 2 sections', 'Never rake a pad near the aircraft or with fingers in front of the rake', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never use electric tools near fuel vapors or during fueling']::text[],
   array['Uniform mirror finish with no haze, holograms, drum marks or streaks', 'No burns, discoloration or heat marks on skins, edges or rivet heads', 'No polish residue in seams, rivets, vents or on paint, seals and boots', 'Paint lines, decals and sealant beads undamaged', 'Protectant applied evenly and fully buffed off', 'All covers and tape reconciled']::text[],
   array['Before: close-up of oxidation on each polished area', 'Before: masking setup and drum buffer setup', 'Before/after: 50/50 section on a leading edge', 'After: finished brightwork in good light from the same angles', 'After: paint lines and edges next to polished metal']::text[]
 );
