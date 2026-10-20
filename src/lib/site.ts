@@ -15,7 +15,7 @@ export const SITE_TAGLINE_SHORT = 'The operating system for professional detaili
 export const TRIAL_DAYS = 14;
 export const AIRCRAFT_MODELS = 545;
 export const BOAT_MODELS = 604;
-export const GUIDE_COUNT = 49;
+export const GUIDE_COUNT = 50;
 
 export const SIGN_UP_HREF = '/sign-up';
 export const DEMO_HREF = '/sign-in?demo=1';
