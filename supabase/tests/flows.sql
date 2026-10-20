@@ -22,7 +22,7 @@ grant all on ctx to authenticated, anon;
 do $$ begin
   assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
   assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
-  assert (select count(*) from service_guides where org_id is null) = 50, 'platform guides loaded (15 aviation + 17 auto + 18 marine)';
+  assert (select count(*) from service_guides where org_id is null) = 51, 'platform guides loaded (16 aviation + 17 auto + 18 marine)';
 end $$;
 
 -- ---------- Alice creates an org with aircraft + vehicles ------------------
@@ -532,7 +532,7 @@ do $$ begin
   assert (select count(*) from training_media) = 0, 'isolation: training';
   assert (select count(*) from messages) = 0, 'isolation: messages';
   assert (select count(*) from audit_log) = 0, 'isolation: audit log';
-  assert (select count(*) from service_guides) = 50, 'platform guides visible to all';
+  assert (select count(*) from service_guides) = 51, 'platform guides visible to all';
   begin
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');
