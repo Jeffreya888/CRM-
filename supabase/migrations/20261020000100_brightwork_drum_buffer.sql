@@ -14,11 +14,11 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
   'brightwork_polish_drum',
   'aircraft',
   'Brightwork Polish — Drum Buffer',
-  'Polishing bare polishable aluminum (leading edges, intake lips, spinners, trim and fully polished skins) with a drum buffer: a rotating cotton or flannel buffing drum charged with polish. A drum cuts faster and flatter than a pad on long, straight surfaces but builds heat quickly and can grab edges, so technique, drum control and heat checks are what make it safe. Use the "Rotary / Dual-Action" SOP for small curved parts the drum cannot reach.',
+  'Polishing bare polishable aluminum (leading edges, intake lips, spinners, trim and fully polished skins) with a drum buffer: a rotating cotton or flannel buffing drum charged with polish. A drum cuts faster and flatter than a pad on long, straight surfaces but builds heat quickly and can grab edges, so technique, drum control and heat checks are what make it safe. Cut with the drum and its cut pad, then finish with the polish drum pad or a dual-action polisher. Use the "Rotary / Dual-Action" SOP for small curved parts the drum cannot reach.',
   'Light jet leading edges 5–8 h · Midsize 7–10 h · Large leading edges & intakes 10–14 h · Full polished airframe multi-day',
   '2–3 technicians (one polishing, one wiping/inspecting; rotate every 30–45 min)',
   array['AMM-approved aircraft metal polish system (cutting and finishing grades)', 'Approved cleaner for pre-wash (AMS 1526)', 'Residue-free fine-line masking tape and masking paper', 'Approved protective metal sealant or wax', 'Clean cotton polishing cloths and microfiber towels', 'Approved solvent wipe for residue (per AMM)']::text[],
-  array['Variable-speed drum buffer with side handle and drum guard', 'Separate buffing drums for each polish grade (labeled cut / finish)', 'Drum rake or cleaning comb', 'Hand applicators and soft detail brushes', 'Padded ladders / work stands', 'Face shield or safety glasses, respirator for polish dust, hearing protection and nitrile gloves', 'Infrared thermometer (or back-of-hand heat check)', 'Extension cord with GFCI and cord management', 'Good lighting (LED work lights)']::text[],
+  array['Variable-speed drum buffer with side handle and drum guard', 'Buffing drum with interchangeable cut and polish drum pads (labeled)', 'Dual-action polisher with finishing pads (optional finishing method)', 'Drum rake or cleaning comb', 'Hand applicators and soft detail brushes', 'Padded ladders / work stands', 'Face shield or safety glasses, respirator for polish dust, hearing protection and nitrile gloves', 'Infrared thermometer (or back-of-hand heat check)', 'Extension cord with GFCI and cord management', 'Good lighting (LED work lights)']::text[],
   array['Confirm work authorization and scope with the owner/operator and coordinate time, location and any wash-rack rules with the FBO/line service', 'Confirm the aircraft is chocked, grounded where required, no fueling, maintenance or engine runs in progress, and you know who the crew contact is', 'Do a walk-around with the crew/owner and photograph all pre-existing damage and discrepancies before touching the aircraft', 'Set up ramp safety: hi-vis vest, hearing protection, FOD walk, stay clear of propeller arcs, engine intakes/exhausts and moving ground equipment', 'Cover or tape pitot tubes, static ports, AOA vanes, TAT probes, fuel vents, engine inlets/exhausts and APU openings with approved covers or residue-free tape and remove-before-flight streamers', 'Route power cords on the ground away from fuel vents, tires and walkways; use a GFCI and keep electric tools away from any fuel vapors', 'Position padded ladders/stands; never lean on or rest equipment against control surfaces, flaps, antennas or static wicks']::text[],
   '[
   {
@@ -58,14 +58,14 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
   },
   {
     "title": "Set up the drum buffer & PPE",
-    "detail": "Inspect the drum buffer, guard, side handle and cord. Fit a clean labeled cut drum, set the speed low to start, and put on face shield or glasses, respirator, hearing protection and gloves. Check the drum spins true with no loose threads.",
+    "detail": "Inspect the drum buffer, guard, side handle and cord. Fit a clean cut drum pad, set the speed low to start, and put on face shield or glasses, respirator, hearing protection and gloves. Check the drum spins true and the pad has no loose threads.",
     "caution": "Never run a drum buffer without the guard and side handle. Loose clothing, hair and cords must stay clear of the drum.",
     "minutes": 10,
     "products": []
   },
   {
-    "title": "Charge (prime) the cut drum",
-    "detail": "Apply a small amount of cutting-grade polish evenly across the drum face (or to the metal per the polish system instructions) and work it in on a test area until the drum is evenly loaded. Add product sparingly; an overloaded drum slings polish and smears.",
+    "title": "Charge (prime) the cut drum pad",
+    "detail": "Apply a small amount of cutting-grade polish evenly across the drum pad (or to the metal per the polish system instructions) and work it in on a test area until the pad is evenly loaded. Add product sparingly: a dry pad cuts unevenly and runs hot, an overloaded pad slings polish and smears.",
     "caution": null,
     "minutes": 5,
     "products": ["AMM-approved aircraft metal polish system (cutting and finishing grades)"]
@@ -92,9 +92,9 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
-    "title": "Wipe residue & rake the drum",
-    "detail": "Wipe the black residue off each section before it dries using clean cloths and fold to a clean face often. Rake or comb the drum regularly to remove spent polish and metal so it keeps cutting cleanly; recharge lightly as needed.",
-    "caution": "A glazed, dirty drum overheats the metal and leaves streaks. Clean it before it loads up.",
+    "title": "Wipe residue & rake the drum pad",
+    "detail": "Wipe the black residue off each section before it dries using clean cloths and fold to a clean face often. Rake or comb the drum pad regularly to remove spent polish and metal so it keeps cutting cleanly; recharge lightly as needed.",
+    "caution": "A glazed, dirty pad overheats the metal and leaves streaks. Clean it before it loads up.",
     "minutes": 30,
     "products": ["Clean cotton polishing cloths and microfiber towels", "AMM-approved aircraft metal polish system (cutting and finishing grades)"]
   },
@@ -106,9 +106,9 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
-    "title": "Switch to the finish drum & refine",
-    "detail": "Change to a clean, labeled finish drum, charge it with finishing-grade polish and refine every section with lighter pressure and overlapping passes in the same direction until the haze is gone and a mirror finish develops.",
-    "caution": "Never use a cut drum for finishing or mix grades on one drum; it will re-scratch the surface.",
+    "title": "Polish: change to the polish drum pad — or finish with a dual-action",
+    "detail": "Choose one finishing method. Option A (drum): swap the cut pad for a clean polish drum pad, charge it with finishing-grade polish and refine every section with lighter pressure and overlapping passes in the same direction. Option B (dual-action): finish with a dual-action polisher, a clean finishing pad and finishing-grade polish, working small sections with slow overlapping passes. Either way, continue until the haze is gone and a mirror finish develops.",
+    "caution": "Never finish with the cut pad or put finishing polish on a pad loaded with cutting polish; it will re-scratch the surface. Keep the dual-action pad flat and off paint lines and edges.",
     "minutes": 60,
     "products": ["AMM-approved aircraft metal polish system (cutting and finishing grades)", "Clean cotton polishing cloths and microfiber towels"]
   },
@@ -148,14 +148,14 @@ insert into public.service_guides (key, asset_type, title, summary, time_estimat
     "products": []
   },
   {
-    "title": "Clean & store drums; final walk-around & report",
-    "detail": "Clean or bag drums separately by grade and store them sealed so they stay free of grit. Walk the aircraft, take after photos from the same angles as the before photos and brief the crew/owner, reporting any new or newly visible discrepancies in writing.",
+    "title": "Clean & store drum pads; final walk-around & report",
+    "detail": "Clean the drum pads (and dual-action pads if used), bag them separately by grade and store them sealed so they stay free of grit. Walk the aircraft, take after photos from the same angles as the before photos and brief the crew/owner, reporting any new or newly visible discrepancies in writing.",
     "caution": null,
     "minutes": 15,
     "products": []
   }
 ]'::jsonb,
-  array['Never run a drum buffer without the guard and side handle, or with loose clothing, hair or cords near the drum', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never mix polish grades on one drum or use a dirty, glazed drum', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never use electric tools near fuel vapors or during fueling']::text[],
+  array['Never run a drum buffer without the guard and side handle, or with loose clothing, hair or cords near the drum', 'Never stop the drum in one place, tilt it onto its edge, or run it off an edge or over raised fasteners, antennas, lights or probes', 'Never let the metal get hot to the touch; move to another section and let it cool', 'Never mix polish grades on one drum pad or use a dirty, glazed pad', 'Never polish anodized, alodined/chromated or clear-coated surfaces not designed to be polished', 'Never use polish or solvents not approved by the AMM, or let them sit on paint, seals or de-ice boots', 'Never move flight controls, lean on control surfaces, or operate aircraft systems unless explicitly authorized by the crew', 'Never use electric tools near fuel vapors or during fueling']::text[],
   array['Uniform mirror finish with no haze, holograms, drum marks or streaks', 'No burns, discoloration or heat marks on skins, edges or rivet heads', 'No polish residue in seams, rivets, vents or on paint, seals and boots', 'Paint lines, decals and sealant beads undamaged', 'Protectant applied evenly and fully buffed off', 'All covers and tape reconciled']::text[],
   array['Before: close-up of oxidation on each polished area', 'Before: masking setup and drum buffer setup', 'Before/after: 50/50 section on a leading edge', 'After: finished brightwork in good light from the same angles', 'After: paint lines and edges next to polished metal']::text[]
 );
