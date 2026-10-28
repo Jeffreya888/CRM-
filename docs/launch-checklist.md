@@ -67,6 +67,17 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 - [ ] Payment methods: Cards + ACH Direct Debit.
 - **Check (test mode):** pay an invoice, a quote deposit and start a care plan; each shows as paid in the app with the platform fee recorded.
 
+### 6b. Web subscriptions (Stripe Billing on your platform account)
+Companies can sign up and pay on the website; the iPhone/Android apps keep using in-app purchase (section 5) and never link to web checkout or web prices.
+- [ ] Stripe → Product catalog: three products (Solo, Team, Fleet), each with a **monthly** and a **yearly** recurring price matching `src/lib/plans.ts` ($39.99/$399.99, $89.99/$899.99, $189.99/$1,899.99). Set the price ids as secrets: `STRIPE_PRICE_SOLO_MONTHLY`, `STRIPE_PRICE_SOLO_ANNUAL`, `STRIPE_PRICE_TEAM_MONTHLY`, `STRIPE_PRICE_TEAM_ANNUAL`, `STRIPE_PRICE_FLEET_MONTHLY`, `STRIPE_PRICE_FLEET_ANNUAL`. A plan/period without its secret shows "Not available yet" on the web paywall.
+- [ ] Optional one-time pack prices (each pack is offered only when its secret is set): `STRIPE_PRICE_AI_50`, `STRIPE_PRICE_AI_200`, `STRIPE_PRICE_TEXTS_500`, `STRIPE_PRICE_TEXTS_2000`.
+- [ ] Customer portal (Settings → Billing → Customer portal): turn on; allow updating payment methods, viewing invoices, cancelling (at period end) and switching plans between the six plan prices above. Set your business name, terms and privacy links.
+- [ ] Add to the **Your account** webhook endpoint (secret `STRIPE_WEBHOOK_SECRET`): `checkout.session.completed` (already there), `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
+- [ ] Deploy `billing-checkout` and `billing-portal` (JWT verified; owner only).
+- [ ] Optional — TODO: sales tax on subscriptions. Not collected today. If you need it, enable Stripe Tax and add `automatic_tax: { enabled: true }` (plus `customer_update: { address: 'auto' }`) to the Checkout sessions in `billing-checkout`.
+- [ ] Optional: promotion codes are allowed at checkout — create coupons/promo codes in Stripe if you want them.
+- **Check (test mode):** on the website as an owner in the free trial, Plans → Start subscription → pay with 4242… → back on Plans with "Thank you"; Settings shows the plan, "Billed by card on the web" and **Manage billing** opens the Stripe portal. Switch plans and cancel in the portal and see the app follow. Buy an AI and a text pack on the web and see the credits added once. On the iPhone app the same company shows "Your subscription is managed in your web account" and no purchase buttons.
+
 ## 7. Customer texting (Telnyx)
 - [ ] Telnyx account, messaging profile (webhook → `/functions/v1/telnyx-webhook`), `TELNYX_API_KEY`, `TELNYX_MESSAGING_PROFILE_ID`, `TELNYX_PUBLIC_KEY`.
 - [ ] Register your brand/campaign for 10DLC (A2P) — required for US business texting.

@@ -2,6 +2,7 @@
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
 import { PLANS, TRIAL_AI_CHECKS } from './plans';
+import { APP_NAME } from './config';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -173,7 +174,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'Who is Flight Ready for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
-  { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan in the app when you are ready.` },
+  { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
   { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
   { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Flight Ready looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
   { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
@@ -184,19 +185,19 @@ export const HOME_FAQ: { q: string; a: string }[] = [
 ];
 
 export const PRICING_FAQ: { q: string; a: string }[] = [
-  { q: 'How does billing work?', a: 'Subscriptions are purchased in the Flight Ready app and billed by Apple (App Store) or Google (Google Play). Your plan renews automatically each month or year until you cancel.' },
-  { q: 'Can I cancel anytime?', a: 'Yes. Cancel from your App Store or Google Play subscription settings at least 24 hours before renewal. You keep access until the end of the paid period, and your data stays available to export.' },
+  { q: 'How does billing work?', a: `Subscribe on the web or in the app. On the web you pay by card (billed securely by Stripe); in the iPhone or Android app the subscription is billed by Apple (App Store) or Google (Google Play). Your plan renews automatically each month or year until you cancel.` },
+  { q: 'Can I cancel anytime?', a: 'Yes. If you subscribed on the web, cancel anytime from Settings → Manage billing. If you subscribed in the app, cancel from your App Store or Google Play subscription settings at least 24 hours before renewal. You keep access until the end of the paid period, and your data stays available to export.' },
   { q: 'What is the platform fee?', a: 'When your customers pay you by card through Flight Ready (invoices, deposits, care plans), a small platform fee applies: 1.5% on Solo, 1% on Team and 0.5% on Fleet. It is separate from Stripe’s own processing fee. Payments you record yourself — cash, check, ACH outside the app — carry no platform fee.' },
   { q: 'What happens after the free trial?', a: `Your ${TRIAL_DAYS}-day trial includes every feature. When it ends, pick a plan to keep adding records. Nothing is deleted, and you can still view and export your data.` },
   { q: 'Can I export my data?', a: 'Yes. Owners can download a full export (spreadsheets plus photos) at any time from Settings.' },
-  { q: 'Can I change plans later?', a: 'Upgrade or downgrade anytime from the app. Changes are handled by the App Store or Google Play and take effect according to their rules.' },
+  { q: 'Can I change plans later?', a: 'Yes, upgrade or downgrade anytime. Web subscriptions change in Settings → Manage billing; app subscriptions are changed through the App Store or Google Play and take effect according to their rules.' },
   { q: 'What if I need more texts?', a: 'Extra text packs are available as in-app purchases whenever you need them.' },
-  { q: 'What are AI checks?', a: `Each AI check turns up to six photos into a condition report with suggested services. Every plan includes AI checks each month: ${PLANS.map((p) => `${p.aiChecks} on ${p.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} (the free trial includes ${TRIAL_AI_CHECKS}). Need more? Buy extra AI check packs in the app. Unused monthly checks don’t roll over, but extra checks you buy never expire.` },
+  { q: 'What are AI checks?', a: `Each AI check turns up to six photos into a condition report with suggested services. Every plan includes AI checks each month: ${PLANS.map((p) => `${p.aiChecks} on ${p.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} (the free trial includes ${TRIAL_AI_CHECKS}). Need more? Buy extra AI check packs on the web or in the app. Unused monthly checks don’t roll over, but extra checks you buy never expire.` },
 ];
 
 export const SUPPORT_FAQ: { q: string; a: string }[] = [
-  { q: 'How am I billed?', a: 'Through your Apple or Google account, monthly or yearly. Receipts come from Apple or Google, and you manage the subscription in their settings.' },
-  { q: 'How do I cancel?', a: 'iPhone/iPad: Settings → your name → Subscriptions → Flight Ready. Android: Google Play → Profile → Payments & subscriptions → Subscriptions. Cancel at least 24 hours before renewal.' },
+  { q: 'How am I billed?', a: 'Monthly or yearly. On the web you pay by card and get receipts by email from our payment processor (Stripe); in the app you are billed through your Apple or Google account and manage the subscription in their settings.' },
+  { q: 'How do I cancel?', a: `Web: Settings → Manage billing → Cancel. iPhone/iPad: Settings → your name → Subscriptions → ${APP_NAME}. Android: Google Play → Profile → Payments & subscriptions → Subscriptions. In the stores, cancel at least 24 hours before renewal.` },
   { q: 'How do I export my data?', a: 'Owners: open More → Account & security → Export my company data. You will receive a download with spreadsheets of your records and your job photos.' },
   { q: 'How does customer texting work?', a: 'Turn on texting in the app to get a business number. Texts go only to customers who have agreed to receive them; anyone can reply STOP to opt out. Messages are held during quiet hours (8 AM–8 PM in the customer’s time).' },
   { q: 'Can I explore before signing up?', a: 'Yes. Tap “Explore demo” on the sign-in screen. The demo company is temporary and never sends real messages or payments.' },

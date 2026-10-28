@@ -45,6 +45,8 @@ Old routes being replaced: `/pipeline` → `/leads`, `/locations` → `/faciliti
 | `scan-receipt` | `{ org_id, path }` | `{ vendor, amount, date, category }` | Receipt photo already uploaded to storage. |
 | `security-alert` | `{ device }` | `{ sent }` | Emails the signed-in user about a new device. |
 | `texting` | `{ action: 'request_number', org_id }` | `{ status }` | Owner only. |
+| `billing-checkout` | `{ action: 'catalog' }` → `{ plans: [{ plan, period, amount, currency }], packs: [{ id, kind, quantity, amount, currency }] }`; `{ org_id, kind: 'plan', plan, period }` / `{ org_id, kind: 'ai_pack' \| 'text_pack', pack }` → `{ url }` | | Web only (Stripe Checkout on the platform account). Owner only. 409 when the plan is billed by the App Store / Google Play or a web subscription already exists. Use `src/lib/billing.ts`. |
+| `billing-portal` | `{ org_id }` | `{ url }` | Owner only. Stripe customer portal for a web subscription; returns to `/settings`. |
 | `send-reorder` | `{ org_id, item_ids? }` | `{ emailed }` | Emails vendors the low-stock reorder list. |
 | `send-report` | `{ org_id, to?, subject, body, attachments: [{ filename, content_base64, type }] }` | `{ sent }` | Accountant exports. |
 | `admin-action` | `{ action: 'set_sms', org_id, status, number? }` / `{ action: 'set_integration', id, status }` / `{ action: 'support_handled', id }` | `{ ok }` | Platform admins only. |

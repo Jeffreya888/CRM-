@@ -11,9 +11,17 @@
 //        invoice.payment_failed, customer.subscription.updated,
 //        customer.subscription.deleted
 // A single secret still works if you only use one endpoint.
+//
+// Web subscriptions (billing-checkout, Stripe Billing on the PLATFORM account)
+// arrive on endpoint 1 without `event.account`; add these events there:
+//   customer.subscription.created, customer.subscription.updated,
+//   customer.subscription.deleted (checkout.session.completed is already on).
+// They are told apart from care plans (connected accounts) by `event.account`
+// and metadata.kind ('platform_plan' | 'ai_pack' | 'text_pack').
 import { Stripe, type SupabaseClient } from "../_shared/deps.ts";
 import { adminClient, MANAGER_ROLES, money, notifyManagers, orgFeeBps, stripe } from "../_shared/clients.ts";
 import { env } from "../_shared/http.ts";
+import { GRACE_MS, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
 import { sendPushes, tokensFor } from "../_shared/push.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
@@ -51,6 +59,14 @@ Deno.serve(async (req) => {
       case "checkout.session.async_payment_succeeded": {
         const session = event.data.object as Stripe.Checkout.Session;
         const kind = session.metadata?.kind;
+        if (!event.account && kind === "platform_plan") {
+          await platformPlanCheckout(db, session);
+          break;
+        }
+        if (!event.account && (kind === "ai_pack" || kind === "text_pack")) {
+          if (session.payment_status === "paid") await platformPackPaid(db, session, kind);
+          break;
+        }
         if (kind === "care_plan") {
           await carePlanStarted(db, session, event.account ?? null);
           break;
@@ -77,9 +93,18 @@ Deno.serve(async (req) => {
           `${c?.name ?? "A customer"}'s monthly care plan card was declined. Stripe will retry automatically.`, `/recurring/${sched.id}`);
         break;
       }
+      case "customer.subscription.created": {
+        const sub = event.data.object as Stripe.Subscription;
+        if (!event.account && sub.metadata?.kind === "platform_plan") await applyPlatformSubscription(db, sub);
+        break;
+      }
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
+        if (!event.account && sub.metadata?.kind === "platform_plan") {
+          await applyPlatformSubscription(db, sub);
+          break;
+        }
         const status = event.type === "customer.subscription.deleted" ? "canceled" : mapSubStatus(sub.status);
         if (!status) break;
         let q = db.from("recurring_schedules").update({ care_plan_status: status, stripe_subscription_id: sub.id });
@@ -359,4 +384,133 @@ async function carePlanCharged(db: SupabaseClient, inv: Stripe.Invoice, account:
     const { error } = await db.from("messages").insert(row);
     if (error && error.code !== "23505") console.error("care plan message insert failed", error);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Web subscriptions & packs (billing-checkout; PLATFORM account events)
+// ---------------------------------------------------------------------------
+const iso = (sec: number) => new Date(sec * 1000).toISOString();
+
+/** Checkout finished: link the subscription to the company, then apply its current state. */
+async function platformPlanCheckout(db: SupabaseClient, session: Stripe.Checkout.Session) {
+  const orgId = session.metadata?.org_id ?? session.client_reference_id;
+  const subId = idOf(session.subscription as string | { id: string } | null);
+  if (!orgId || !subId || session.status !== "complete") return;
+  const customer = idOf(session.customer as string | { id: string } | null);
+  const { error } = await db.from("organizations")
+    .update({ stripe_subscription_id: subId, billing_source: "stripe" }).eq("id", orgId);
+  if (error) throw error;
+  if (customer) {
+    await db.from("organizations").update({ stripe_billing_customer_id: customer }).eq("id", orgId).is("stripe_billing_customer_id", null);
+  }
+  // Don't depend on the order Stripe delivers events in.
+  const sub = await stripe().subscriptions.retrieve(subId);
+  await applyPlatformSubscription(db, sub);
+}
+
+/** Plan + period from the subscription's price (portal plan switches change the price, not the metadata). */
+function planOfSubscription(sub: Stripe.Subscription): { plan: PlanId | null; period: Period } {
+  const item = sub.items?.data?.[0];
+  const price = item?.price;
+  const known = planForPriceId(price?.id);
+  if (known) return known;
+  const hay = [price?.metadata?.plan, price?.lookup_key, sub.metadata?.plan].filter(Boolean).join(" ").toLowerCase();
+  const plan = (["fleet", "team", "solo"] as PlanId[]).find((p) => hay.includes(p)) ?? null;
+  const period: Period = price?.recurring?.interval === "year" ? "annual"
+    : price?.recurring?.interval === "month" ? "monthly"
+    : sub.metadata?.period === "annual" ? "annual" : "monthly";
+  return { plan, period };
+}
+
+/**
+ * Mirrors a web subscription onto organizations.plan:
+ *  - active / trialing → plan, paid through the period end (+3 days grace)
+ *  - past_due → keep the plan through the end of the last PAID period (+grace) while Stripe retries
+ *  - canceled / unpaid / incomplete_expired / paused → 'expired' once the paid period is over
+ *  - incomplete (first payment pending) → nothing yet
+ */
+async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscription) {
+  const customer = idOf(sub.customer as string | { id: string } | null);
+  const cols = "id, plan, plan_expires_at, billing_source, stripe_subscription_id";
+  let org: { id: string; plan: string; plan_expires_at: string | null; billing_source: string | null; stripe_subscription_id: string | null } | null = null;
+  if (sub.metadata?.org_id) {
+    ({ data: org } = await db.from("organizations").select(cols).eq("id", sub.metadata.org_id).maybeSingle());
+  }
+  if (!org) ({ data: org } = await db.from("organizations").select(cols).eq("stripe_subscription_id", sub.id).maybeSingle());
+  if (!org && customer) ({ data: org } = await db.from("organizations").select(cols).eq("stripe_billing_customer_id", customer).maybeSingle());
+  if (!org) {
+    console.warn("platform subscription for unknown company", sub.id);
+    return;
+  }
+
+  const live = sub.status === "active" || sub.status === "trialing" || sub.status === "past_due";
+  const isCurrent = org.stripe_subscription_id === sub.id;
+  if (sub.status === "incomplete") return;
+  if (!live && org.stripe_subscription_id && !isCurrent) return; // an old subscription ending: not the one in use
+  if (!live && org.billing_source && org.billing_source !== "stripe") {
+    console.warn("ignoring ended Stripe subscription; company now billed by", org.billing_source, org.id);
+    return;
+  }
+
+  const { plan, period } = planOfSubscription(sub);
+  const items = sub.items?.data ?? [];
+  const periodEnd = items.length ? Math.min(...items.map((i) => i.current_period_end)) : null;
+  const periodStart = items.length ? Math.min(...items.map((i) => i.current_period_start)) : null;
+  let update: Record<string, unknown>;
+
+  if (live) {
+    if (!plan || !PLAN_IDS.includes(plan)) {
+      console.error("platform subscription with unknown price", sub.id, sub.items?.data?.[0]?.price?.id);
+      return;
+    }
+    if (org.billing_source && org.billing_source !== "stripe") {
+      console.warn("company billed by", org.billing_source, "also has an active Stripe subscription", org.id, sub.id);
+    }
+    // past_due: the renewal failed, so the period Stripe moved to is unpaid; access runs to its start (+grace).
+    const paidThrough = sub.status === "past_due" ? periodStart : periodEnd;
+    update = {
+      plan, billing_period: period, billing_source: "stripe", stripe_subscription_id: sub.id,
+      plan_expires_at: paidThrough ? new Date(paidThrough * 1000 + GRACE_MS).toISOString() : null,
+    };
+  } else {
+    // canceled / unpaid / incomplete_expired / paused
+    const end = sub.ended_at ?? (sub.status === "unpaid" ? periodStart : periodEnd) ?? Math.floor(Date.now() / 1000);
+    update = end * 1000 > Date.now()
+      ? { plan_expires_at: iso(end), stripe_subscription_id: sub.id }
+      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id };
+  }
+  if (customer) update.stripe_billing_customer_id = customer;
+  const { error } = await db.from("organizations").update(update).eq("id", org.id);
+  if (error) throw error;
+}
+
+/** One-time AI check / text pack paid on the web: add credits once per Checkout session. */
+async function platformPackPaid(db: SupabaseClient, session: Stripe.Checkout.Session, kind: "ai_pack" | "text_pack") {
+  const orgId = session.metadata?.org_id ?? session.client_reference_id;
+  const quantity = Number(session.metadata?.quantity ?? 0);
+  if (!orgId || !Number.isFinite(quantity) || quantity <= 0) return;
+  const worker = kind === "ai_pack" ? "stripe_ai" : "stripe_texts";
+  const { data: seen } = await db.from("worker_runs").select("id").eq("worker", worker).eq("details->>event_id", session.id).limit(1);
+  if (seen?.length) return;
+
+  if (kind === "ai_pack") {
+    const { data: balance, error } = await db.rpc("add_ai_credits", { p_org: orgId, p_checks: quantity });
+    if (error) throw error;
+    await db.from("worker_runs").insert({ worker, ok: true, details: { event_id: session.id, org_id: orgId, pack: session.metadata?.pack, checks: quantity, balance } });
+    return;
+  }
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: org } = await db.from("organizations").select("sms_extra_credits").eq("id", orgId).maybeSingle();
+    if (!org) return; // unknown company: nothing to credit
+    const current = Number(org.sms_extra_credits ?? 0);
+    // Compare-and-set so concurrent purchases never overwrite each other.
+    const { data: updated, error } = await db.from("organizations")
+      .update({ sms_extra_credits: current + quantity }).eq("id", orgId).eq("sms_extra_credits", current).select("id");
+    if (error) throw error;
+    if (updated?.length) {
+      await db.from("worker_runs").insert({ worker, ok: true, details: { event_id: session.id, org_id: orgId, pack: session.metadata?.pack, texts: quantity, balance: current + quantity } });
+      return;
+    }
+  }
+  throw new Error("could not add texts (busy); Stripe will retry");
 }

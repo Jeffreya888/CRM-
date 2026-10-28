@@ -25,7 +25,7 @@ export const PRIVACY: LegalSection[] = [
         'Customer and asset records: information your company enters about its customers and contacts (names, emails, phone numbers, addresses, notes, consent to texts), and about the aircraft, vehicles and watercraft it services (such as tail numbers, makes, models, sizes, locations and access notes).',
         'Work records and photos: jobs, schedules, checklists, condition reports, signatures, before/after and damage photos, quotes, invoices, payments, expenses, receipts, supplies, equipment, timesheets and pay information entered by your company.',
         'Payment information: when a detailing company accepts card payments, payments are processed by Stripe. Card numbers are entered directly with Stripe and are never stored on our servers. We receive payment status, amounts, fees and limited card details (such as brand and last four digits) from Stripe.',
-        'Subscription information: subscriptions are purchased through the Apple App Store or Google Play and managed through RevenueCat. We receive your subscription status, plan, renewal dates and transaction identifiers, but not your full payment card details.',
+        'Subscription information: subscriptions are purchased on our website (billed by Stripe) or through the Apple App Store or Google Play (managed through RevenueCat). We receive your subscription status, plan, renewal dates and transaction identifiers, but not your full payment card details.',
         'Messages: the content, recipients and delivery status of emails and text messages sent through the Service (for example, invoices, reminders and replies from customers), and messages you send to our support team.',
         'Device information: push notification tokens, device type and operating system version, app version, IP address and sign-in timestamps, used to deliver notifications and to keep accounts secure.',
       ],
@@ -86,7 +86,7 @@ export const PRIVACY: LegalSection[] = [
   {
     title: 'Account deletion and data export',
     body: [
-      'You can delete your account at any time from Account in the app. If you are the only owner of a company, deleting your account also deletes that company’s workspace and its records. Deleting your account does not cancel an App Store or Google Play subscription; manage or cancel it in your store account settings.',
+      'You can delete your account at any time from Account in the app. If you are the only owner of a company, deleting your account also deletes that company’s workspace and its records. Deleting your account does not cancel an App Store or Google Play subscription; manage or cancel it in your store account settings. Cancel a web subscription in Settings → Manage billing before deleting your account.',
       'Company owners can export their company’s data (spreadsheets of records and job photos) at any time from Settings. We recommend exporting before deleting an account.',
     ],
   },
@@ -160,7 +160,9 @@ export const TERMS: LegalSection[] = [
   {
     title: 'Subscriptions and automatic renewal',
     body: [
-      'Paid plans (Solo, Team and Fleet) are offered as auto-renewing subscriptions, billed monthly or yearly, and purchased through the Apple App Store or Google Play. Prices are shown in the app before purchase and may vary by country.',
+      'Paid plans (Solo, Team and Fleet) are offered as auto-renewing subscriptions, billed monthly or yearly, and purchased either on our website or through the Apple App Store or Google Play. Prices are shown before purchase and may vary by country and by where you buy.',
+      'Web subscriptions are billed to your card by our payment processor, Stripe. They renew automatically at the same price and for the same period until you cancel. You can change your plan, update your card, see invoices or cancel at any time in Settings → Manage billing; cancellation takes effect at the end of the current billing period and you keep access until then. If you subscribe on the web during your free trial, you are first charged when the trial ends. Except where required by law, payments are non-refundable.',
+      'For subscriptions purchased in the iPhone or Android app:',
       [
         'Payment is charged to your Apple ID or Google Play account when you confirm the purchase.',
         'Your subscription renews automatically at the same price and for the same period unless auto-renew is turned off at least 24 hours before the end of the current period.',

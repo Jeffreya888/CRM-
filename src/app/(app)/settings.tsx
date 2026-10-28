@@ -1,13 +1,14 @@
 import { router, Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { useState } from 'react';
-import { Image, View } from 'react-native';
+import { Image, Platform, View } from 'react-native';
 import { FormSheet, type FieldDef } from '../../components/FormSheet';
 import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
 import { JobCostingCard } from '../../components/settings/JobCostingCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { PaymentsCard } from '../../components/settings/PaymentsCard';
 import { Badge, Button, Card, ErrorBanner, IconTile, KeyValue, ListRow, Row, Screen, Section, T, ToggleRow } from '../../components/ui';
+import { openBillingPortal, storeLabel, storeManaged, webBilling } from '../../lib/billing';
 import { APP_NAME } from '../../lib/config';
 import { date } from '../../lib/format';
 import { pickImage } from '../../lib/files';
@@ -35,7 +36,10 @@ export default function Settings() {
   const [sheet, setSheet] = useState<SheetKey>(null);
   const [logoBusy, setLogoBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
   const info = planInfo(plan);
+  const paid = plan !== 'trial' && plan !== 'expired';
+  const stripeBilled = org.billing_source === 'stripe';
 
   const save = async (patch: Record<string, unknown>) => {
     const { error: e } = await supabase.from('organizations').update(patch).eq('id', orgId);
@@ -134,7 +138,19 @@ export default function Settings() {
 
   const manage = async () => {
     const url = await manageSubscriptionsUrl().catch(() => null);
-    Linking.openURL(url ?? 'https://apps.apple.com/account/subscriptions');
+    Linking.openURL(url ?? (Platform.OS === 'android' ? 'https://play.google.com/store/account/subscriptions' : 'https://apps.apple.com/account/subscriptions'));
+  };
+
+  // Web only: Stripe billing portal (change plan, card, invoices, cancel). Owner only.
+  const manageBilling = async () => {
+    setError(null);
+    setBillingBusy(true);
+    try {
+      await openBillingPortal(orgId);
+    } catch (e: any) {
+      setError(e.message);
+      setBillingBusy(false);
+    }
   };
 
   const current = sheet ? SHEETS[sheet] : null;
@@ -237,19 +253,36 @@ export default function Settings() {
           {info ? <T variant="muted">{org.billing_period === 'annual' ? `Yearly · $${info.annual.toFixed(2)}/yr` : `Monthly · $${info.monthly.toFixed(2)}/mo`}</T> : null}
           {plan === 'trial' ? <T variant="muted">{trialDays} day{trialDays === 1 ? '' : 's'} left · ends {date(org.trial_ends_at)}</T> : null}
           {org.plan_expires_at && plan !== 'expired' && plan !== 'trial' ? <T variant="muted">Renews or ends {date(org.plan_expires_at)}</T> : null}
+          {stripeBilled && paid ? (
+            <T variant="small" style={{ marginTop: space.xs }}>{webBilling ? 'Billed by card on the web.' : 'Your subscription is managed in your web account.'}</T>
+          ) : null}
+          {webBilling && storeManaged(org, plan) ? (
+            <T variant="small" style={{ marginTop: space.xs }}>Your subscription is managed in {storeLabel(org)} on your phone.</T>
+          ) : null}
           {admin ? (
             <Row style={{ marginTop: space.md, flexWrap: 'wrap' }}>
               <Button small icon="rocket-outline" title={plan === 'trial' || plan === 'expired' ? 'Choose a plan' : 'Change plan'} onPress={() => router.push('/paywall')} />
-              {plan !== 'trial' && plan !== 'expired' ? <Button small kind="secondary" title="Manage subscription" onPress={manage} /> : null}
+              {paid && !webBilling && !stripeBilled ? <Button small kind="secondary" title="Manage subscription" onPress={manage} /> : null}
             </Row>
           ) : null}
         </Card>
       </Section>
 
+      {webBilling && role === 'owner' && stripeBilled && org.stripe_billing_customer_id ? (
+        <Section title="Billing" icon="card-outline">
+          <Card>
+            <T variant="muted">Change your plan, update your card, download invoices or cancel your subscription.</T>
+            <Row style={{ marginTop: space.md }}>
+              <Button small kind="secondary" icon="card-outline" title="Manage billing" loading={billingBusy} onPress={manageBilling} />
+            </Row>
+          </Card>
+        </Section>
+      ) : null}
+
       <Section title={`About ${APP_NAME} CRM`}>
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           <ListRow icon="information-circle-outline" title="Website & plan information" subtitle={`Version ${appVersion()}`} onPress={() => router.push('/about')} />
-          {SITE.pricing ? <ListRow icon="pricetags-outline" title="Plans & pricing" onPress={() => openSite(SITE.pricing)} /> : null}
+          {SITE.pricing && webBilling ? <ListRow icon="pricetags-outline" title="Plans & pricing" onPress={() => openSite(SITE.pricing)} /> : null}
           <ListRow icon="shield-checkmark-outline" title="Privacy policy" onPress={() => openSite(SITE.privacy)} />
           {SITE.support ? <ListRow icon="help-buoy-outline" title="Support" onPress={() => openSite(SITE.support)} /> : null}
           <ListRow icon="person-circle-outline" title="Your login & security" subtitle="Your profile, password and devices" onPress={() => router.push('/account')} />

@@ -27,6 +27,9 @@ export interface Organization {
   tax_rate: number; payment_terms_days: number; invoice_prefix: string; quote_prefix: string; job_prefix: string;
   default_quote_terms: string | null; default_invoice_notes: string | null;
   plan: Plan; trial_ends_at: string; plan_expires_at: string | null; billing_period: 'monthly' | 'annual' | null;
+  /** Where the subscription is billed: App Store, Google Play or Stripe (website). Server-only. */
+  billing_source: 'app_store' | 'play_store' | 'stripe' | null;
+  stripe_billing_customer_id: string | null; stripe_subscription_id: string | null;
   stripe_account_id: string | null; stripe_charges_enabled: boolean;
   instagram: string | null; facebook: string | null; youtube: string | null; linkedin: string | null;
   business_types: AssetType[];

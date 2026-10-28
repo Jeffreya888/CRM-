@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Faq } from '../../components/site/Faq';
 import { SitePage } from '../../components/site/SitePage';
+import { StoreBadges } from '../../components/site/StoreBadges';
 import {
   CTAButton, Check, Container, Eyebrow, Glass, Glow, GradientText, Grid, Heading, Ionicons, P, Pill, Section, SectionIntro,
   fontFamily, site, useBreakpoint, webStyle,
@@ -43,7 +44,7 @@ export default function Pricing() {
           {PLANS.map((p) => <PlanCard key={p.id} plan={p} period={period} />)}
         </Grid>
         <View style={{ marginTop: 24, flexDirection: isMobile ? 'column' : 'row', justifyContent: 'center', gap: isMobile ? 8 : 28, alignItems: 'center' }}>
-          {[`${TRIAL_DAYS}-day free trial with every feature`, 'No card required to start', 'Cancel anytime in the App Store or Google Play'].map((x) => (
+          {[`${TRIAL_DAYS}-day free trial with every feature`, 'No card required to start', 'Subscribe on the web or in the app', 'Cancel anytime'].map((x) => (
             <View key={x} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
               <Ionicons name="checkmark-circle" size={16} color={site.goldText} />
               <Text style={{ fontFamily, color: site.muted, fontSize: 14 }}>{x}</Text>
@@ -75,7 +76,8 @@ export default function Pricing() {
         <Faq items={PRICING_FAQ} />
         <View style={{ alignItems: 'center', marginTop: 48, gap: 14 }}>
           <CTAButton center href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" variant="gold" />
-          <P size="sm" center>Subscriptions are purchased in the app and billed by Apple or Google.</P>
+          <P size="sm" center>Subscribe on the web or in the app. On the web you pay by card and manage billing in your account; in the iPhone or Android app, Apple or Google bills you.</P>
+          <StoreBadges />
         </View>
       </Section>
     </SitePage>

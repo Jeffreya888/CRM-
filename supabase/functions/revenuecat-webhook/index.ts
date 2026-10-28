@@ -20,6 +20,7 @@ type RCEvent = {
   expiration_at_ms?: number | null;
   transferred_to?: string[];
   transferred_from?: string[];
+  store?: string;
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -100,6 +101,14 @@ async function addTextPack(db: ReturnType<typeof adminClient>, orgId: string, ev
   return false;
 }
 
+/** organizations.billing_source for the store that sold the subscription (null: leave as is). */
+export function billingSourceFrom(store: string | undefined): "app_store" | "play_store" | null {
+  const s = (store ?? "").toUpperCase();
+  if (s === "APP_STORE" || s === "MAC_APP_STORE") return "app_store";
+  if (s === "PLAY_STORE") return "play_store";
+  return null;
+}
+
 function orgIds(e: RCEvent): string[] {
   return [e.app_user_id, e.original_app_user_id, ...(e.aliases ?? []), ...(e.transferred_to ?? [])]
     .filter((x): x is string => !!x && UUID.test(x));
@@ -147,7 +156,11 @@ Deno.serve(async (req) => {
     case "TEMPORARY_ENTITLEMENT_GRANT":
     case "NON_RENEWING_PURCHASE": {
       const plan = planFrom(event);
-      if (plan) update = { plan, plan_expires_at: expires, billing_period: billingPeriodFrom(event) };
+      if (plan) {
+        update = { plan, plan_expires_at: expires, billing_period: billingPeriodFrom(event) };
+        const source = billingSourceFrom(event.store);
+        if (source) update.billing_source = source;
+      }
       break;
     }
     case "CANCELLATION":
@@ -161,14 +174,33 @@ Deno.serve(async (req) => {
     case "TRANSFER":
       // Subscription moved to another app user id; revoke from the old org(s).
       for (const from of event.transferred_from ?? []) {
-        if (UUID.test(from)) await db.from("organizations").update({ plan: "expired" }).eq("id", from);
+        // Leave companies whose plan now comes from the web (Stripe) alone.
+        if (UUID.test(from)) {
+          await db.from("organizations").update({ plan: "expired" }).eq("id", from)
+            .or("billing_source.is.null,billing_source.neq.stripe");
+        }
       }
       break;
   }
 
   if (update) {
-    const target = event.type === "TRANSFER" ? event.transferred_to ?? [] : ids;
-    const { error } = await db.from("organizations").update(update).in("id", target.filter((x) => UUID.test(x)));
+    const target = (event.type === "TRANSFER" ? event.transferred_to ?? [] : ids).filter((x) => UUID.test(x));
+    // A company can also pay on the web (Stripe). Record store purchases anyway, but say so;
+    // store cancellations/expirations must not end a plan that Stripe now bills.
+    const { data: webBilled } = await db.from("organizations").select("id, plan, plan_expires_at")
+      .in("id", target).eq("billing_source", "stripe").not("stripe_subscription_id", "is", null);
+    const stripeActive = (webBilled ?? []).filter((o) => o.plan !== "expired" && (!o.plan_expires_at || new Date(o.plan_expires_at) > new Date()));
+    let ids2 = target;
+    if (stripeActive.length) {
+      if ("plan" in update && update.plan !== "expired") {
+        console.warn("store purchase for a company with an active Stripe web subscription", stripeActive.map((o) => o.id), event.type, event.product_id);
+      } else {
+        console.warn("ignoring store", event.type, "for companies billed on the web", stripeActive.map((o) => o.id));
+        const skip = new Set(stripeActive.map((o) => o.id));
+        ids2 = target.filter((x) => !skip.has(x));
+      }
+    }
+    const { error } = ids2.length ? await db.from("organizations").update(update).in("id", ids2) : { error: null };
     if (error) {
       console.error(error);
       return new Response("db error", { status: 500 });

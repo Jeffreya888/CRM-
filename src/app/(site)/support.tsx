@@ -75,7 +75,7 @@ export default function Support() {
             </P>
             <View style={{ gap: 14, marginTop: 26 }}>
               <InfoRow icon="mail-outline" title="Email" body={SUPPORT_EMAIL} />
-              <InfoRow icon="card-outline" title="Billing" body="Subscriptions are billed by Apple or Google. Manage or cancel in your store account settings." />
+              <InfoRow icon="card-outline" title="Billing" body="Subscribed on the web? Manage or cancel in Settings → Manage billing. Subscribed in the app? Apple or Google bills you; manage it in your store account settings." />
               <InfoRow icon="shield-checkmark-outline" title="Your privacy" body="We’ll never ask for your password or verification codes." />
             </View>
           </View>

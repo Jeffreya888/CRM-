@@ -1,6 +1,6 @@
 import { router, Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { Badge, Card, Ionicons, ListRow, Row, Screen, Section, T, type IconName } from '../../components/ui';
 import { APP_NAME, SUPPORT_EMAIL } from '../../lib/config';
@@ -16,10 +16,11 @@ export default function About() {
   const admin = role === 'owner' || role === 'admin';
 
   const links: LinkItem[] = [
-    { title: 'Flight Ready website', subtitle: 'Features, business types and FAQ', icon: 'globe-outline', tone: 'info', url: SITE.home },
-    { title: 'Plans & pricing', subtitle: 'Solo, Team and Fleet', icon: 'pricetags-outline', tone: 'success', url: SITE.pricing },
+    // The website's home and pricing pages offer web checkout: never link them from the iPhone/Android app.
+    { title: `${APP_NAME} website`, subtitle: 'Features, business types and FAQ', icon: 'globe-outline', tone: 'info', url: Platform.OS === 'web' ? SITE.home : null },
+    { title: 'Plans & pricing', subtitle: 'Solo, Team and Fleet', icon: 'pricetags-outline', tone: 'success', url: Platform.OS === 'web' ? SITE.pricing : null },
     { title: 'Privacy policy', subtitle: 'How we handle your data', icon: 'shield-checkmark-outline', tone: 'purple', url: SITE.privacy },
-    { title: 'Terms of service', subtitle: 'The agreement for using Flight Ready', icon: 'document-text-outline', tone: 'neutral', url: SITE.terms },
+    { title: 'Terms of service', subtitle: `The agreement for using ${APP_NAME}`, icon: 'document-text-outline', tone: 'neutral', url: SITE.terms },
     { title: 'Support', subtitle: 'Help, getting started guide and contact form', icon: 'help-buoy-outline', tone: 'warning', url: SITE.support },
   ];
 
