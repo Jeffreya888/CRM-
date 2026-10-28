@@ -111,6 +111,11 @@ export default function GuideViewer() {
           </View>
         </Card>
 
+        {canEdit(role) && !hiddenDefault ? (
+          <Button small kind="secondary" icon="sparkles-outline" title="Ask about this SOP" style={{ alignSelf: 'flex-start', marginTop: space.sm }}
+            onPress={() => router.push({ pathname: '/assistant/[id]', params: { id: 'new', guide_key: g.key } })} />
+        ) : null}
+
         {manager ? (
           <Row style={{ flexWrap: 'wrap', marginTop: space.sm }}>
             {isCopy ? (

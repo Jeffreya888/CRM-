@@ -169,6 +169,7 @@ function compareRows(): { group: string; rows: RowDef[] }[] {
       rows: [
         { label: 'Team members', cells: byPlan(seatsLabel) },
         { label: 'AI photo checks per month', cells: byPlan((p) => p.aiChecks.toLocaleString('en-US')) },
+        { label: `Ask ${APP_NAME} AI assistant questions per month`, cells: byPlan((p) => p.aiQuestions.toLocaleString('en-US')) },
         { label: 'Customer texts per month', cells: byPlan((p) => p.texts.toLocaleString('en-US')) },
         { label: 'Platform fee on card payments', cells: byPlan(feeLabel) },
         { label: 'Monthly price', cells: byPlan((p) => money(p.monthly)) },
@@ -185,6 +186,7 @@ function compareRows(): { group: string; rows: RowDef[] }[] {
         { label: 'Estimate vs actual on every job', cells: all },
         { label: 'Quote cost & margin', cells: all },
         { label: 'AI photo condition reports (monthly checks above)', cells: all },
+        { label: 'AI assistant for your crew: answers from your SOPs and aircraft documents, with sources', cells: all },
         { label: `Aircraft price guide (${AIRCRAFT_MODELS} models)`, cells: all },
         { label: 'Before/after photos & condition sign-off', cells: all },
         { label: 'Good / Better / Best quotes & deposits', cells: all },

@@ -2,11 +2,13 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, View } from 'react-native';
 import { AssessPhotosSheet } from '../../../components/ai/AssessPhotosSheet';
+import { AircraftDocuments } from '../../../components/assistant/AircraftDocuments';
 import { ConditionBadge } from '../../../components/assets/Condition';
 import { FaaRegistrationCard } from '../../../components/assets/FaaCard';
 import { FormSheet } from '../../../components/FormSheet';
 import { jobTone } from '../../../components/status';
 import { Badge, Button, Card, ErrorBanner, IconButton, KeyValue, ListRow, Loading, Row, Screen, Section, Select, T } from '../../../components/ui';
+import { APP_NAME } from '../../../lib/config';
 import { assetModelName, facilityKindInfo, facilityTitle, widthLabel } from '../../../lib/assets';
 import { isUsTail, lookupFaa } from '../../../lib/faa';
 import { signedUrls } from '../../../lib/files';
@@ -118,8 +120,11 @@ export default function AssetDetail() {
           </Row>
         ) : null}
         {canEdit(role) ? (
-          <Button small kind="ghost" icon="camera-outline" title="Check condition from photos" onPress={() => setAssessOpen(true)}
-            style={{ marginTop: space.sm, alignSelf: 'flex-start' }} />
+          <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
+            <Button small kind="ghost" icon="camera-outline" title="Check condition from photos" onPress={() => setAssessOpen(true)} />
+            <Button small kind="ghost" icon="sparkles-outline" title={`Ask ${APP_NAME}`}
+              onPress={() => router.push({ pathname: '/assistant/[id]', params: { id: 'new', aircraft_id: id } })} />
+          </Row>
         ) : null}
       </Card>
 
@@ -146,6 +151,8 @@ export default function AssetDetail() {
           <FaaRegistrationCard faa={a.faa} checkedAt={a.faa_checked_at} message={faaMsg} onRefresh={manager ? refreshFaa : undefined} />
         </Section>
       ) : null}
+
+      <AircraftDocuments aircraftId={id} manager={manager} label={info.label.toLowerCase()} />
 
       <Section title={t === 'aircraft' ? 'Home airport / FBO' : t === 'watercraft' ? 'Home marina' : 'Usual service site'} icon="location-outline">
         <Card>

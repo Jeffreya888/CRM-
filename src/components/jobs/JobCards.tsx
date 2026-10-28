@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, Image, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
 import { dateTime, money } from '../../lib/format';
 import { fetchGuide, pickJobPhoto, type PickedPhoto } from '../../lib/jobs';
+import { canEdit } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, radius, space, toneColors, type Tone } from '../../lib/theme';
@@ -128,11 +129,26 @@ export function DamageSheet({ visible, onClose, onSave }: { visible: boolean; on
 }
 
 /** Guide step detail for a checklist item (inline sheet) with a link to the full guide. */
-export function GuideStepSheet({ item, onClose, onToggle }: {
+export function GuideStepSheet({ item, onClose, onToggle, jobId, aircraftId }: {
   item: { id: string; label: string; done: boolean; guide_key: string | null; step_index: number | null } | null;
   onClose: () => void; onToggle?: () => void;
+  /** Context passed to "Ask about this step". */
+  jobId?: string | null; aircraftId?: string | null;
 }) {
-  const { orgId } = useOrg();
+  const { orgId, role } = useOrg();
+  const askStep = () => {
+    onClose();
+    router.push({
+      pathname: '/assistant/[id]',
+      params: {
+        id: 'new',
+        ...(jobId ? { job_id: jobId } : {}),
+        ...(aircraftId ? { aircraft_id: aircraftId } : {}),
+        ...(item?.guide_key ? { guide_key: item.guide_key } : {}),
+        ...(item?.step_index != null ? { step: String(item.step_index) } : {}),
+      },
+    });
+  };
   const q = useQuery(async () => (item?.guide_key ? fetchGuide(orgId, item.guide_key) : null), [item?.guide_key, orgId]);
   const g = q.data as ServiceGuide | null | undefined;
   const step: GuideStep | undefined = g && item?.step_index != null ? g.steps?.[item.step_index] : undefined;
@@ -165,6 +181,7 @@ export function GuideStepSheet({ item, onClose, onToggle }: {
             <T variant="small" style={{ marginTop: space.lg }}>Always follow the manufacturer&apos;s maintenance manual and use OEM-approved products.</T>
             <Row style={{ marginTop: space.lg, flexWrap: 'wrap' }}>
               {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? 'Mark not done' : 'Mark done'} onPress={() => { onToggle(); onClose(); }} /> : null}
+              {canEdit(role) ? <Button kind="secondary" icon="sparkles-outline" title="Ask about this step" onPress={askStep} /> : null}
               {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: item?.guide_key ?? g.key, step: String(item?.step_index ?? '') } }); }} /> : null}
             </Row>
           </>

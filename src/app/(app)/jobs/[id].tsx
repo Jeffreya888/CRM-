@@ -262,9 +262,16 @@ export default function JobDetail() {
     : invoice ? <Button kind="secondary" icon="receipt-outline" title={`View invoice ${invoice.number}`} onPress={() => router.push(`/invoices/${invoice.id}`)} />
     : null;
 
+  const askAboutJob = () => router.push({ pathname: '/assistant/[id]', params: { id: 'new', job_id: id, ...(j.aircraft?.id ? { aircraft_id: j.aircraft.id } : {}) } });
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Stack.Screen options={{ title: j.number ? `Job ${j.number}` : 'Job', headerRight: () => <Badge large label={JOB_STATUS_LABEL[j.status as keyof typeof JOB_STATUS_LABEL] ?? j.status} tone={statusTone[j.status]} raw /> }} />
+      <Stack.Screen options={{ title: j.number ? `Job ${j.number}` : 'Job', headerRight: () => (
+        <Row gap={space.sm}>
+          {editable ? <Button small kind="secondary" icon="sparkles-outline" title="Ask" onPress={askAboutJob} /> : null}
+          <Badge large label={JOB_STATUS_LABEL[j.status as keyof typeof JOB_STATUS_LABEL] ?? j.status} tone={statusTone[j.status]} raw />
+        </Row>
+      ) }} />
       <ScrollView ref={scrollRef} contentContainerStyle={{ padding: space.lg, paddingBottom: 120 }} keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={q.refreshing} onRefresh={q.refresh} tintColor={colors.textMuted} />}>
         <ErrorBanner message={q.error} onRetry={q.reload} />
@@ -629,7 +636,7 @@ export default function JobDetail() {
 
       <AssessPhotosSheet visible={assessOpen} onClose={() => { setAssessOpen(false); q.reload(); }} jobId={id} aircraftId={j.aircraft_id} customerId={j.customer_id} />
 
-      <GuideStepSheet item={stepItem} onClose={() => setStepItem(null)} onToggle={editable && stepItem ? toggleStep(stepItem) : undefined} />
+      <GuideStepSheet item={stepItem} onClose={() => setStepItem(null)} onToggle={editable && stepItem ? toggleStep(stepItem) : undefined} jobId={id} aircraftId={j.aircraft?.id ?? null} />
 
       <ScheduleSheet visible={!!scheduleSheet} jobId={id} confirm={!!scheduleSheet?.confirm} categories={categories}
         title={scheduleSheet?.confirm ? 'Confirm job' : 'Time, crew & resources'} onClose={() => setScheduleSheet(null)} onSaved={q.reload} />

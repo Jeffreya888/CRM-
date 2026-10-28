@@ -1,7 +1,8 @@
 // The app's business-tools menu, shared by the More tab (phones) and the
 // desktop sidebar so labels, permissions and plan gating always match.
 import { titleCase } from '../../lib/format';
-import { canAdmin, canSeeMoney } from '../../lib/plans';
+import { APP_NAME } from '../../lib/config';
+import { canAdmin, canEdit, canSeeMoney } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { supabase } from '../../lib/supabase';
 import type { Tone } from '../../lib/theme';
@@ -54,6 +55,7 @@ export function useMenu() {
     },
     {
       key: 'operations', title: 'Operations', items: [
+        { label: `Ask ${APP_NAME}`, short: `Ask ${APP_NAME}`, subtitle: 'AI answers from your SOPs and aircraft documents', icon: 'sparkles-outline', tone: 'primary', href: '/assistant', show: canEdit(role) },
         { label: 'Crew scheduling & resource reservations', short: 'Crew scheduling', subtitle: 'Availability, time off, hangar and equipment bookings', icon: 'people-circle-outline', tone: 'info', href: '/scheduling', show: manager },
         { label: 'Dispatch board', short: 'Dispatch', subtitle: 'Assign today’s jobs to your crew', icon: 'navigate-outline', tone: 'primary', href: '/dispatch', show: manager },
         { label: 'Schedule', subtitle: 'Week view of all jobs', icon: 'calendar-outline', tone: 'info', href: '/schedule' },

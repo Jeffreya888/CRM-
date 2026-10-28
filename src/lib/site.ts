@@ -1,7 +1,7 @@
 // Copy and links for the public Flight Ready website (src/app/(site)).
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
-import { PLANS, TRIAL_AI_CHECKS } from './plans';
+import { PLANS, TRIAL_AI_CHECKS, TRIAL_AI_QUESTIONS } from './plans';
 import { APP_NAME } from './config';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -62,6 +62,16 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
     id: 'ai', title: 'AI photo condition reports', icon: 'sparkles-outline', tone: 'gold',
     body: 'A few photos in, a condition report and quote out.',
     bullets: ['Condition, score and findings from up to six photos', 'Suggested services turned into a quote in one tap', 'Customers request quotes from photos in their portal', 'Condition-based pricing for moderate, heavy and severe'],
+  },
+  {
+    id: 'ask', title: `Ask ${APP_NAME} AI assistant`, icon: 'chatbubbles-outline', tone: 'blue',
+    body: 'Your crew asks; it answers from your SOPs and the aircraft\u2019s own documents.',
+    bullets: [
+      'Plain, step-by-step answers with sources for every one',
+      'Uses each aircraft\u2019s manual chapters and approved-product lists first',
+      'Stop-and-report prompts for damage, injuries and aircraft systems',
+      `Questions each month: ${PLANS.map((p) => `${p.aiQuestions.toLocaleString('en-US')} on ${p.name}`).join(', ')}`,
+    ],
   },
   {
     id: 'sops', title: 'SOPs, certification & quality checks', icon: 'ribbon-outline', tone: 'green',
@@ -192,6 +202,7 @@ export const PRICING_FAQ: { q: string; a: string }[] = [
   { q: 'Can I export my data?', a: 'Yes. Owners can download a full export (spreadsheets plus photos) at any time from Settings.' },
   { q: 'Can I change plans later?', a: 'Yes, upgrade or downgrade anytime. Web subscriptions change in Settings → Manage billing; app subscriptions are changed through the App Store or Google Play and take effect according to their rules.' },
   { q: 'What if I need more texts?', a: 'Extra text packs are available as in-app purchases whenever you need them.' },
+  { q: `What is Ask ${APP_NAME}?`, a: `An AI assistant for your crew. Technicians ask how to do a step, what's safe on a surface or what to do when something looks wrong, and get a short, step-by-step answer that cites your SOPs and the documents you uploaded for that aircraft. Every plan includes questions each month: ${PLANS.map((p) => `${p.aiQuestions.toLocaleString('en-US')} on ${p.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} (the free trial includes ${TRIAL_AI_QUESTIONS}). Questions with photos use an AI check, and each extra AI check you buy also adds 10 questions. Owners and managers can review every conversation.` },
   { q: 'What are AI checks?', a: `Each AI check turns up to six photos into a condition report with suggested services. Every plan includes AI checks each month: ${PLANS.map((p) => `${p.aiChecks} on ${p.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')} (the free trial includes ${TRIAL_AI_CHECKS}). Need more? Buy extra AI check packs on the web or in the app. Unused monthly checks don’t roll over, but extra checks you buy never expire.` },
 ];
 

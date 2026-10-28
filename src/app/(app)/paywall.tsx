@@ -195,7 +195,7 @@ export default function Paywall() {
       <Section title="Extra AI checks" icon="sparkles-outline">
         <T variant="muted" style={{ marginBottom: space.sm }}>
           {allowance.data ? `${allowanceLine(allowance.data)}. ` : ''}
-          Extra checks are used after your monthly checks run out and never expire.{extraAi ? ` You have ${extraAi.toLocaleString('en-US')} extra AI checks.` : ''}
+          Extra checks are used after your monthly checks run out and never expire. Each extra AI check also adds 10 questions.{extraAi ? ` You have ${extraAi.toLocaleString('en-US')} extra AI checks.` : ''}
         </T>
         {aiRows.length ? (
           <Card style={{ padding: 0, overflow: 'hidden' }}>{aiRows}</Card>
@@ -323,7 +323,7 @@ export default function Paywall() {
               </Row>
             ))}
             <T variant="small" style={{ marginTop: space.sm }}>
-              {p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? '1 user' : `Up to ${p.seats} team members`} · {p.texts.toLocaleString('en-US')} texts / month · {p.aiChecks.toLocaleString('en-US')} AI photo checks / month · {(p.feeBps / 100).toFixed(1)}% platform fee on card payments
+              {p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? '1 user' : `Up to ${p.seats} team members`} · {p.texts.toLocaleString('en-US')} texts / month · {p.aiChecks.toLocaleString('en-US')} AI photo checks / month · {p.aiQuestions.toLocaleString('en-US')} assistant questions / month · {(p.feeBps / 100).toFixed(1)}% platform fee on card payments
             </T>
             {webBilling ? webButton(p, popular) : nativeButton(p, popular, pkg)}
           </Card>
