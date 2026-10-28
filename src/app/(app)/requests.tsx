@@ -7,7 +7,7 @@ import { AssessmentCard } from '../../components/ai/AssessmentCard';
 import { DateTimeField } from '../../components/DateTimeField';
 import { notify } from '../../components/FormSheet';
 import { ConflictList, useSaveRules } from '../../components/jobs/ScheduleEditor';
-import { Avatar, Badge, Button, Card, EmptyState, ErrorBanner, Loading, Row, Screen, Segmented, T } from '../../components/ui';
+import { Avatar, Badge, Button, Card, EmptyState, ErrorBanner, Loading, Row, Screen, Segmented, SheetModal, T } from '../../components/ui';
 import { ask, fetchConflicts, EMPTY_SCHEDULE, localScheduleProblems } from '../../lib/conflicts';
 import { quoteFromAssessment } from '../../lib/assess';
 import { signedUrls } from '../../lib/files';
@@ -262,63 +262,61 @@ function ApproveSheet({ req, est, category, members, onClose, onDone }: {
   };
 
   return (
-    <Modal visible={!!req} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={onClose} />
-            <T variant="h3">Approve request</T>
-            <View style={{ width: 70 }} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            <T style={{ fontWeight: '700', fontSize: 17 }}>{req?.customer?.name}</T>
-            <T variant="muted" style={{ marginBottom: space.md }}>{req?.aircraft?.tail_number ?? ''}{req?.notes ? ` · “${req.notes}”` : ''}</T>
-            {req?.preferred?.length ? (
-              <Row style={{ flexWrap: 'wrap', marginBottom: space.md }}>
-                {req.preferred.map((p) => {
-                  const on = start === p;
-                  return (
-                    <Pressable key={p} onPress={() => { const len = start && end ? new Date(end).getTime() - new Date(start).getTime() : 2 * 3600e3; setStart(p); setEnd(new Date(new Date(p).getTime() + len).toISOString()); }}
-                      style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: on ? colors.primary : colors.borderStrong, backgroundColor: on ? colors.primarySoft : 'transparent' }}>
-                      <T variant="muted" style={on ? { color: colors.primaryText } : undefined}>{format(new Date(p), 'EEE MMM d · h:mm a')}</T>
-                    </Pressable>
-                  );
-                })}
-              </Row>
-            ) : null}
-            <DateTimeField key={`s${initFor}`} label="Start" value={start} onChange={(s) => {
-              const len = start && end ? new Date(end).getTime() - new Date(start).getTime() : 2 * 3600e3;
-              setStart(s); setEnd(s ? new Date(new Date(s).getTime() + len).toISOString() : end);
-            }} />
-            <DateTimeField key={`e${initFor}`} label="End" value={end} onChange={setEnd} />
-            <T style={{ fontWeight: '600', fontSize: 15, marginBottom: 4 }}>Crew</T>
-            <T variant="small" style={{ marginBottom: 8 }}>The first person you pick is the primary technician.{category ? ' Qualified techs are listed first.' : ''}</T>
-            <Row style={{ flexWrap: 'wrap', marginBottom: space.lg }}>
-              {sorted.map((m) => {
-                const idx = crew.indexOf(m.user_id);
-                const on = idx >= 0;
+    <SheetModal visible={!!req} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={onClose} />
+          <T variant="h3">Approve request</T>
+          <View style={{ width: 70 }} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          <T style={{ fontWeight: '700', fontSize: 17 }}>{req?.customer?.name}</T>
+          <T variant="muted" style={{ marginBottom: space.md }}>{req?.aircraft?.tail_number ?? ''}{req?.notes ? ` · “${req.notes}”` : ''}</T>
+          {req?.preferred?.length ? (
+            <Row style={{ flexWrap: 'wrap', marginBottom: space.md }}>
+              {req.preferred.map((p) => {
+                const on = start === p;
                 return (
-                  <Pressable key={m.user_id} onPress={() => setCrew((c) => (on ? c.filter((x) => x !== m.user_id) : [...c, m.user_id]))}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, paddingRight: 12, borderRadius: radius.pill, backgroundColor: on ? colors.primarySoft : colors.card, borderWidth: 1, borderColor: on ? colors.primary : colors.border }}>
-                    <Avatar size={24} label={initials(m.display_name)} color={m.color ?? colors.primary} />
-                    <View>
-                      <T style={{ fontWeight: on ? '700' : '400' }}>{m.display_name ?? 'Member'}{idx === 0 ? ' · primary' : ''}</T>
-                      {m.score > 0 ? <T variant="small" style={{ color: colors.success }}>Skilled match</T> : null}
-                    </View>
+                  <Pressable key={p} onPress={() => { const len = start && end ? new Date(end).getTime() - new Date(start).getTime() : 2 * 3600e3; setStart(p); setEnd(new Date(new Date(p).getTime() + len).toISOString()); }}
+                    style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.pill, borderWidth: 1, borderColor: on ? colors.primary : colors.borderStrong, backgroundColor: on ? colors.primarySoft : 'transparent' }}>
+                    <T variant="muted" style={on ? { color: colors.primaryText } : undefined}>{format(new Date(p), 'EEE MMM d · h:mm a')}</T>
                   </Pressable>
                 );
               })}
             </Row>
-            <ConflictList conflicts={conflicts} checking={checking} />
-          </ScrollView>
-          <SafeAreaView edges={['bottom']} style={{ padding: space.lg, paddingBottom: space.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-            {rules.message ? <T variant="small" style={{ marginBottom: 8, color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
-            <Button title={rules.needsOverride ? 'Override and approve' : 'Approve & schedule'} kind={rules.needsOverride ? 'danger' : 'primary'}
-              icon="checkmark" disabled={rules.blocked || checking || !start || !end} onPress={approve} />
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+          ) : null}
+          <DateTimeField key={`s${initFor}`} label="Start" value={start} onChange={(s) => {
+            const len = start && end ? new Date(end).getTime() - new Date(start).getTime() : 2 * 3600e3;
+            setStart(s); setEnd(s ? new Date(new Date(s).getTime() + len).toISOString() : end);
+          }} />
+          <DateTimeField key={`e${initFor}`} label="End" value={end} onChange={setEnd} />
+          <T style={{ fontWeight: '600', fontSize: 15, marginBottom: 4 }}>Crew</T>
+          <T variant="small" style={{ marginBottom: 8 }}>The first person you pick is the primary technician.{category ? ' Qualified techs are listed first.' : ''}</T>
+          <Row style={{ flexWrap: 'wrap', marginBottom: space.lg }}>
+            {sorted.map((m) => {
+              const idx = crew.indexOf(m.user_id);
+              const on = idx >= 0;
+              return (
+                <Pressable key={m.user_id} onPress={() => setCrew((c) => (on ? c.filter((x) => x !== m.user_id) : [...c, m.user_id]))}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, padding: 6, paddingRight: 12, borderRadius: radius.pill, backgroundColor: on ? colors.primarySoft : colors.card, borderWidth: 1, borderColor: on ? colors.primary : colors.border }}>
+                  <Avatar size={24} label={initials(m.display_name)} color={m.color ?? colors.primary} />
+                  <View>
+                    <T style={{ fontWeight: on ? '700' : '400' }}>{m.display_name ?? 'Member'}{idx === 0 ? ' · primary' : ''}</T>
+                    {m.score > 0 ? <T variant="small" style={{ color: colors.success }}>Skilled match</T> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </Row>
+          <ConflictList conflicts={conflicts} checking={checking} />
+        </ScrollView>
+        <SafeAreaView edges={['bottom']} style={{ padding: space.lg, paddingBottom: space.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+          {rules.message ? <T variant="small" style={{ marginBottom: 8, color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
+          <Button title={rules.needsOverride ? 'Override and approve' : 'Approve & schedule'} kind={rules.needsOverride ? 'danger' : 'primary'}
+            icon="checkmark" disabled={rules.blocked || checking || !start || !end} onPress={approve} />
+        </SafeAreaView>
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }

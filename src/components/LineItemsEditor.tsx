@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, View } from 'react-native';
 import { money } from '../lib/format';
 import { computeTotals, priceService, pricingSummary, type PriceableAircraft } from '../lib/pricing';
 import { colors, space } from '../lib/theme';
 import type { LineItem, Service } from '../lib/types';
-import { Button, Card, Divider, Field, IconButton, Row, SearchBar, T } from './ui';
+import { Button, Card, Divider, Field, IconButton, Row, SearchBar, SheetModal, T } from './ui';
 
 /**
  * Editable list of line items. Picking a service auto-prices it for the
@@ -127,42 +126,40 @@ export function LineItemsEditor({
         <Row style={{ justifyContent: 'space-between' }}><T variant="h3">{title ? `${title} total` : 'Total'}</T><T variant="h3">{money(totals.total, currency)}</T></Row>
       </Card>
 
-      <Modal visible={picker} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setPicker(false)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <T variant="h3">Add service</T>
-            <Button small kind="secondary" title="Close" onPress={() => setPicker(false)} />
-          </Row>
-          <View style={{ paddingHorizontal: space.lg }}><SearchBar value={q} onChange={setQ} placeholder="Search services" /></View>
-          <ScrollView contentContainerStyle={{ padding: space.lg }}>
-            {visible.map((s) => s.pricing_tiers?.length ? (
-              // Tiered services: one choice per tier (e.g. Small / Medium / Large interior).
-              s.pricing_tiers.map((t, i) => (
-                <Card key={`${s.id}-${i}`} onPress={() => addLine({ service_id: s.id, description: `${s.name} (${t.name})`, quantity: 1, unit_price: Number(t.price), taxable: s.taxable })} style={{ padding: space.md }}>
-                  <Row style={{ justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1 }}>
-                      <T style={{ fontWeight: '600' }}>{s.name} · {t.name}</T>
-                      {t.detail ? <T variant="small">{t.detail}</T> : null}
-                    </View>
-                    <T variant="money">{money(t.price, currency)}</T>
-                  </Row>
-                </Card>
-              ))
-            ) : (
-              <Card key={s.id} onPress={() => addService(s)} style={{ padding: space.md }}>
+      <SheetModal visible={picker} onClose={() => setPicker(false)}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <T variant="h3">Add service</T>
+          <Button small kind="secondary" title="Close" onPress={() => setPicker(false)} />
+        </Row>
+        <View style={{ paddingHorizontal: space.lg }}><SearchBar value={q} onChange={setQ} placeholder="Search services" /></View>
+        <ScrollView contentContainerStyle={{ padding: space.lg }}>
+          {visible.map((s) => s.pricing_tiers?.length ? (
+            // Tiered services: one choice per tier (e.g. Small / Medium / Large interior).
+            s.pricing_tiers.map((t, i) => (
+              <Card key={`${s.id}-${i}`} onPress={() => addLine({ service_id: s.id, description: `${s.name} (${t.name})`, quantity: 1, unit_price: Number(t.price), taxable: s.taxable })} style={{ padding: space.md }}>
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View style={{ flex: 1 }}>
-                    <T style={{ fontWeight: '600' }}>{s.name}</T>
-                    <T variant="small">{guidePrice(s) != null ? 'Price guide for this model' : pricingSummary(s)}{s.est_hours ? ` · ~${s.est_hours}h` : ''}</T>
+                    <T style={{ fontWeight: '600' }}>{s.name} · {t.name}</T>
+                    {t.detail ? <T variant="small">{t.detail}</T> : null}
                   </View>
-                  <T variant="money">{money(guidePrice(s) ?? (s.pricing_method === 'hourly' ? (Number(s.est_hours) || 1) * s.hourly_rate : suggested(s)), currency)}</T>
+                  <T variant="money">{money(t.price, currency)}</T>
                 </Row>
               </Card>
-            ))}
-            {!aircraft ? <T variant="small">Tip: pick the aircraft, vehicle or boat first for size-based pricing.</T> : null}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+            ))
+          ) : (
+            <Card key={s.id} onPress={() => addService(s)} style={{ padding: space.md }}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <View style={{ flex: 1 }}>
+                  <T style={{ fontWeight: '600' }}>{s.name}</T>
+                  <T variant="small">{guidePrice(s) != null ? 'Price guide for this model' : pricingSummary(s)}{s.est_hours ? ` · ~${s.est_hours}h` : ''}</T>
+                </View>
+                <T variant="money">{money(guidePrice(s) ?? (s.pricing_method === 'hourly' ? (Number(s.est_hours) || 1) * s.hourly_rate : suggested(s)), currency)}</T>
+              </Row>
+            </Card>
+          ))}
+          {!aircraft ? <T variant="small">Tip: pick the aircraft, vehicle or boat first for size-based pricing.</T> : null}
+        </ScrollView>
+      </SheetModal>
     </View>
   );
 }

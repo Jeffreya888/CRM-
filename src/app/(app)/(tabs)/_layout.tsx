@@ -1,10 +1,14 @@
 import { Tabs } from 'expo-router/js-tabs';
 import { Ionicons } from '../../../components/ui';
+import { useIsDesktop } from '../../../lib/layout';
 import { colors } from '../../../lib/theme';
 
 export default function TabsLayout() {
+  // Desktop navigates with the sidebar instead of the bottom tab bar.
+  const desktop = useIsDesktop();
   return (
     <Tabs
+      tabBar={desktop ? () => null : undefined}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,

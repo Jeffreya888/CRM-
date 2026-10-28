@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { Children, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -19,6 +19,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DESKTOP_MAX_WIDTH, DIALOG_MAX_WIDTH, useColumns, useIsDesktop } from '../lib/layout';
 import { colors, radius, space, toneColors, type Tone } from '../lib/theme';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -28,10 +29,18 @@ export { Ionicons };
 // Layout
 // ---------------------------------------------------------------------------
 
+/** Desktop page padding and centered max width; `null` on phones and tablets. */
+export function useContentStyle(wide?: boolean): ViewStyle | null {
+  const desktop = useIsDesktop();
+  if (!desktop) return null;
+  return wide ? styles.desktopPadWide : styles.desktopPad;
+}
+
 /**
  * Page container. Pass `title` for the large in-page heading used on tab
  * screens (they have no native header), and `back` to show the round back
- * button next to it on pushed screens.
+ * button next to it on pushed screens. On desktop the content is centered
+ * at a max width; pass `wide` for full-bleed screens (schedule, dispatch).
  */
 export function Screen({
   children,
@@ -45,6 +54,7 @@ export function Screen({
   back,
   right,
   kicker,
+  wide,
 }: {
   children: ReactNode;
   refreshing?: boolean;
@@ -57,11 +67,13 @@ export function Screen({
   back?: boolean;
   right?: ReactNode;
   kicker?: string;
+  wide?: boolean;
 }) {
+  const desk = useContentStyle(wide);
   const heading = title ? <PageTitle title={title} subtitle={subtitle} back={back} right={right} kicker={kicker} /> : null;
   const body = scroll ? (
     <ScrollView
-      contentContainerStyle={[padded && styles.screenPad, { paddingBottom: 110 }]}
+      contentContainerStyle={[padded && styles.screenPad, { paddingBottom: 110 }, desk && padded && desk, desk && !padded && styles.desktopCenter, desk && { paddingBottom: 64 }]}
       keyboardShouldPersistTaps="handled"
       refreshControl={onRefresh ? <RefreshControl refreshing={!!refreshing} onRefresh={onRefresh} tintColor={colors.textMuted} /> : undefined}
     >
@@ -69,15 +81,82 @@ export function Screen({
       {children}
     </ScrollView>
   ) : (
-    <View style={[{ flex: 1 }, padded && styles.screenPad]}>{heading}{children}</View>
+    <View style={[{ flex: 1 }, padded && styles.screenPad, desk && padded && desk, desk && !padded && styles.desktopCenter]}>{heading}{children}</View>
   );
   const content = (
     <View style={styles.screen}>
       {body}
-      {footer ? <SafeAreaView edges={['bottom']} style={styles.footer}>{footer}</SafeAreaView> : null}
+      {footer ? <SafeAreaView edges={['bottom']} style={styles.footer}>{desk ? <View style={styles.desktopCenter}>{footer}</View> : footer}</SafeAreaView> : null}
     </View>
   );
   return title ? <SafeAreaView edges={['top']} style={styles.screen}>{content}</SafeAreaView> : content;
+}
+
+/**
+ * Card grid: one column on phones and tablets (children render exactly as
+ * before), `columns` (or as many as fit, up to `max`) side by side on desktop.
+ */
+export function Grid({ children, columns, max = 3, minWidth = 300, gap = space.lg }: {
+  children: ReactNode; columns?: number; max?: number; minWidth?: number; gap?: number;
+}) {
+  const desktop = useIsDesktop();
+  const auto = useColumns(max, minWidth);
+  const items = Children.toArray(children);
+  const cols = desktop ? (columns ?? auto) : 1;
+  if (cols <= 1) return <>{items}</>;
+  const rows: ReactNode[][] = [];
+  for (let i = 0; i < items.length; i += cols) rows.push(items.slice(i, i + cols));
+  return (
+    <View>
+      {rows.map((r, i) => (
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap }}>
+          {r.map((c, j) => <View key={j} style={styles.gridCell}>{c}</View>)}
+          {Array.from({ length: cols - r.length }, (_, j) => <View key={`pad-${j}`} style={styles.gridCell} />)}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Columns side by side on desktop (`weights` sets relative widths); on phones
+ * and tablets the children simply stack as before.
+ */
+export function ResponsiveRow({ children, weights, gap = space.xl }: { children: ReactNode; weights?: number[]; gap?: number }) {
+  const desktop = useIsDesktop();
+  const items = Children.toArray(children);
+  if (!desktop) return <>{items}</>;
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap }}>
+      {items.map((c, i) => <View key={i} style={[styles.gridCell, { flex: weights?.[i] ?? 1 }]}>{c}</View>)}
+    </View>
+  );
+}
+
+/**
+ * Modal sheet: a full-height page sheet on phones and tablets, a centered
+ * dialog (max 640px) on desktop. Replaces
+ * `<Modal presentationStyle="pageSheet"><SafeAreaView style={{ flex: 1 }}>`.
+ */
+export function SheetModal({ visible, onClose, children, style, maxWidth = DIALOG_MAX_WIDTH }: {
+  visible: boolean; onClose: () => void; children: ReactNode; style?: StyleProp<ViewStyle>; maxWidth?: number;
+}) {
+  const desktop = useIsDesktop();
+  if (!desktop) {
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+        <SafeAreaView style={[{ flex: 1, backgroundColor: colors.bg }, style]}>{children}</SafeAreaView>
+      </Modal>
+    );
+  }
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.dialogBackdrop}>
+        <Pressable accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={[styles.dialog, { maxWidth }, style]}>{children}</View>
+      </View>
+    </Modal>
+  );
 }
 
 export function BackButton({ onPress }: { onPress?: () => void }) {
@@ -312,8 +391,7 @@ export function Select<V extends string>({
         </View>
       ) : null}
       {!useInline ? (
-        <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <SheetModal visible={open} onClose={() => setOpen(false)}>
             <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
               <T variant="h3">{label ?? 'Select'}</T>
               <Row>
@@ -345,8 +423,7 @@ export function Select<V extends string>({
               )}
               ListEmptyComponent={<T variant="muted">No matches</T>}
             />
-          </SafeAreaView>
-        </Modal>
+        </SheetModal>
       ) : null}
     </View>
   );
@@ -500,6 +577,15 @@ export function ErrorBanner({ message, onRetry }: { message: string | null | und
 }
 
 export function Fab({ icon = 'add', onPress, label }: { icon?: IconName; onPress: () => void; label?: string }) {
+  const desktop = useIsDesktop();
+  if (desktop && label) {
+    return (
+      <Pressable accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.fab, styles.fabWide, pressed && { opacity: 0.85 }]}>
+        <Ionicons name={icon} size={22} color={colors.white} />
+        <Text style={{ color: colors.white, fontSize: 16, fontWeight: '700' }}>{label}</Text>
+      </Pressable>
+    );
+  }
   return (
     <Pressable accessibilityLabel={label ?? 'Add'} onPress={onPress} style={({ pressed }) => [styles.fab, pressed && { opacity: 0.85 }]}>
       <Ionicons name={icon} size={30} color={colors.white} />
@@ -541,6 +627,15 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   screenPad: { padding: space.lg },
+  desktopPad: { width: '100%', maxWidth: DESKTOP_MAX_WIDTH + 2 * space.xxl, alignSelf: 'center', paddingHorizontal: space.xxl, paddingTop: space.xl },
+  desktopPadWide: { width: '100%', paddingHorizontal: space.xxl, paddingTop: space.xl },
+  desktopCenter: { width: '100%', maxWidth: DESKTOP_MAX_WIDTH + 2 * space.xxl, alignSelf: 'center' },
+  gridCell: { flex: 1, minWidth: 0 },
+  dialogBackdrop: { flex: 1, backgroundColor: 'rgba(5,8,14,0.72)', alignItems: 'center', justifyContent: 'center', padding: space.xl },
+  dialog: {
+    width: '100%', maxHeight: '90%', backgroundColor: colors.bg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.borderStrong, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: 12 },
+  },
   footer: { padding: space.lg, paddingBottom: space.sm, backgroundColor: colors.bg },
   backBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center' },
   card: {
@@ -596,4 +691,5 @@ const styles = StyleSheet.create({
     position: 'absolute', right: space.xl, bottom: space.xl, width: 60, height: 60, borderRadius: 30, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
   },
+  fabWide: { width: 'auto', height: 52, borderRadius: 26, paddingHorizontal: space.xl, flexDirection: 'row', gap: space.sm, right: space.xxl, bottom: space.xxl },
 });

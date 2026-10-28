@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import * as Linking from 'expo-linking';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
-import { Modal, Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AssessPhotosSheet } from '../../../components/ai/AssessPhotosSheet';
 import { EstimateVsActual } from '../../../components/costing/EstimateVsActual';
@@ -12,7 +12,7 @@ import { QC_BLOCK_MESSAGE, QualityCheck, qcBlocksCompletion } from '../../../com
 import { ScheduleSheet } from '../../../components/jobs/ScheduleEditor';
 import { StepTimeLine, StepTimesSummary, stepItems, stepTimings } from '../../../components/jobs/StepTimes';
 import { SignaturePad } from '../../../components/SignaturePad';
-import { Avatar, Badge, Button, Card, Divider, ErrorBanner, Field, IconButton, IconTile, Ionicons, KeyValue, Loading, Row, Section, Stepper, T, ToggleRow } from '../../../components/ui';
+import { Avatar, Badge, Button, Card, Divider, ErrorBanner, Field, IconButton, IconTile, Ionicons, KeyValue, Loading, Row, Section, SheetModal, Stepper, T, ToggleRow } from '../../../components/ui';
 import { ask, confirmTentative } from '../../../lib/conflicts';
 import { sharePdf } from '../../../lib/documents';
 import { signedUrls } from '../../../lib/files';
@@ -697,10 +697,8 @@ function SignOffModal({ visible, subtitle, signer, setSigner, stars, setStars, f
 
 function ModalSheet({ visible, onClose, children }: { visible: boolean; onClose: () => void; children: ReactNode }) {
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <ScrollView contentContainerStyle={{ padding: space.lg }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <ScrollView contentContainerStyle={{ padding: space.lg }} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+    </SheetModal>
   );
 }

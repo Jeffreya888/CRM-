@@ -1,7 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActionSheetIOS, ActivityIndicator, Alert, Image, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { dateTime, money } from '../../lib/format';
 import { fetchGuide, pickJobPhoto, type PickedPhoto } from '../../lib/jobs';
 import { useOrg } from '../../lib/session';
@@ -10,7 +9,7 @@ import { colors, radius, space, toneColors, type Tone } from '../../lib/theme';
 import type { GuideStep, ServiceGuide } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { SignaturePad } from '../SignaturePad';
-import { Badge, Button, Card, ErrorBanner, Field, Ionicons, Loading, Row, T } from '../ui';
+import { Badge, Button, Card, ErrorBanner, Field, Ionicons, Loading, Row, SheetModal, T } from '../ui';
 
 /** Asks camera vs. library (camera isn't available on web). */
 export function chooseSource(): Promise<'camera' | 'library' | null> {
@@ -107,26 +106,24 @@ export function DamageSheet({ visible, onClose, onSave }: { visible: boolean; on
     try { await onSave(desc.trim(), photo); close(); } catch (e: any) { setError(friendlyError(e.message)); } finally { setBusy(false); }
   };
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-          <Button small kind="ghost" title="Cancel" onPress={close} />
-          <T variant="h3">Document damage</T>
-          <Button small title="Save" loading={busy} onPress={save} />
-        </Row>
-        <ScrollView contentContainerStyle={{ padding: space.lg }} keyboardShouldPersistTaps="handled">
-          <ErrorBanner message={error} />
-          <T variant="muted" style={{ marginBottom: space.md }}>Record existing damage before you start (or anything found during the job). It appears on the service report.</T>
-          <Field label="Description *" placeholder="e.g. 3-inch scratch on left wing leading edge, near the fuel cap" value={desc} onChangeText={setDesc} multiline />
-          {photo ? (
-            <View style={{ alignItems: 'center', marginBottom: space.md }}>
-              <Image source={{ uri: photo.uri }} style={{ width: 220, height: 220, borderRadius: radius.md }} />
-              <Button small kind="ghost" title="Replace photo" onPress={pick} />
-            </View>
-          ) : <Button kind="secondary" icon="camera-outline" title="Add photo *" onPress={pick} />}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={close}>
+      <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+        <Button small kind="ghost" title="Cancel" onPress={close} />
+        <T variant="h3">Document damage</T>
+        <Button small title="Save" loading={busy} onPress={save} />
+      </Row>
+      <ScrollView contentContainerStyle={{ padding: space.lg }} keyboardShouldPersistTaps="handled">
+        <ErrorBanner message={error} />
+        <T variant="muted" style={{ marginBottom: space.md }}>Record existing damage before you start (or anything found during the job). It appears on the service report.</T>
+        <Field label="Description *" placeholder="e.g. 3-inch scratch on left wing leading edge, near the fuel cap" value={desc} onChangeText={setDesc} multiline />
+        {photo ? (
+          <View style={{ alignItems: 'center', marginBottom: space.md }}>
+            <Image source={{ uri: photo.uri }} style={{ width: 220, height: 220, borderRadius: radius.md }} />
+            <Button small kind="ghost" title="Replace photo" onPress={pick} />
+          </View>
+        ) : <Button kind="secondary" icon="camera-outline" title="Add photo *" onPress={pick} />}
+      </ScrollView>
+    </SheetModal>
   );
 }
 
@@ -140,42 +137,40 @@ export function GuideStepSheet({ item, onClose, onToggle }: {
   const g = q.data as ServiceGuide | null | undefined;
   const step: GuideStep | undefined = g && item?.step_index != null ? g.steps?.[item.step_index] : undefined;
   return (
-    <Modal visible={!!item} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-          <T variant="h3" style={{ flex: 1 }} numberOfLines={1}>{g?.title ?? 'Step'}</T>
-          <Button small kind="secondary" title="Done" onPress={onClose} />
-        </Row>
-        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}>
-          {q.loading ? <Loading /> : (
-            <>
-              {item?.step_index != null ? <T variant="overline">Step {item.step_index + 1}{g?.steps?.length ? ` of ${g.steps.length}` : ''}</T> : null}
-              <T variant="h2" style={{ marginTop: 4 }}>{step?.title ?? item?.label}</T>
-              {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{step.detail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No SOP is linked to this step.</T> : null}
-              {step?.caution ? (
-                <Card style={{ backgroundColor: colors.warningSoft, marginTop: space.lg }}>
-                  <Row style={{ alignItems: 'flex-start' }}>
-                    <Ionicons name="warning-outline" size={20} color={colors.warning} />
-                    <T style={{ flex: 1 }}>{step.caution}</T>
-                  </Row>
-                </Card>
-              ) : null}
-              {g?.donts?.length ? (
-                <View style={{ marginTop: space.lg }}>
-                  <T style={{ fontWeight: '700', marginBottom: 6 }}>Never</T>
-                  {g.donts.slice(0, 5).map((d, i) => <T key={i} variant="muted" style={{ marginBottom: 4 }}>• {d}</T>)}
-                </View>
-              ) : null}
-              <T variant="small" style={{ marginTop: space.lg }}>Always follow the manufacturer&apos;s maintenance manual and use OEM-approved products.</T>
-              <Row style={{ marginTop: space.lg, flexWrap: 'wrap' }}>
-                {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? 'Mark not done' : 'Mark done'} onPress={() => { onToggle(); onClose(); }} /> : null}
-                {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: item?.guide_key ?? g.key, step: String(item?.step_index ?? '') } }); }} /> : null}
-              </Row>
-            </>
-          )}
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={!!item} onClose={onClose}>
+      <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+        <T variant="h3" style={{ flex: 1 }} numberOfLines={1}>{g?.title ?? 'Step'}</T>
+        <Button small kind="secondary" title="Done" onPress={onClose} />
+      </Row>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}>
+        {q.loading ? <Loading /> : (
+          <>
+            {item?.step_index != null ? <T variant="overline">Step {item.step_index + 1}{g?.steps?.length ? ` of ${g.steps.length}` : ''}</T> : null}
+            <T variant="h2" style={{ marginTop: 4 }}>{step?.title ?? item?.label}</T>
+            {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{step.detail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No SOP is linked to this step.</T> : null}
+            {step?.caution ? (
+              <Card style={{ backgroundColor: colors.warningSoft, marginTop: space.lg }}>
+                <Row style={{ alignItems: 'flex-start' }}>
+                  <Ionicons name="warning-outline" size={20} color={colors.warning} />
+                  <T style={{ flex: 1 }}>{step.caution}</T>
+                </Row>
+              </Card>
+            ) : null}
+            {g?.donts?.length ? (
+              <View style={{ marginTop: space.lg }}>
+                <T style={{ fontWeight: '700', marginBottom: 6 }}>Never</T>
+                {g.donts.slice(0, 5).map((d, i) => <T key={i} variant="muted" style={{ marginBottom: 4 }}>• {d}</T>)}
+              </View>
+            ) : null}
+            <T variant="small" style={{ marginTop: space.lg }}>Always follow the manufacturer&apos;s maintenance manual and use OEM-approved products.</T>
+            <Row style={{ marginTop: space.lg, flexWrap: 'wrap' }}>
+              {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? 'Mark not done' : 'Mark done'} onPress={() => { onToggle(); onClose(); }} /> : null}
+              {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: item?.guide_key ?? g.key, step: String(item?.step_index ?? '') } }); }} /> : null}
+            </Row>
+          </>
+        )}
+      </ScrollView>
+    </SheetModal>
   );
 }
 
@@ -288,18 +283,16 @@ export function ConditionCard({ job, editable, onChanged }: {
           {job.condition_report && !signed ? <Button small icon="pencil-outline" title="Customer signs" onPress={() => setSigning(true)} /> : null}
         </Row>
       ) : null}
-      <Modal visible={signing} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setSigning(false)}>
-        <SafeAreaView style={{ flex: 1, padding: space.lg, backgroundColor: colors.bg }}>
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <T variant="h2" style={{ marginBottom: space.sm }}>Condition & service acceptance</T>
-            <T variant="muted" style={{ marginBottom: space.sm }}>Version {Math.max(1, job.condition_version)}</T>
-            <Card><T>{job.condition_report}</T></Card>
-            <ErrorBanner message={error} />
-            <Field label="Full name" value={signer} onChangeText={setSigner} placeholder="Customer / pilot name" />
-            <SignaturePad onCancel={() => setSigning(false)} onSave={sign} />
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+      <SheetModal visible={signing} onClose={() => setSigning(false)} style={{ padding: space.lg }}>
+        <ScrollView keyboardShouldPersistTaps="handled">
+          <T variant="h2" style={{ marginBottom: space.sm }}>Condition & service acceptance</T>
+          <T variant="muted" style={{ marginBottom: space.sm }}>Version {Math.max(1, job.condition_version)}</T>
+          <Card><T>{job.condition_report}</T></Card>
+          <ErrorBanner message={error} />
+          <Field label="Full name" value={signer} onChangeText={setSigner} placeholder="Customer / pilot name" />
+          <SignaturePad onCancel={() => setSigning(false)} onSave={sign} />
+        </ScrollView>
+      </SheetModal>
     </Card>
   );
 }

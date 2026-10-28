@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Avatar, Button, ErrorBanner, Ionicons, Row, T } from '../ui';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Avatar, Button, ErrorBanner, Ionicons, Row, SheetModal, T } from '../ui';
 import { initials } from '../../lib/format';
 import { friendlyError } from '../../lib/supabase';
 import { colors, radius, space } from '../../lib/theme';
@@ -30,25 +29,23 @@ export function ReassignSheet({ visible, title, body, people, allowKeep, confirm
   );
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-          <Button small kind="ghost" title="Cancel" onPress={onClose} />
-          <T variant="h3">{title}</T>
-          <View style={{ width: 60 }} />
-        </Row>
-        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }}>
-          <ErrorBanner message={error} />
-          <T variant="muted" style={{ marginBottom: space.lg }}>{body}</T>
-          <T style={{ fontWeight: '700', marginBottom: space.sm }}>Who takes over their open jobs and recurring schedules?</T>
-          {allowKeep ? opt('keep', choice?.kind === 'keep', () => setChoice({ kind: 'keep' }), <Ionicons name="person-outline" size={22} color={colors.textMuted} />, 'Keep them assigned', 'Their work stays with them') : null}
-          {people.map((p) => opt(p.user_id, choice?.kind === 'member' && choice.userId === p.user_id, () => setChoice({ kind: 'member', userId: p.user_id }),
-            <Avatar label={initials(p.display_name)} color={p.color ?? undefined} size={32} />, p.display_name ?? 'Team member', p.role))}
-          {opt('none', choice?.kind === 'unassigned', () => setChoice({ kind: 'unassigned' }), <Ionicons name="remove-circle-outline" size={22} color={colors.textMuted} />, 'Leave unassigned', 'Jobs stay on the schedule with nobody assigned')}
-          <Button style={{ marginTop: space.lg }} kind={danger ? 'danger' : 'primary'} title={confirmLabel} disabled={!choice}
-            onPress={async () => { try { await onConfirm(choice!); onClose(); } catch (e: any) { setError(friendlyError(e.message)); } }} />
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+        <Button small kind="ghost" title="Cancel" onPress={onClose} />
+        <T variant="h3">{title}</T>
+        <View style={{ width: 60 }} />
+      </Row>
+      <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }}>
+        <ErrorBanner message={error} />
+        <T variant="muted" style={{ marginBottom: space.lg }}>{body}</T>
+        <T style={{ fontWeight: '700', marginBottom: space.sm }}>Who takes over their open jobs and recurring schedules?</T>
+        {allowKeep ? opt('keep', choice?.kind === 'keep', () => setChoice({ kind: 'keep' }), <Ionicons name="person-outline" size={22} color={colors.textMuted} />, 'Keep them assigned', 'Their work stays with them') : null}
+        {people.map((p) => opt(p.user_id, choice?.kind === 'member' && choice.userId === p.user_id, () => setChoice({ kind: 'member', userId: p.user_id }),
+          <Avatar label={initials(p.display_name)} color={p.color ?? undefined} size={32} />, p.display_name ?? 'Team member', p.role))}
+        {opt('none', choice?.kind === 'unassigned', () => setChoice({ kind: 'unassigned' }), <Ionicons name="remove-circle-outline" size={22} color={colors.textMuted} />, 'Leave unassigned', 'Jobs stay on the schedule with nobody assigned')}
+        <Button style={{ marginTop: space.lg }} kind={danger ? 'danger' : 'primary'} title={confirmLabel} disabled={!choice}
+          onPress={async () => { try { await onConfirm(choice!); onClose(); } catch (e: any) { setError(friendlyError(e.message)); } }} />
+      </ScrollView>
+    </SheetModal>
   );
 }

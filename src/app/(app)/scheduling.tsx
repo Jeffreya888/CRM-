@@ -1,12 +1,11 @@
 import { addDays, format } from 'date-fns';
 import { router, Stack } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, Switch, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, Switch, TextInput, View } from 'react-native';
 import { DateTimeField } from '../../components/DateTimeField';
 import { FormSheet, notify } from '../../components/FormSheet';
 import { ConflictList, useSaveRules } from '../../components/jobs/ScheduleEditor';
-import { Badge, Button, Card, EmptyState, ErrorBanner, Field, IconButton, Ionicons, ListRow, Loading, Row, Screen, Section, Segmented, Select, T } from '../../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorBanner, Field, IconButton, Ionicons, ListRow, Loading, Row, Screen, Section, Segmented, Select, SheetModal, T } from '../../components/ui';
 import { ask, EMPTY_SCHEDULE, fetchConflicts, localScheduleProblems } from '../../lib/conflicts';
 import { date, isoDate } from '../../lib/format';
 import { useLookups } from '../../lib/lookups';
@@ -392,31 +391,29 @@ function HoldSheet({ visible, equipment, hangars, onClose, onSaved }: {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={onClose} />
-            <T variant="h3">Reserve a resource</T>
-            <Button small title={rules.needsOverride ? 'Override' : 'Save'} disabled={rules.blocked || checking} onPress={save} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            <Segmented value={kind} onChange={(k) => { setKind(k); setResource(null); }} options={[{ value: 'equipment', label: 'Equipment' }, { value: 'hangar', label: 'Hangar' }]} />
-            <Select label={kind === 'equipment' ? 'Equipment' : 'Hangar'} value={resource} onChange={setResource}
-              placeholder={(kind === 'equipment' ? equipment : hangars).length ? 'Choose…' : 'Nothing bookable yet'}
-              options={kind === 'equipment'
-                ? equipment.map((e) => ({ value: e.id, label: e.name, hint: e.status === 'in_service' ? undefined : e.status.replace(/_/g, ' ') }))
-                : hangars.map((h) => ({ value: h.id, label: [h.airport_code, h.name].filter(Boolean).join(' · ') }))} />
-            <DateTimeField label="From" value={start} onChange={setStart} />
-            <DateTimeField label="Until" value={end} onChange={setEnd} />
-            <Field label="Note" placeholder="e.g. Pump service, training day" value={note} onChangeText={setNote} />
-            <ConflictList conflicts={conflicts} checking={checking} />
-            {rules.message ? <T variant="small" style={{ color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={onClose} />
+          <T variant="h3">Reserve a resource</T>
+          <Button small title={rules.needsOverride ? 'Override' : 'Save'} disabled={rules.blocked || checking} onPress={save} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 80 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          <Segmented value={kind} onChange={(k) => { setKind(k); setResource(null); }} options={[{ value: 'equipment', label: 'Equipment' }, { value: 'hangar', label: 'Hangar' }]} />
+          <Select label={kind === 'equipment' ? 'Equipment' : 'Hangar'} value={resource} onChange={setResource}
+            placeholder={(kind === 'equipment' ? equipment : hangars).length ? 'Choose…' : 'Nothing bookable yet'}
+            options={kind === 'equipment'
+              ? equipment.map((e) => ({ value: e.id, label: e.name, hint: e.status === 'in_service' ? undefined : e.status.replace(/_/g, ' ') }))
+              : hangars.map((h) => ({ value: h.id, label: [h.airport_code, h.name].filter(Boolean).join(' · ') }))} />
+          <DateTimeField label="From" value={start} onChange={setStart} />
+          <DateTimeField label="Until" value={end} onChange={setEnd} />
+          <Field label="Note" placeholder="e.g. Pump service, training day" value={note} onChangeText={setNote} />
+          <ConflictList conflicts={conflicts} checking={checking} />
+          {rules.message ? <T variant="small" style={{ color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }
 

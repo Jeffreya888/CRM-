@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { crewList, EMPTY_SCHEDULE, fetchConflicts, isHardConflict, loadSchedule, localScheduleProblems, saveSchedule, conflictIcon, ask, type ScheduleValue } from '../../lib/conflicts';
 import { initials } from '../../lib/format';
@@ -11,7 +11,7 @@ import { colors, radius, space } from '../../lib/theme';
 import type { Conflict } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { DateTimeField } from '../DateTimeField';
-import { Avatar, Badge, Button, ErrorBanner, Field, Ionicons, Loading, Row, Select, T } from '../ui';
+import { Avatar, Badge, Button, ErrorBanner, Field, Ionicons, Loading, Row, Select, SheetModal, T } from '../ui';
 
 export interface ScheduleMember { user_id: string; display_name: string | null; color: string | null; skills: string[]; role: string }
 export interface BookableEquipment { id: string; name: string; status: string }
@@ -309,36 +309,34 @@ export function ScheduleSheet({
 
   const ready = loadedFor === want && meta;
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={() => { setLoadedFor(null); onClose(); }} />
-            <T variant="h3" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>{title}</T>
-            <View style={{ width: 70 }} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            {!ready ? <Loading /> : (
-              <>
-                {meta.status === 'tentative' ? (
-                  <View style={{ marginBottom: space.md }}><Badge label={confirm ? 'Tentative — saving confirms this job' : 'Tentative'} tone="warning" raw /></View>
-                ) : null}
-                <ScheduleEditor value={value} onChange={setValue} jobId={jobId} locationId={meta.locationId} categories={categories}
-                  confirmed={meta.confirmed} onConflicts={(list, checking) => setConf({ list, checking })} />
-              </>
-            )}
-          </ScrollView>
-          {ready ? (
-            <SafeAreaView edges={['bottom']} style={{ padding: space.lg, paddingBottom: space.sm, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border }}>
-              {rules.message ? <T variant="small" style={{ marginBottom: 8, color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
-              <Button title={rules.needsOverride ? 'Override and save' : confirm ? 'Confirm & save' : 'Save schedule'}
-                kind={rules.needsOverride ? 'danger' : 'primary'} icon={rules.needsOverride ? 'warning-outline' : 'checkmark'}
-                disabled={rules.blocked || conf.checking} onPress={save} />
-            </SafeAreaView>
-          ) : null}
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={() => { setLoadedFor(null); onClose(); }} />
+          <T variant="h3" numberOfLines={1} style={{ flex: 1, textAlign: 'center' }}>{title}</T>
+          <View style={{ width: 70 }} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 140 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          {!ready ? <Loading /> : (
+            <>
+              {meta.status === 'tentative' ? (
+                <View style={{ marginBottom: space.md }}><Badge label={confirm ? 'Tentative — saving confirms this job' : 'Tentative'} tone="warning" raw /></View>
+              ) : null}
+              <ScheduleEditor value={value} onChange={setValue} jobId={jobId} locationId={meta.locationId} categories={categories}
+                confirmed={meta.confirmed} onConflicts={(list, checking) => setConf({ list, checking })} />
+            </>
+          )}
+        </ScrollView>
+        {ready ? (
+          <SafeAreaView edges={['bottom']} style={{ padding: space.lg, paddingBottom: space.sm, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border }}>
+            {rules.message ? <T variant="small" style={{ marginBottom: 8, color: rules.blocked ? colors.danger : colors.warning }}>{rules.message}</T> : null}
+            <Button title={rules.needsOverride ? 'Override and save' : confirm ? 'Confirm & save' : 'Save schedule'}
+              kind={rules.needsOverride ? 'danger' : 'primary'} icon={rules.needsOverride ? 'warning-outline' : 'checkmark'}
+              disabled={rules.blocked || conf.checking} onPress={save} />
+          </SafeAreaView>
+        ) : null}
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }

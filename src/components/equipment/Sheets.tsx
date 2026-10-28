@@ -1,8 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { Image, KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { DateTimeField } from '../DateTimeField';
-import { Button, ErrorBanner, Field, Row, Select, T } from '../ui';
+import { Button, ErrorBanner, Field, Row, Select, SheetModal, T } from '../ui';
 import { pickImage, uploadImage } from '../../lib/files';
 import { fmtNum, todayIso, type MaintenanceDue } from '../../lib/inventory';
 import { friendlyError, supabase } from '../../lib/supabase';
@@ -32,21 +31,19 @@ function Sheet({ visible, title, onClose, onSave, saveLabel = 'Save', children, 
   visible: boolean; title: string; onClose: () => void; onSave: () => Promise<void>; saveLabel?: string; children: ReactNode; error: string | null;
 }) {
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={onClose} />
-            <T variant="h3" numberOfLines={1} style={{ flexShrink: 1 }}>{title}</T>
-            <Button small title={saveLabel} onPress={onSave} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            {children}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={onClose} />
+          <T variant="h3" numberOfLines={1} style={{ flexShrink: 1 }}>{title}</T>
+          <Button small title={saveLabel} onPress={onSave} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          {children}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }
 

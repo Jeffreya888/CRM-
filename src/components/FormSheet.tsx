@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { friendlyError } from '../lib/supabase';
-import { colors, space } from '../lib/theme';
+import { space } from '../lib/theme';
 import { DateTimeField } from './DateTimeField';
-import { Button, ErrorBanner, Field, Row, Select, T, ToggleRow, type Option } from './ui';
+import { Button, ErrorBanner, Field, Row, Select, SheetModal, T, ToggleRow, type Option } from './ui';
 
 export type FieldDef =
   | { key: string; label: string; type: 'text' | 'multiline' | 'email' | 'phone'; placeholder?: string; required?: boolean; hint?: string }
@@ -122,26 +121,24 @@ export function FormSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={onClose} />
-            <T variant="h3">{title}</T>
-            <Button small title="Save" onPress={submit} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            <FormFields fields={fields} values={values} setValue={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
-            {onDelete ? (
-              <View style={{ marginTop: space.lg }}>
-                <Button kind="ghost" icon="trash-outline" title="Delete" onPress={confirmDelete} />
-              </View>
-            ) : null}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={visible} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={onClose} />
+          <T variant="h3">{title}</T>
+          <Button small title="Save" onPress={submit} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          <FormFields fields={fields} values={values} setValue={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
+          {onDelete ? (
+            <View style={{ marginTop: space.lg }}>
+              <Button kind="ghost" icon="trash-outline" title="Delete" onPress={confirmDelete} />
+            </View>
+          ) : null}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }
 

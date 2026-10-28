@@ -2,13 +2,10 @@ import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { notify } from '../../components/FormSheet';
 import { Gate } from '../../components/Gate';
-import {
-  Badge, Button, Card, EmptyState, ErrorBanner, Field, IconTile, Ionicons, ListRow, Loading, Row, Screen, Section, T, ToggleRow,
-} from '../../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorBanner, Field, IconTile, Ionicons, ListRow, Loading, Row, Screen, Section, SheetModal, T, ToggleRow } from '../../components/ui';
 import { dateTime, relative } from '../../lib/format';
 import { canAdmin } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
@@ -179,32 +176,30 @@ function RequestForm({ provider, onClose, onSaved, orgId }: { provider: Provider
   };
 
   return (
-    <Modal visible={!!provider} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-            <Button small kind="ghost" title="Cancel" onPress={onClose} />
-            <T variant="h3">{provider ? providerName(provider) : ''} access</T>
-            <Button small title="Prepare" onPress={save} />
-          </Row>
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
-            <ErrorBanner message={error} />
-            <Field label="Management company that owns the schedule *" value={v.management_company} onChangeText={set('management_company')} placeholder="Skyline Aircraft Management" />
-            <Field label="Contact name" value={v.contact_name} onChangeText={set('contact_name')} />
-            <Field label="Contact email" value={v.contact_email} onChangeText={set('contact_email')} keyboardType="email-address" autoCapitalize="none" />
-            <Field label="Notes" value={v.notes} onChangeText={set('notes')} multiline placeholder="Which aircraft or bases, anything the vendor should know" />
-            <ToggleRow label="I confirm the schedule owner has authorized this request" value={authority} onChange={setAuthority}
-              hint="Vendors only share a schedule with the operator's permission." />
-            <Card>
-              <Row style={{ alignItems: 'flex-start' }}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
-                <T variant="small" style={{ flex: 1 }}>{NOT_SENT_WARNING} We generate a request letter you can copy or email to the vendor.</T>
-              </Row>
-            </Card>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </Modal>
+    <SheetModal visible={!!provider} onClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+          <Button small kind="ghost" title="Cancel" onPress={onClose} />
+          <T variant="h3">{provider ? providerName(provider) : ''} access</T>
+          <Button small title="Prepare" onPress={save} />
+        </Row>
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }} keyboardShouldPersistTaps="handled">
+          <ErrorBanner message={error} />
+          <Field label="Management company that owns the schedule *" value={v.management_company} onChangeText={set('management_company')} placeholder="Skyline Aircraft Management" />
+          <Field label="Contact name" value={v.contact_name} onChangeText={set('contact_name')} />
+          <Field label="Contact email" value={v.contact_email} onChangeText={set('contact_email')} keyboardType="email-address" autoCapitalize="none" />
+          <Field label="Notes" value={v.notes} onChangeText={set('notes')} multiline placeholder="Which aircraft or bases, anything the vendor should know" />
+          <ToggleRow label="I confirm the schedule owner has authorized this request" value={authority} onChange={setAuthority}
+            hint="Vendors only share a schedule with the operator's permission." />
+          <Card>
+            <Row style={{ alignItems: 'flex-start' }}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.warning} />
+              <T variant="small" style={{ flex: 1 }}>{NOT_SENT_WARNING} We generate a request letter you can copy or email to the vendor.</T>
+            </Row>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SheetModal>
   );
 }
 
@@ -212,36 +207,34 @@ function LetterSheet({ req, orgName, signer, onClose, onMarkSent }: { req: Req |
   const text = req ? letter(req, orgName, signer) : '';
   const subject = req ? `Read-only schedule access request — ${orgName} / ${req.management_company}` : '';
   return (
-    <Modal visible={!!req} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-        <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-          <Button small kind="ghost" title="Close" onPress={onClose} />
-          <T variant="h3">Request letter</T>
-          <View style={{ width: 60 }} />
-        </Row>
-        {req ? (
-          <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }}>
-            <Card style={{ borderColor: colors.warning }}>
-              <Row style={{ alignItems: 'flex-start' }}>
-                <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
-                <T style={{ flex: 1, color: colors.warning, fontWeight: '600' }}>
-                  {req.status === 'prepared' ? NOT_SENT_WARNING : req.status === 'sent_to_vendor' ? 'Sent to vendor. Waiting for their partner approval — no schedule is syncing yet.' : STATUS[req.status].label}
-                </T>
-              </Row>
-            </Card>
-            <Row gap={6} style={{ marginBottom: space.md }}>
-              <Badge raw label={providerName(req.provider)} tone="purple" />
-              <Badge raw label={STATUS[req.status].label} tone={STATUS[req.status].tone} />
+    <SheetModal visible={!!req} onClose={onClose}>
+      <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
+        <Button small kind="ghost" title="Close" onPress={onClose} />
+        <T variant="h3">Request letter</T>
+        <View style={{ width: 60 }} />
+      </Row>
+      {req ? (
+        <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 64 }}>
+          <Card style={{ borderColor: colors.warning }}>
+            <Row style={{ alignItems: 'flex-start' }}>
+              <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
+              <T style={{ flex: 1, color: colors.warning, fontWeight: '600' }}>
+                {req.status === 'prepared' ? NOT_SENT_WARNING : req.status === 'sent_to_vendor' ? 'Sent to vendor. Waiting for their partner approval — no schedule is syncing yet.' : STATUS[req.status].label}
+              </T>
             </Row>
-            <Card><T style={{ lineHeight: 22 }}>{text}</T></Card>
-            <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
-              <Button small kind="secondary" icon="copy-outline" title="Copy letter" onPress={async () => { await Clipboard.setStringAsync(text); notify('Letter copied'); }} />
-              <Button small kind="secondary" icon="mail-outline" title="Email" onPress={() => Linking.openURL(`mailto:${encodeURIComponent(req.contact_email ?? '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`)} />
-              {req.status === 'prepared' ? <Button small icon="checkmark-done-outline" title="Mark sent to vendor" onPress={() => onMarkSent(req)} /> : null}
-            </Row>
-          </ScrollView>
-        ) : null}
-      </SafeAreaView>
-    </Modal>
+          </Card>
+          <Row gap={6} style={{ marginBottom: space.md }}>
+            <Badge raw label={providerName(req.provider)} tone="purple" />
+            <Badge raw label={STATUS[req.status].label} tone={STATUS[req.status].tone} />
+          </Row>
+          <Card><T style={{ lineHeight: 22 }}>{text}</T></Card>
+          <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
+            <Button small kind="secondary" icon="copy-outline" title="Copy letter" onPress={async () => { await Clipboard.setStringAsync(text); notify('Letter copied'); }} />
+            <Button small kind="secondary" icon="mail-outline" title="Email" onPress={() => Linking.openURL(`mailto:${encodeURIComponent(req.contact_email ?? '')}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`)} />
+            {req.status === 'prepared' ? <Button small icon="checkmark-done-outline" title="Mark sent to vendor" onPress={() => onMarkSent(req)} /> : null}
+          </Row>
+        </ScrollView>
+      ) : null}
+    </SheetModal>
   );
 }
