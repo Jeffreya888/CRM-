@@ -1049,4 +1049,77 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Assistant, documents, question allowance (20261028000200) -------
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+do $$
+declare
+  o uuid := (select v from ctx where k = 'edge');
+  u bigint;
+  i int;
+begin
+  update organizations set plan = 'solo', plan_expires_at = now() + interval '30 days', ai_extra_credits = 1, ai_question_bank = 0 where id = o;
+  delete from ai_usage where org_id = o;
+  assert public.ai_questions_included(o) = 300, 'solo: 300 questions';
+  for i in 1..300 loop perform public.claim_ai_question(o); end loop;
+  assert (public.ai_allowance(o) ->> 'questions_left')::int = 10, 'one AI check left = 10 questions';
+  u := public.claim_ai_question(o);
+  assert u is not null and (select ai_extra_credits from organizations where id = o) = 0
+     and (select ai_question_bank from organizations where id = o) = 9, 'a check converts into 10 questions';
+  perform public.release_ai_check(u);
+  assert (select ai_question_bank from organizations where id = o) = 10, 'failed answer refunded to the bank';
+  for i in 1..10 loop perform public.claim_ai_question(o); end loop;
+  assert public.claim_ai_question(o) is null, 'out of questions';
+  assert (public.ai_allowance(o) ->> 'used')::int = 0, 'questions do not use photo checks';
+  insert into assistant_threads (org_id, user_id, title) values (o, '00000000-0000-0000-0000-0000000000a2', 'Drum raking');
+  insert into assistant_messages (org_id, thread_id, role, content)
+    select o, id, 'user', 'How often do I rake?' from assistant_threads where title = 'Drum raking';
+end $$;
+set role authenticated;
+-- The technician sees their own conversation; the owner sees it too; another company does not.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a2', false);
+do $$ begin
+  assert (select count(*) from assistant_messages) = 1, 'asker sees own conversation';
+  begin
+    insert into assistant_messages (org_id, thread_id, role, content)
+      select org_id, id, 'assistant', 'forged' from assistant_threads limit 1;
+    raise exception 'messages are written by the server only';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ begin
+  assert (select count(*) from assistant_threads where title = 'Drum raking') = 1, 'owner reads team conversations';
+  assert (select count(*) from assistant_messages) = 1, 'owner reads the messages';
+  begin
+    perform public.platform_metrics();
+    raise exception 'founder metrics are platform-admin only';
+  exception when raise_exception then
+    if sqlerrm not like 'Not allowed%' then raise; end if;
+  end;
+  begin
+    insert into aircraft_documents (org_id, aircraft_id, title, storage_path, mime_type)
+      select org_id, id, 'Bad path', org_id || '/receipts/x.pdf', 'application/pdf' from aircraft where tail_number = 'N50EJ';
+    raise exception 'documents must live in the aircraft folder';
+  exception when raise_exception then
+    if sqlerrm not like 'File path%' then raise; end if;
+  end;
+  insert into aircraft_documents (org_id, aircraft_id, title, kind, storage_path, mime_type)
+    select org_id, id, 'AMM 12 cleaning', 'manual', org_id || '/aircraft/' || id || '/docs/amm12.pdf', 'application/pdf' from aircraft where tail_number = 'N50EJ';
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', false);
+do $$ begin
+  assert (select count(*) from assistant_threads) = 0 and (select count(*) from aircraft_documents) = 0, 'other companies see nothing';
+end $$;
+reset role;
+insert into platform_admins (user_id) values ('00000000-0000-0000-0000-0000000000a1') on conflict do nothing;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ declare m jsonb := public.platform_metrics();
+begin
+  assert (m ->> 'companies')::int > 0 and m ? 'mrr' and m ? 'ai_questions_30d', 'founder metrics: ' || m::text;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED
