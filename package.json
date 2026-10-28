@@ -54,7 +54,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/lib/*.test.ts",
+    "test": "node --experimental-strip-types --import ./scripts/test-resolve.mjs --test src/lib/*.test.ts",
     "test:db": "bash supabase/tests/run.sh",
     "export:web": "expo export --platform web",
     "lint": "expo lint"

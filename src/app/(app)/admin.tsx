@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { PlatformMetrics, usePlatformMetrics } from '../../components/admin/PlatformMetrics';
 import { notify } from '../../components/FormSheet';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Ionicons, Loading, Row, Screen, Section, Segmented, StatTile, T } from '../../components/ui';
 import { dateTime, relative, titleCase } from '../../lib/format';
@@ -59,7 +60,7 @@ export default function PlatformAdmin() {
 }
 
 function AdminBody() {
-  const [tab, setTab] = useState<'health' | 'support' | 'actions' | 'launch'>('health');
+  const [tab, setTab] = useState<'metrics' | 'health' | 'support' | 'actions' | 'launch'>('metrics');
   const [showHandled, setShowHandled] = useState(false);
 
   const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
@@ -70,6 +71,7 @@ function AdminBody() {
   }, [showHandled]);
 
   const pending = useQuery(async () => (await must(supabase.rpc('platform_pending'))) as Pending, []);
+  const metrics = usePlatformMetrics();
   const h = health.data;
   const plans = h?.companies_by_plan ?? {};
   const paying = (plans.solo ?? 0) + (plans.team ?? 0) + (plans.fleet ?? 0);
@@ -84,14 +86,17 @@ function AdminBody() {
   };
 
   return (
-    <Screen refreshing={health.refreshing || support.refreshing} onRefresh={() => { health.refresh(); support.refresh(); pending.refresh(); }}>
+    <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); }}>
       <Stack.Screen options={{ title: 'Platform admin' }} />
       <Segmented value={tab} onChange={setTab} options={[
+        { value: 'metrics', label: 'Metrics' },
         { value: 'health', label: 'Health' },
         { value: 'support', label: 'Support', count: h?.support_open },
         { value: 'actions', label: 'Texting & integrations', count: h?.texting_pending },
         { value: 'launch', label: 'Launch checklist' },
       ]} />
+
+      {tab === 'metrics' ? <PlatformMetrics q={metrics} /> : null}
 
       {tab === 'health' ? (
         <>
