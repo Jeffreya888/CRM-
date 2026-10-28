@@ -1122,4 +1122,74 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Square (second payment processor) -------------------------------
+reset role;
+do $$ declare
+  o uuid := (select v from ctx where k='edge');
+  c uuid := (select id from customers where name = 'Edge Customer');
+  q uuid; j uuid; i uuid;
+begin
+  begin
+    update organizations set payment_mode = 'paypal' where id = o;
+    raise exception 'unknown processors are rejected';
+  exception when check_violation then null;
+  end;
+  update organizations set payment_mode = 'square', square_charges_enabled = false where id = o;
+  assert not public.org_accepts_cards((select x from organizations x where id = o)), 'square not connected yet';
+  update organizations set square_charges_enabled = true, square_merchant_id = 'MLTEST', square_location_id = 'LTEST' where id = o;
+  assert public.org_accepts_cards((select x from organizations x where id = o)), 'square connected';
+  insert into square_connections (org_id, merchant_id, access_token_enc, refresh_token_enc, expires_at)
+    values (o, 'MLTEST', 'enc-a', 'enc-r', now() + interval '30 days');
+  -- A Square deposit carries its processor onto the job's invoice.
+  insert into quotes (org_id, number, customer_id) values (o, 'Q-SQ-1', c) returning id into q;
+  perform set_config('app.quote_unlock', 'on', true);
+  update quotes set status = 'accepted', deposit_amount = 50, deposit_paid_at = now(), deposit_payment_intent = 'sqpay_dep_1',
+                    deposit_provider = 'square' where id = q;
+  perform set_config('app.quote_unlock', 'off', true);
+  insert into jobs (org_id, number, customer_id, title, quote_id, status) values (o, public._next_number(o, 'job'), c, 'Square deposit job', q, 'completed') returning id into j;
+  i := public._create_invoice_for_job(j);
+  assert (select provider from payments where stripe_payment_intent_id = 'sqpay_dep_1' and invoice_id = i) = 'square',
+    'deposit recorded as a Square payment';
+  update invoices set status = 'sent' where id = i;
+  insert into ctx values ('sq_inv', i);
+  -- Care plan sign-up page for Square.
+  insert into recurring_schedules (org_id, customer_id, title, first_at, timezone, billing, care_plan_amount,
+                                   care_plan_provider, care_plan_token, care_plan_status)
+    values (o, c, 'Monthly wash', now(), 'UTC', 'care_plan', 250, 'square', 'cp-token-1', 'pending');
+end $$;
+create temp table sqtok as select public_token from invoices where id = (select v from ctx where k='sq_inv');
+grant select on sqtok to anon;
+set role anon;
+do $$ declare d jsonb; begin
+  d := public.get_public_document('invoice', (select public_token from sqtok));
+  assert (d->'org'->>'accepts_cards')::boolean and d->'org'->>'payment_mode' = 'square', 'public invoice payable by Square: ' || (d->'org')::text;
+  d := public.get_public_care_plan('cp-token-1');
+  assert (d->>'amount')::numeric = 250 and d->>'title' = 'Monthly wash', 'public care plan: ' || coalesce(d::text, 'null');
+  assert public.get_public_care_plan('nope') is null;
+  begin
+    perform count(*) from square_connections;
+    raise exception 'tokens are server-only';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ begin
+  begin
+    perform count(*) from square_connections;
+    raise exception 'members cannot read Square tokens';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update organizations set square_charges_enabled = true where id = (select v from ctx where k='edge');
+    raise exception 'Square status is server-only';
+  exception when insufficient_privilege then null;
+  end;
+  update organizations set payment_mode = 'stripe' where id = (select v from ctx where k='edge');
+  assert (select payment_mode from organizations where id = (select v from ctx where k='edge')) = 'stripe', 'owner switches processor';
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED
