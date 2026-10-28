@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { AiAllowance, AiLimitCard, useAiAllowance, type AiLimitKind } from '../../../components/ai/AiAllowance';
 import { AnswerBody, Thinking, UserBubble } from '../../../components/assistant/ChatBits';
 import { confirmAction, notify } from '../../../components/FormSheet';
@@ -8,7 +8,7 @@ import { chooseSource } from '../../../components/jobs/JobCards';
 import { Badge, EmptyState, ErrorBanner, IconButton, Ionicons, Loading, Row, T } from '../../../components/ui';
 import { pickAssessPhotos, type PickedPhoto } from '../../../lib/assess';
 import {
-  AiLimitError, askAssistant, ASSISTANT_SUGGESTIONS, deleteThread, loadNewThreadContext, loadThread, MAX_ASSISTANT_PHOTOS,
+  AiLimitError, askAssistant, ASSISTANT_SUGGESTIONS, countAircraftDocs, deleteThread, loadNewThreadContext, loadThread, MAX_ASSISTANT_PHOTOS,
   REVIEW_NOTICE, uploadAssistantPhotos,
 } from '../../../lib/assistant';
 import { APP_NAME } from '../../../lib/config';
@@ -42,6 +42,7 @@ export default function AssistantChat() {
   const [error, setError] = useState<string | null>(null);
   const [limit, setLimit] = useState<AiLimitKind | null>(null);
   const [allowanceKey, setAllowanceKey] = useState(0);
+  const [useDocs, setUseDocs] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
   const allowance = useAiAllowance(allowanceKey);
@@ -67,7 +68,10 @@ export default function AssistantChat() {
       guideKey ? loadGuideLibrary(orgId).catch(() => null) : Promise.resolve(null),
     ]);
     const g = lib && guideKey ? findGuide(lib, guideKey)?.guide ?? null : null;
-    return { ...base, guide: g ? { title: g.title, step: isNew && stepIndex != null ? g.steps[stepIndex]?.title ?? null : null } : null };
+    // The aircraft whose documents the assistant can read: the thread's, or the job's.
+    const docsAircraft = aircraftId ?? base.job?.aircraft_id ?? null;
+    const docCount = docsAircraft ? await countAircraftDocs(docsAircraft).catch(() => 0) : 0;
+    return { ...base, docCount, guide: g ? { title: g.title, step: isNew && stepIndex != null ? g.steps[stepIndex]?.title ?? null : null } : null };
   }, [orgId, jobId, aircraftId, guideKey, stepIndex, isNew]);
 
   if (!isNew && q.loading && !q.data) return <><Stack.Screen options={{ title: `Ask ${APP_NAME}` }} /><Loading /></>;
@@ -116,6 +120,7 @@ export default function AssistantChat() {
         orgId, threadId, message, photoPaths,
         jobId: threadId ? undefined : jobId, aircraftId: threadId ? undefined : aircraftId,
         guideKey: threadId ? undefined : guideKey, stepIndex: threadId ? undefined : stepIndex,
+        useDocuments: hasDocs ? useDocs : undefined,
       });
       setThreadId(r.thread_id);
       // Show the photos from this device (no signed URL needed).
@@ -141,6 +146,8 @@ export default function AssistantChat() {
     }
   }, true);
 
+  const hasDocs = (ctx.data?.docCount ?? 0) > 0;
+  const usesCheck = photos.length > 0 || (hasDocs && useDocs);
   const column = desktop ? { width: '100%' as const, maxWidth: 860, alignSelf: 'center' as const } : null;
   const c = ctx.data;
   const contextChips = [
@@ -233,6 +240,13 @@ export default function AssistantChat() {
         {mine && editable ? (
           <View style={{ borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.bg }}>
             <View style={[{ paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: Platform.OS === 'ios' ? space.xl : space.md }, column]}>
+              {hasDocs ? (
+                <Row gap={space.sm} style={{ marginBottom: space.sm }}>
+                  <Switch value={useDocs} onValueChange={setUseDocs} trackColor={{ true: colors.primary, false: colors.borderStrong }} thumbColor={colors.white}
+                    accessibilityLabel="Use this aircraft's documents" style={Platform.OS === 'web' ? undefined : { transform: [{ scale: 0.8 }] }} />
+                  <T variant="small" style={{ flex: 1 }}>Use this aircraft&apos;s documents (uses an AI check)</T>
+                </Row>
+              ) : null}
               {photos.length ? (
                 <>
                   <Row gap={space.sm} style={{ marginBottom: space.sm }}>
@@ -246,13 +260,15 @@ export default function AssistantChat() {
                       </View>
                     ))}
                   </Row>
-                  <Row gap={4} style={{ marginBottom: space.sm }}>
-                    <Ionicons name="camera-outline" size={14} color={colors.warning} />
-                    <T variant="small" style={{ color: colors.warning }}>
-                      Photo questions use an AI check{allowance.data ? ` (${allowance.data.left.toLocaleString('en-US')} left)` : ''}.
-                    </T>
-                  </Row>
                 </>
+              ) : null}
+              {usesCheck ? (
+                <Row gap={4} style={{ marginBottom: space.sm }}>
+                  <Ionicons name="sparkles-outline" size={14} color={colors.warning} />
+                  <T variant="small" style={{ color: colors.warning, flex: 1 }}>
+                    {photos.length ? 'Photo questions use an AI check' : 'This question uses an AI check'}{allowance.data ? ` (${allowance.data.left.toLocaleString('en-US')} left)` : ''}.
+                  </T>
+                </Row>
               ) : null}
               <Row gap={space.sm} style={{ alignItems: 'flex-end' }}>
                 <Pressable accessibilityLabel="Attach photos" disabled={busy || photos.length >= MAX_ASSISTANT_PHOTOS} onPress={addPhotos}

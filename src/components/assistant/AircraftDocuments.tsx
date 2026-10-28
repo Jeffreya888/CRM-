@@ -56,7 +56,7 @@ export function AircraftDocuments({ aircraftId, manager, label = 'aircraft' }: {
           <Ionicons name="sparkles-outline" size={16} color={colors.primaryText} style={{ marginTop: 2 }} />
           <T variant="small" style={{ flex: 1 }}>
             {docs.length ? '' : `No documents for this ${label} yet. `}
-            The Ask assistant uses these documents for this {label} and cites them.
+            The Ask assistant uses these documents for this {label} and cites them. Questions that use these documents count as an AI check.
             {manager ? ` Add manual chapters, approved-product lists or the owner's instructions (PDF or image, up to 20 MB, ${MAX_AIRCRAFT_DOCS} per ${label}).` : ''}
           </T>
         </Row>

@@ -51,8 +51,14 @@ export interface AskInput {
   stepIndex?: number | null;
   message: string;
   photoPaths?: string[];
+  /** Read the aircraft's uploaded documents (uses an AI check). Omit when the aircraft has none. */
+  useDocuments?: boolean;
 }
-export interface AskResult { thread_id: string; user_message: AssistantMessage; assistant_message: AssistantMessage }
+export interface AskResult {
+  thread_id: string; user_message: AssistantMessage; assistant_message: AssistantMessage;
+  /** What the question used: a question, or an AI check (photos or the aircraft's documents). */
+  charged?: 'question' | 'check';
+}
 
 /**
  * Asks a question. Like callFunction('assistant'), but keeps the 402 code and
@@ -68,6 +74,7 @@ export async function askAssistant(input: AskInput): Promise<AskResult> {
     step_index: input.stepIndex ?? undefined,
     message: input.message,
     photo_paths: input.photoPaths?.length ? input.photoPaths.slice(0, MAX_ASSISTANT_PHOTOS) : undefined,
+    use_documents: input.useDocuments,
   };
   const { data, error } = await supabase.functions.invoke('assistant', { body });
   if (error) {
@@ -145,6 +152,12 @@ export async function loadThread(orgId: string, id: string): Promise<ThreadDetai
     askerName: names[thread.user_id] ?? 'Team member',
     job: (job.data as ThreadDetail['job']) ?? null,
   };
+}
+
+/** Number of documents uploaded for an aircraft (0 when none or not readable). */
+export async function countAircraftDocs(aircraftId: string): Promise<number> {
+  const { count } = await supabase.from('aircraft_documents').select('id', { count: 'exact', head: true }).eq('aircraft_id', aircraftId);
+  return count ?? 0;
 }
 
 export async function deleteThread(id: string) {
