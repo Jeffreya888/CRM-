@@ -1,9 +1,12 @@
 // "Ask" assistant for crews (docs/feature-plan "Ask" contract).
 //
-// POST { org_id, thread_id?, job_id?, aircraft_id?, guide_key?, step_index?, message, photo_paths? }
-//   → { thread_id, user_message, assistant_message }
+// POST { org_id, thread_id?, job_id?, aircraft_id?, guide_key?, step_index?, message, photo_paths?, use_documents? }
+//   → { thread_id, user_message, assistant_message, charged }
+// Aircraft documents are attached only when the question mentions a related
+// word (products, polish, manual, …) or use_documents is true.
 // Any active member except viewers. Text questions use claim_ai_question; a
-// question with photos uses one AI check (claim_ai_check). Out of allowance →
+// question with photos or attached aircraft documents uses one AI check
+// (claim_ai_check); the response says which: charged 'question'|'check'. Out of allowance →
 // 402 { error: "AI_LIMIT: …", code: "ai_limit", kind }. When the AI can't
 // answer, the usage is given back and the assistant row is saved as 'failed'.
 //
@@ -28,6 +31,7 @@ import {
   matchSops,
   MAX_FULL_SOPS,
   MAX_PHOTOS,
+  wantsDocuments,
   sopCatalog,
   SYSTEM_PROMPT,
 } from "../_shared/assistant.ts";
@@ -46,6 +50,7 @@ interface Body {
   step_index?: number | null;
   message?: string;
   photo_paths?: string[] | null;
+  use_documents?: boolean | null;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -131,16 +136,22 @@ Deno.serve(async (req) => {
     const { images, problem } = await loadPhotos(db, photoPaths);
     if (problem) return error(problem);
 
-    // --- Allowance ----------------------------------------------------------
-    const kind = images.length ? "check" : "question";
-    const claim = images.length
+    // --- Aircraft documents (attached only when the question needs them) ----
+    const attachDocs = body.use_documents === true || wantsDocuments(message);
+    const docs = asset
+      ? await loadDocuments(db, orgId, asset.id, DOC_BUDGET_BYTES - images.reduce((n, i) => n + i.bytes, 0), attachDocs)
+      : null;
+
+    // --- Allowance: photos or attached documents use one AI check -----------
+    const kind: "question" | "check" = images.length || docs?.attached.size ? "check" : "question";
+    const claim = kind === "check"
       ? await db.rpc("claim_ai_check", { p_org: orgId, p_source: "staff" })
       : await db.rpc("claim_ai_question", { p_org: orgId });
     if (claim.error) throw claim.error;
     if (claim.data == null) {
       return json({
         error: kind === "check"
-          ? "AI_LIMIT: Your company has used all its AI photo checks for this month. An owner can add more checks or upgrade the plan."
+          ? `AI_LIMIT: Your company has used all its AI checks for this month (questions with ${images.length ? "photos" : "aircraft documents"} use a check). An owner can add more checks or upgrade the plan.`
           : "AI_LIMIT: Your company has used all its questions for this month. An owner can add AI checks or upgrade the plan.",
         code: "ai_limit",
         kind,
@@ -179,11 +190,10 @@ Deno.serve(async (req) => {
       .filter((k) => catalog.has(k)).slice(0, MAX_FULL_SOPS);
     const extraKeys = matchSops(message, catalog, new Set(threadKeys), Math.min(3, MAX_FULL_SOPS - threadKeys.length));
     const focus = guideKey && stepIndex != null ? { key: guideKey, step: stepIndex + 1 } : undefined;
-    const [threadSops, extraSops, companyText, docs] = await Promise.all([
+    const [threadSops, extraSops, companyText] = await Promise.all([
       loadSops(db, catalog, threadKeys, focus),
       loadSops(db, catalog, extraKeys),
       companyContext(db, orgId, org?.name ?? "", catalog),
-      asset ? loadDocuments(db, orgId, asset.id, DOC_BUDGET_BYTES - images.reduce((n, i) => n + i.bytes, 0)) : null,
     ]);
     const sopSteps = new Map([...threadSops, ...extraSops].map((s) => [s.key, s.steps]));
 
@@ -193,6 +203,10 @@ Deno.serve(async (req) => {
     if (docs) {
       if (docs.attached.size) refText.push(`The ${docs.attached.size} document(s) above were uploaded by the company for this aircraft. They take priority over SOPs.`);
       if (docs.skipped.length) refText.push(`Not attached (too large to include): ${docs.skipped.join(", ")}. If one of these matters, tell the user to open it in the app.`);
+      if (docs.listed && !attachDocs) {
+        refText.push(`This aircraft has uploaded documents that were not attached to this question: ${docs.titles.join(", ")}. ` +
+          "If one of them could settle the question, say so and tell the user to ask again mentioning the manual or document.");
+      }
       if (!docs.listed) refText.push("No documents have been uploaded for this aircraft.");
     }
     if (asset) refText.push(assetText(asset));
@@ -286,7 +300,7 @@ Deno.serve(async (req) => {
     const { error: upErr } = await db.from("assistant_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
     if (upErr) console.error("assistant_threads update failed", upErr);
 
-    return json({ thread_id: threadId, user_message: userMsg, assistant_message: botMsg });
+    return json({ thread_id: threadId, user_message: userMsg, assistant_message: botMsg, charged: kind });
   } catch (e) {
     console.error(e);
     return error("Something went wrong. Please try again.", 500);
