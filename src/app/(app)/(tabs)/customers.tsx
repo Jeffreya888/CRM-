@@ -3,8 +3,10 @@ import { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomerCard, type CustomerCardData } from '../../../components/customers/CustomerCard';
-import { Button, EmptyState, ErrorBanner, Fab, ListRow, PageTitle, Row, SearchBar, Segmented, T } from '../../../components/ui';
+import { Avatar, Badge, Button, EmptyState, ErrorBanner, Fab, Ionicons, ListRow, PageTitle, Row, SearchBar, Segmented, T, TableHeader, TableRow, useContentStyle, type Column } from '../../../components/ui';
 import { assetIcon, assetModelName } from '../../../lib/assets';
+import { initials } from '../../../lib/format';
+import { useIsDesktop } from '../../../lib/layout';
 import { isManager } from '../../../lib/plans';
 import { categoryLabel } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
@@ -20,8 +22,37 @@ type AssetLite = {
 type CRow = CustomerCardData & { assets: AssetLite[] };
 type Item = { kind: 'customer'; c: CRow } | { kind: 'asset'; a: AssetLite; owner: string | null } | { kind: 'header'; title: string };
 
+// Desktop table columns.
+const COLUMNS: Column[] = [
+  { label: 'Customer', flex: 2.4 },
+  { label: 'Status', width: 100 },
+  { label: 'Assets', flex: 1.2 },
+  { label: 'Phone', flex: 1.3 },
+  { label: 'Email', flex: 2 },
+  { label: '', width: 20 },
+];
+
+function AssetCounts({ c }: { c: CRow }) {
+  const counts = (['aircraft', 'vehicle', 'watercraft'] as AssetType[])
+    .map((t) => ({ t, n: c.assets.filter((a) => a.active && a.asset_type === t).length }))
+    .filter((x) => x.n > 0);
+  if (!counts.length) return <T variant="small">No assets</T>;
+  return (
+    <Row gap={space.md}>
+      {counts.map((x) => (
+        <Row key={x.t} gap={4}>
+          <Ionicons name={assetIcon(x.t)} size={15} color={colors.warning} />
+          <T style={{ fontSize: 14 }}>{x.n}</T>
+        </Row>
+      ))}
+    </Row>
+  );
+}
+
 export default function Customers() {
   const { orgId, role, perm } = useOrg();
+  const desktop = useIsDesktop();
+  const desk = useContentStyle();
   const [status, setStatus] = useState<'all' | 'active' | 'lead' | 'inactive'>('all');
   const [search, setSearch] = useState('');
 
@@ -63,10 +94,11 @@ export default function Customers() {
         refreshing={q.refreshing}
         onRefresh={q.refresh}
         ListHeaderComponent={
-          <View style={{ padding: space.lg, paddingBottom: 0 }}>
+          <View style={desk ? undefined : { padding: space.lg, paddingBottom: 0 }}>
             <PageTitle
               title="Customers"
               subtitle={q.data ? `${all.length} customer${all.length === 1 ? '' : 's'}, ${assetCount} asset${assetCount === 1 ? '' : 's'}` : ' '}
+              right={desktop && perm('edit_customers') ? <Button small icon="add" title="New customer" onPress={() => router.push('/customers/new')} /> : undefined}
             />
             <Row style={{ flexWrap: 'wrap', marginBottom: space.md }}>
               <Button small kind="secondary" icon="airplane-outline" title="All assets" onPress={() => router.push('/aircraft')} />
@@ -81,18 +113,39 @@ export default function Customers() {
               { value: 'inactive', label: 'Inactive', count: count('inactive') },
             ]} />
             <ErrorBanner message={q.error} onRetry={q.reload} />
+            {desktop && customers.length ? <TableHeader columns={COLUMNS} /> : null}
           </View>
         }
-        renderItem={({ item }) => {
-          if (item.kind === 'header') return <T variant="overline" style={{ marginHorizontal: space.lg, marginTop: space.md, marginBottom: space.sm }}>{item.title}</T>;
+        renderItem={({ item, index }) => {
+          if (item.kind === 'header') return <T variant="overline" style={{ marginHorizontal: desk ? 0 : space.lg, marginTop: desk ? space.xl : space.md, marginBottom: space.sm }}>{item.title}</T>;
           if (item.kind === 'asset') {
             const a = item.a;
             return (
-              <View style={{ marginHorizontal: space.lg, borderRadius: 12, overflow: 'hidden', marginBottom: 6 }}>
+              <View style={{ marginHorizontal: desk ? 0 : space.lg, borderRadius: 12, overflow: 'hidden', marginBottom: 6 }}>
                 <ListRow icon={assetIcon(a.asset_type)} tone="warning" title={a.tail_number + (a.active ? '' : ' (inactive)')}
                   subtitle={assetModelName(a) || categoryLabel(a.category)} meta={item.owner ?? 'No owner'}
                   onPress={() => router.push(`/aircraft/${a.id}`)} />
               </View>
+            );
+          }
+          if (desktop) {
+            const c = item.c;
+            return (
+              <TableRow columns={COLUMNS} last={index === customers.length - 1} onPress={() => router.push(`/customers/${c.id}`)}
+                cells={[
+                  <Row key="n" gap={space.md}>
+                    <Avatar label={initials(c.name)} size={36} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <T style={{ fontWeight: '700', fontSize: 15 }} numberOfLines={1}>{c.name}</T>
+                      {c.company ? <T variant="small" numberOfLines={1}>{c.company}</T> : null}
+                    </View>
+                  </Row>,
+                  <Badge key="s" label={c.status === 'lead' ? 'Lead' : c.status === 'inactive' ? 'Inactive' : 'Active'} tone={c.status === 'lead' ? 'info' : c.status === 'inactive' ? 'neutral' : 'success'} />,
+                  <AssetCounts key="a" c={c} />,
+                  c.phone ? <T variant="muted" numberOfLines={1}>{c.phone}</T> : null,
+                  c.email ? <T variant="muted" numberOfLines={1}>{c.email}</T> : null,
+                  <Ionicons key="x" name="chevron-forward" size={18} color={colors.textFaint} />,
+                ]} />
             );
           }
           return <CustomerCard c={item.c} onPress={() => router.push(`/customers/${item.c.id}`)} />;
@@ -104,9 +157,9 @@ export default function Customers() {
             body="Add the owners, operators and companies you work for, with their aircraft, vehicles or boats."
             action={perm('edit_customers') ? <Button title="Add customer" icon="add" onPress={() => router.push('/customers/new')} /> : undefined} />
         )}
-        contentContainerStyle={{ paddingBottom: 110 }}
+        contentContainerStyle={[{ paddingBottom: 110 }, desk, desk && { paddingBottom: 64 }]}
       />
-      {perm('edit_customers') ? <Fab onPress={() => router.push('/customers/new')} label="New customer" /> : null}
+      {perm('edit_customers') && !desktop ? <Fab onPress={() => router.push('/customers/new')} label="New customer" /> : null}
     </SafeAreaView>
   );
 }

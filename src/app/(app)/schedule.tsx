@@ -5,6 +5,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { priorityTone } from '../../components/status';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, Row, Screen, Segmented, Select, T } from '../../components/ui';
 import { time } from '../../lib/format';
+import { useIsDesktop } from '../../lib/layout';
 import { JOB_STATUS_LABEL, statusTone } from '../../lib/jobs';
 import { useLookups } from '../../lib/lookups';
 import { isManager } from '../../lib/plans';
@@ -25,6 +26,7 @@ export default function Schedule() {
   const [mine, setMine] = useState(role === 'technician');
   const [mode, setMode] = useState<ViewMode>('day');
   const manager = isManager(role);
+  const desktop = useIsDesktop();
 
   const q = useQuery(async () => {
     let query = supabase.from('jobs')
@@ -80,22 +82,67 @@ export default function Schedule() {
     );
   };
 
+  const newJob = () => router.push({ pathname: '/jobs/new', params: { start: (() => { const d = new Date(day); d.setHours(9, 0, 0, 0); return d.toISOString(); })() } });
+
+  // Desktop: a compact job block for the 7-column week calendar.
+  const chip = (j: Job) => {
+    const tentative = j.status === 'tentative';
+    return (
+      <Pressable key={j.id} onPress={() => router.push(`/jobs/${j.id}`)}
+        style={({ pressed }) => [{
+          backgroundColor: pressed ? colors.cardRaised : colors.card, borderRadius: radius.sm + 2, padding: space.sm, marginBottom: 6,
+          borderWidth: 1, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: tentative ? colors.textMuted : j.flagged ? colors.danger : colors.primary,
+          borderStyle: tentative ? 'dashed' : 'solid',
+        }]}>
+        <Row style={{ justifyContent: 'space-between' }} gap={4}>
+          <T style={{ fontSize: 13, fontWeight: '700' }} numberOfLines={1}>{time(j.scheduled_start)}</T>
+          {j.priority === 'aog' || j.priority === 'high' ? <Badge label={j.priority === 'aog' ? 'AOG' : 'High'} tone={priorityTone[j.priority]} raw /> : null}
+        </Row>
+        <T style={{ fontSize: 13, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>{j.customer?.name ?? '—'}</T>
+        <T variant="small" numberOfLines={1}>{[j.aircraft?.tail_number, j.title].filter(Boolean).join(' · ')}</T>
+        <T variant="small" numberOfLines={1} style={{ color: tentative ? colors.warning : colors.textFaint }}>{tentative ? 'Tentative' : crewNames(j) || 'Unassigned'}</T>
+      </Pressable>
+    );
+  };
+
+  const weekGrid = (
+    <View style={{ flexDirection: 'row', gap: space.sm, marginTop: space.md, marginBottom: space.md }}>
+      {days.map((d) => {
+        const list = jobsOn(d);
+        const isToday = isSameDay(d, new Date());
+        return (
+          <View key={d.toISOString()} style={{ flex: 1, minWidth: 0, backgroundColor: colors.bgDeep, borderRadius: radius.md, borderWidth: 1, borderColor: isToday ? colors.accent : colors.border, padding: space.sm, minHeight: 420 }}>
+            <Row style={{ justifyContent: 'space-between', marginBottom: space.sm, paddingHorizontal: 2 }}>
+              <View>
+                <T variant="small" style={{ color: isToday ? colors.accent : colors.textMuted }}>{format(d, 'EEE')}</T>
+                <T variant="h3" style={{ color: isToday ? colors.white : colors.text }}>{format(d, 'd')}</T>
+              </View>
+              {list.length ? <Badge raw label={String(list.length)} tone="info" /> : null}
+            </Row>
+            {list.length ? list.map(chip) : <T variant="small" style={{ color: colors.textFaint, paddingHorizontal: 2 }}>No jobs</T>}
+          </View>
+        );
+      })}
+    </View>
+  );
+
   return (
     <View style={{ flex: 1 }}>
-      <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
+      <Screen refreshing={q.refreshing} onRefresh={q.refresh} wide>
         <Stack.Screen options={{ title: 'Schedule', headerRight: () => manager ? <IconButton icon="grid-outline" label="Dispatch board" onPress={() => router.push('/dispatch')} /> : null }} />
         {manager ? (
           <Row style={{ flexWrap: 'wrap', marginBottom: space.md }}>
             <Button small kind="secondary" icon="grid-outline" title="Dispatch board" onPress={() => router.push('/dispatch')} />
             <Button small kind="secondary" icon="people-outline" title="Crew & resources" onPress={() => router.push('/scheduling')} />
             <Button small kind="secondary" icon="mail-unread-outline" title="Requests" onPress={() => router.push('/requests')} />
+            {desktop ? <Button small icon="add" title="New job" onPress={newJob} /> : null}
           </Row>
         ) : (
           <Row style={{ marginBottom: space.md }}>
             <Button small kind="secondary" icon="airplane-outline" title="My hours & time off" onPress={() => router.push('/scheduling')} />
           </Row>
         )}
-        {can('branches') && lk.branches.length ? (
+        {!desktop && can('branches') && lk.branches.length ? (
           <Select label="Company location" icon="business-outline" placeholder="All locations" value={branchId} allowClear options={lk.branchOptions} onChange={setBranchId} />
         ) : null}
         <Row style={{ justifyContent: 'space-between' }}>
@@ -105,31 +152,33 @@ export default function Schedule() {
           </Pressable>
           <IconButton icon="chevron-forward" onPress={() => shift(1)} label="Next week" />
         </Row>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginVertical: space.md }}>
-          {days.map((d) => {
-            const active = mode === 'day' && isSameDay(d, day);
-            const list = jobsOn(d);
-            const tent = list.filter((j) => j.status === 'tentative').length;
-            return (
-              <Pressable key={d.toISOString()} onPress={() => { setDay(d); setMode('day'); }}
-                style={{ width: 52, paddingVertical: 8, borderRadius: radius.md, alignItems: 'center', backgroundColor: active ? colors.primary : colors.card, borderWidth: isSameDay(d, new Date()) ? 1 : 0, borderColor: colors.accent }}>
-                <T variant="small" style={{ color: active ? 'rgba(255,255,255,0.75)' : colors.textMuted }}>{format(d, 'EEE')}</T>
-                <T variant="h3" style={{ color: active ? colors.white : colors.text }}>{format(d, 'd')}</T>
-                <View style={{ height: 6, flexDirection: 'row', gap: 2, marginTop: 2 }}>
-                  {Array.from({ length: Math.min(list.length - tent, 4) }).map((_, i) => (
-                    <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: active ? colors.accent : colors.primary }} />
-                  ))}
-                  {Array.from({ length: Math.min(tent, 2) }).map((_, i) => (
-                    <View key={`t${i}`} style={{ width: 5, height: 5, borderRadius: 3, borderWidth: 1, borderColor: active ? colors.white : colors.textMuted }} />
-                  ))}
-                </View>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-        <Segmented value={mode} onChange={setMode} options={[{ value: 'day', label: 'Day' }, { value: 'week', label: `Whole week (${jobs.length})` }]} />
+        {desktop ? null : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginVertical: space.md }}>
+            {days.map((d) => {
+              const active = mode === 'day' && isSameDay(d, day);
+              const list = jobsOn(d);
+              const tent = list.filter((j) => j.status === 'tentative').length;
+              return (
+                <Pressable key={d.toISOString()} onPress={() => { setDay(d); setMode('day'); }}
+                  style={{ width: 52, paddingVertical: 8, borderRadius: radius.md, alignItems: 'center', backgroundColor: active ? colors.primary : colors.card, borderWidth: isSameDay(d, new Date()) ? 1 : 0, borderColor: colors.accent }}>
+                  <T variant="small" style={{ color: active ? 'rgba(255,255,255,0.75)' : colors.textMuted }}>{format(d, 'EEE')}</T>
+                  <T variant="h3" style={{ color: active ? colors.white : colors.text }}>{format(d, 'd')}</T>
+                  <View style={{ height: 6, flexDirection: 'row', gap: 2, marginTop: 2 }}>
+                    {Array.from({ length: Math.min(list.length - tent, 4) }).map((_, i) => (
+                      <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: active ? colors.accent : colors.primary }} />
+                    ))}
+                    {Array.from({ length: Math.min(tent, 2) }).map((_, i) => (
+                      <View key={`t${i}`} style={{ width: 5, height: 5, borderRadius: 3, borderWidth: 1, borderColor: active ? colors.white : colors.textMuted }} />
+                    ))}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+        {desktop ? null : <Segmented value={mode} onChange={setMode} options={[{ value: 'day', label: 'Day' }, { value: 'week', label: `Whole week (${jobs.length})` }]} />}
         <Row style={{ justifyContent: 'space-between', marginBottom: space.sm }}>
-          <T variant="overline">{mode === 'day' ? format(day, 'EEEE, MMMM d') : `${tentativeCount} tentative`}</T>
+          <T variant="overline">{desktop ? `${jobs.length} job${jobs.length === 1 ? '' : 's'} this week · ${tentativeCount} tentative` : mode === 'day' ? format(day, 'EEEE, MMMM d') : `${tentativeCount} tentative`}</T>
           <Pressable onPress={() => setMine((m) => !m)} accessibilityRole="checkbox" accessibilityState={{ checked: mine }}>
             <Row gap={4}>
               <Ionicons name={mine ? 'checkbox' : 'square-outline'} size={18} color={colors.primary} />
@@ -138,7 +187,7 @@ export default function Schedule() {
           </Pressable>
         </Row>
         <ErrorBanner message={q.error} onRetry={q.reload} />
-        {mode === 'day' ? (
+        {desktop ? weekGrid : mode === 'day' ? (
           jobsOn(day).length === 0 ? (
             <EmptyState icon="calendar-clear-outline" title="No jobs this day" body={manager ? 'Tap + to schedule one.' : undefined} />
           ) : jobsOn(day).map(card)
@@ -155,7 +204,7 @@ export default function Schedule() {
           <T variant="small">Tentative — waiting to be confirmed</T>
         </Row>
       </Screen>
-      {manager ? <Fab onPress={() => router.push({ pathname: '/jobs/new', params: { start: (() => { const d = new Date(day); d.setHours(9, 0, 0, 0); return d.toISOString(); })() } })} label="New job" /> : null}
+      {manager && !desktop ? <Fab onPress={newJob} label="New job" /> : null}
     </View>
   );
 }

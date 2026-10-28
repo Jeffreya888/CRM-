@@ -3,7 +3,6 @@
 import { router, usePathname } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type PressableStateCallbackType } from 'react-native';
-import { BranchSwitcher } from '../dashboard/widgets';
 import { confirmAction } from '../FormSheet';
 import { Logo } from '../site/SitePage';
 import { Avatar, Badge, IconButton, Ionicons, Select, T, type IconName } from '../ui';
@@ -15,6 +14,8 @@ import { colors, radius, space } from '../../lib/theme';
 import type { Branch } from '../../lib/types';
 import { useQuery } from '../../lib/useQuery';
 import { useMenu, visibleItems, type MenuGroup, type MenuItem } from './menu';
+
+const ALL_LOCATIONS = '__all__';
 
 type NavItem = { label: string; icon: IconName; href: string; badge?: string };
 
@@ -87,12 +88,20 @@ export function Sidebar() {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: space.md, paddingBottom: space.lg }}>
         {memberships.length > 1 ? (
-          <Select label="Company" icon="swap-horizontal-outline" value={org.id}
+          <T variant="overline" style={styles.pickerLabel}>Company</T>
+        ) : null}
+        {memberships.length > 1 ? (
+          <Select icon="swap-horizontal-outline" value={org.id}
             options={memberships.map((m) => ({ value: m.org_id, label: m.organization?.name ?? 'Company', hint: titleCase(m.role) }))}
             onChange={(v) => { if (v && v !== org.id) switchOrg(v); }} />
         ) : null}
         {branchesAllowed && branches.length > 0 ? (
-          <BranchSwitcher branches={branches} value={branches.some((b) => b.id === branchId) ? branchId : null} onChange={setBranchId} />
+          <>
+            <T variant="overline" style={styles.pickerLabel}>Location</T>
+            <Select icon="business-outline" value={branches.some((b) => b.id === branchId) ? branchId! : ALL_LOCATIONS} inline
+              options={[{ value: ALL_LOCATIONS, label: 'All locations' }, ...branches.map((b) => ({ value: b.id, label: b.name }))]}
+              onChange={(v) => setBranchId(!v || v === ALL_LOCATIONS ? null : v)} />
+          </>
         ) : null}
 
         {primary.map((i) => <NavLink key={i.href} item={i} active={isActive(pathname, i.href)} />)}
@@ -133,6 +142,7 @@ const styles = StyleSheet.create({
   linkActive: { backgroundColor: colors.primarySoft },
   linkHover: { backgroundColor: colors.card },
   linkText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  pickerLabel: { fontSize: 11, paddingHorizontal: space.xs, marginBottom: 6 },
   groupHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.md, paddingVertical: 6, marginBottom: 2 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: space.sm, padding: space.md, borderTopWidth: 1, borderTopColor: colors.border },
 });

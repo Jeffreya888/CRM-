@@ -9,7 +9,7 @@ import { PayRatesPanel } from '../../components/finance/PayRatesPanel';
 import { notify } from '../../components/FormSheet';
 import { Gate } from '../../components/Gate';
 import {
-  Badge, Button, Card, EmptyState, ErrorBanner, Field, IconButton, Ionicons, Loading, Row, Screen, Section, Segmented, Select, StatTile, T, ToggleRow,
+  Badge, Button, Card, EmptyState, ErrorBanner, Field, IconButton, Ionicons, Loading, ResponsiveRow, Row, Screen, Section, Segmented, Select, StatTile, T, ToggleRow,
 } from '../../components/ui';
 import { payrollCsv, type PayrollEntry, type PayrollPerson } from '../../lib/csv';
 import {
@@ -178,6 +178,8 @@ function PLScreen() {
             {unknownLabor ? <Badge raw label="Labor cost partly unknown" tone="warning" /> : null}
           </Card>
 
+          <ResponsiveRow>
+          <View>
           <Section title="Breakdown">
             <Card>
               {PL_LINES.map((l) => {
@@ -227,6 +229,8 @@ function PLScreen() {
             </Card>
           </Section>
 
+          </View>
+          <View>
           <Section title="Expenses by category">
             <Card>
               <BarList rows={pl.expenses_by_category} labelKey="category" valueKey="amount" label={(r) => categoryLabel(r.category)} sub={(r) => `${r.n} · ${categoryInfo(r.category).line}`}
@@ -247,6 +251,8 @@ function PLScreen() {
                 sub={(r) => `Revenue ${money(r.revenue, org.currency)} · Expenses ${money(r.expenses, org.currency)}`} format={(n) => money(n, org.currency)} empty="No payments in this period." /></Card>
             </Section>
           ) : null}
+          </View>
+          </ResponsiveRow>
 
           {sum ? (
             <>
@@ -255,11 +261,15 @@ function PLScreen() {
                 <StatTile label="Jobs completed" value={sum.jobs_completed} icon="checkmark-done-outline" tone="success" />
                 <StatTile label="Avg. rating" value={sum.avg_rating != null ? `${sum.avg_rating} ★` : '—'} icon="star-outline" tone="warning" />
               </Row>
+              <ResponsiveRow>
               <Section title="Revenue by month"><Card><MonthBars rows={sum.by_month} /></Card></Section>
+              <View>
               <Section title="Top services"><Card><BarList rows={sum.by_service} labelKey="name" valueKey="revenue" format={(n) => moneyShort(n)} /></Card></Section>
               {declines.length ? (
                 <Section title="Why quotes were declined"><Card><BarList rows={declines} labelKey="reason" valueKey="n" label={(r) => titleCase(r.reason)} format={(n) => String(n)} /></Card></Section>
               ) : null}
+              </View>
+              </ResponsiveRow>
             </>
           ) : null}
 
@@ -269,6 +279,7 @@ function PLScreen() {
             </Section>
           ) : null}
 
+          <ResponsiveRow>
           <Section title="Exports" icon="download-outline">
             <Card>
               <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
@@ -289,6 +300,7 @@ function PLScreen() {
               <Button icon="send-outline" title="Email report" loading={busy === 'email'} onPress={sendToAccountant} />
             </Card>
           </Section>
+          </ResponsiveRow>
         </>
       )}
       </>

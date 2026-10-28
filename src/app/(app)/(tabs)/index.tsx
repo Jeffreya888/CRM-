@@ -6,8 +6,9 @@ import { useSetupCardDismissed, useSetupSteps } from '../../../components/dashbo
 import { BranchSwitcher, GettingStartedCard, NeedsAttention, ProfitCard, QuickAction, type AttentionItem, type ProfitMonth } from '../../../components/dashboard/widgets';
 import { notify } from '../../../components/FormSheet';
 import { jobTone } from '../../../components/status';
-import { Badge, Button, Card, ErrorBanner, IconTile, Ionicons, ListRow, Row, Screen, Section, StatTile, T, type IconName } from '../../../components/ui';
+import { Badge, Button, Card, ErrorBanner, IconTile, Ionicons, ListRow, ResponsiveRow, Row, Screen, Section, StatTile, T, type IconName } from '../../../components/ui';
 import { duration, money, time, titleCase } from '../../../lib/format';
+import { useIsDesktop } from '../../../lib/layout';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { canAdmin, canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const manager = canSeeMoney(role);
   const admin = canAdmin(role);
   const branchesAllowed = can('branches');
+  const desktop = useIsDesktop();
 
   const branchQ = useQuery(async () => {
     if (!branchesAllowed) return [] as Branch[];
@@ -118,29 +120,8 @@ export default function Dashboard() {
   const branchName = branch ? branches.find((b) => b.id === branch)?.name : null;
   const showSetup = admin && !setup.loading && !setup.allDone && !setupCard.dismissed;
 
-  return (
-    <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name}
-      subtitle={`${name} · ${titleCase(role)} · ${format(new Date(), 'EEEE, MMMM d')}`}>
-      <ErrorBanner message={q.error} onRetry={q.refresh} />
-
-      {plan === 'trial' || plan === 'expired' ? (
-        <Card onPress={() => router.push('/paywall')} style={{ backgroundColor: plan === 'expired' ? colors.dangerSoft : colors.warningSoft, borderColor: 'transparent' }}>
-          <Row>
-            <Ionicons name={plan === 'expired' ? 'alert-circle' : 'time-outline'} size={20} color={plan === 'expired' ? colors.danger : colors.warning} />
-            <T style={{ flex: 1, fontWeight: '600', color: plan === 'expired' ? colors.danger : colors.warning }}>
-              {plan === 'expired' ? 'Your plan has ended. Tap to choose a plan.' : `${plural(trialDays, 'day')} left in your free trial`}
-            </T>
-            <Ionicons name="chevron-forward" size={18} color={plan === 'expired' ? colors.danger : colors.warning} />
-          </Row>
-        </Card>
-      ) : null}
-
-      {branchesAllowed && branches.length > 0 ? (
-        <BranchSwitcher branches={branches} value={branch} onChange={setBranchId} />
-      ) : null}
-
-      {showSetup ? <GettingStartedCard steps={setup.steps} doneCount={setup.doneCount} onDismiss={setupCard.dismiss} /> : null}
-
+  const todayCard = (
+    <>
       <Card>
         <Row style={{ justifyContent: 'space-between', marginBottom: today.length ? space.sm : 0 }}>
           <View style={{ flex: 1 }}>
@@ -163,7 +144,10 @@ export default function Dashboard() {
           </Pressable>
         ))}
       </Card>
-
+    </>
+  );
+  const quickActions = (
+    <>
       <Section title="Quick actions">
         <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
           {manager ? <QuickAction primary icon="add" label="New job" onPress={() => router.push('/jobs/new')} /> : null}
@@ -172,7 +156,10 @@ export default function Dashboard() {
           <QuickAction icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} primary={!manager} />
         </Row>
       </Section>
-
+    </>
+  );
+  const clockCard = (
+    <>
       <Card style={{ marginTop: space.md, backgroundColor: clock ? colors.successSoft : colors.card }}>
         <Row style={{ justifyContent: 'space-between' }}>
           <Row gap={space.md} style={{ flex: 1 }}>
@@ -185,13 +172,19 @@ export default function Dashboard() {
           <Button small kind={clock ? 'danger' : 'primary'} icon={clock ? 'stop' : 'play'} title={clock ? 'Clock out' : 'Clock in'} onPress={toggleClock} />
         </Row>
       </Card>
-
+    </>
+  );
+  const profitSection = (
+    <>
       {seeReports && q.data ? (
         <Section title="Profitability overview">
           <ProfitCard data={(s.profit_month ?? null) as ProfitMonth} monthLabel={format(new Date(), 'MMMM')} />
         </Section>
       ) : null}
-
+    </>
+  );
+  const revenueSection = (
+    <>
       {seePrices && q.data ? (
         <Section title="Revenue" count={branchName ?? undefined}>
           <Row gap={space.md} style={{ flexWrap: 'wrap', marginBottom: space.md }}>
@@ -206,7 +199,10 @@ export default function Dashboard() {
           </Card>
         </Section>
       ) : null}
-
+    </>
+  );
+  const overviewSection = (
+    <>
       <Section title="Overview">
         <Row gap={space.md} style={{ marginBottom: space.md, flexWrap: 'wrap' }}>
           <StatTile label="In progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push('/jobs?filter=in_progress')} />
@@ -217,13 +213,19 @@ export default function Dashboard() {
           <StatTile label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />
         </Row>
       </Section>
-
+    </>
+  );
+  const attentionSection = (
+    <>
       {q.data ? (
         <Section title="Needs attention" count={attention.length ? String(attention.length) : undefined}>
           <NeedsAttention items={attention} />
         </Section>
       ) : null}
-
+    </>
+  );
+  const recentSection = (
+    <>
       <Section title="Recent activity">
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {q.data && (q.data.recent ?? []).length === 0 ? <T variant="muted" style={{ padding: space.lg }}>No jobs yet. Create your first job to see activity here.</T> : null}
@@ -238,6 +240,78 @@ export default function Dashboard() {
           })}
         </Card>
       </Section>
+    </>
+  );
+
+  return (
+    <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name}
+      subtitle={`${name} · ${titleCase(role)} · ${format(new Date(), 'EEEE, MMMM d')}`}>
+      <ErrorBanner message={q.error} onRetry={q.refresh} />
+
+      {plan === 'trial' || plan === 'expired' ? (
+        <Card onPress={() => router.push('/paywall')} style={{ backgroundColor: plan === 'expired' ? colors.dangerSoft : colors.warningSoft, borderColor: 'transparent' }}>
+          <Row>
+            <Ionicons name={plan === 'expired' ? 'alert-circle' : 'time-outline'} size={20} color={plan === 'expired' ? colors.danger : colors.warning} />
+            <T style={{ flex: 1, fontWeight: '600', color: plan === 'expired' ? colors.danger : colors.warning }}>
+              {plan === 'expired' ? 'Your plan has ended. Tap to choose a plan.' : `${plural(trialDays, 'day')} left in your free trial`}
+            </T>
+            <Ionicons name="chevron-forward" size={18} color={plan === 'expired' ? colors.danger : colors.warning} />
+          </Row>
+        </Card>
+      ) : null}
+
+      {/* On desktop the company location is picked in the sidebar. */}
+      {!desktop && branchesAllowed && branches.length > 0 ? (
+        <BranchSwitcher branches={branches} value={branch} onChange={setBranchId} />
+      ) : null}
+
+      {showSetup ? <GettingStartedCard steps={setup.steps} doneCount={setup.doneCount} onDismiss={setupCard.dismiss} /> : null}
+
+
+      {desktop ? (
+        <>
+          {/* Desktop: key numbers in one row, then the day on the left and tools on the right. */}
+          <Row gap={space.md} style={{ flexWrap: 'wrap', marginBottom: space.lg }}>
+            <StatTile label="In progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push('/jobs?filter=in_progress')} />
+            <StatTile label="Scheduled" value={n('jobs_scheduled')} icon="calendar-outline" tone="info" onPress={() => router.push('/jobs?filter=scheduled')} />
+            <StatTile label="Completed" value={n('jobs_completed')} icon="checkmark-circle-outline" tone="success" onPress={() => router.push('/jobs?filter=completed')} />
+            <StatTile label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />
+            {seePrices && q.data ? <StatTile label="Paid this month" value={short(s.revenue_mtd)} icon="trending-up" tone="success" onPress={() => router.push('/invoices')} /> : null}
+            {seePrices && q.data ? <StatTile label="Total paid" value={short(s.total_paid)} icon="wallet-outline" tone="primary" onPress={() => router.push('/invoices')} /> : null}
+          </Row>
+          <ResponsiveRow weights={[1.6, 1]}>
+            <View>
+              {todayCard}
+              {attentionSection}
+              {recentSection}
+            </View>
+            <View>
+              <View style={{ marginTop: -space.lg }}>{quickActions}</View>
+              {clockCard}
+              {profitSection}
+              {seePrices && q.data ? (
+                <Card style={{ paddingVertical: space.md }}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <Row gap={space.sm}><Ionicons name="calendar-outline" size={18} color={colors.textMuted} /><T variant="muted">Paid this week</T></Row>
+                    <T variant="money">{short(s.revenue_week)}</T>
+                  </Row>
+                </Card>
+              ) : null}
+            </View>
+          </ResponsiveRow>
+        </>
+      ) : (
+        <>
+          {todayCard}
+          {quickActions}
+          {clockCard}
+          {profitSection}
+          {revenueSection}
+          {overviewSection}
+          {attentionSection}
+          {recentSection}
+        </>
+      )}
     </Screen>
   );
 }

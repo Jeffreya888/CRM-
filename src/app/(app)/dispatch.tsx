@@ -1,7 +1,7 @@
 import { addDays, format, isSameDay, startOfDay } from 'date-fns';
 import { router, Stack } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, View, type GestureResponderEvent } from 'react-native';
+import { Platform, Pressable, ScrollView, useWindowDimensions, View, type GestureResponderEvent } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { notify } from '../../components/FormSheet';
@@ -10,6 +10,7 @@ import { ScheduleSheet } from '../../components/jobs/ScheduleEditor';
 import { Avatar, Badge, Button, EmptyState, ErrorBanner, IconButton, Ionicons, Loading, Row, Screen, Select, T } from '../../components/ui';
 import { loadSchedule, saveSchedule } from '../../lib/conflicts';
 import { initials, isoDate, time } from '../../lib/format';
+import { SIDEBAR_WIDTH, useIsDesktop } from '../../lib/layout';
 import { useLookups } from '../../lib/lookups';
 import { canAdmin, isManager } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
@@ -41,6 +42,9 @@ export default function Dispatch() {
   const [saving, setSaving] = useState(false);
   const colRefs = useRef<Record<string, View | null>>({});
   const rects = useRef<Record<string, { x: number; y: number; w: number; h: number }>>({});
+  const desktop = useIsDesktop();
+  const { width: winW } = useWindowDimensions();
+  const padX = desktop ? space.xxl : space.lg;
 
   const q = useQuery(async () => {
     const from = startOfDay(day);
@@ -178,13 +182,15 @@ export default function Dispatch() {
   };
 
   const sel = selected ? jobById(selected.jobId) : null;
+  // Desktop: technician columns stretch to fill the window.
+  const colW = desktop ? Math.max(COL_W, Math.floor((winW - SIDEBAR_WIDTH - 2 * padX - TIME_W) / Math.max(1, columns.length)) - 6) : COL_W;
   const isWeb = Platform.OS === 'web';
   const today = isSameDay(day, new Date());
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <Stack.Screen options={{ title: 'Dispatch board', headerRight: () => <IconButton icon="refresh" label="Refresh" onPress={q.reload} /> }} />
-      <View style={{ paddingHorizontal: space.lg }}>
+      <View style={{ paddingHorizontal: padX }}>
         <Row style={{ justifyContent: 'space-between' }}>
           <IconButton icon="chevron-back" label="Previous day" onPress={() => setDay((x) => addDays(x, -1))} />
           <Pressable onPress={() => setDay(startOfDay(new Date()))}>
@@ -192,7 +198,7 @@ export default function Dispatch() {
           </Pressable>
           <IconButton icon="chevron-forward" label="Next day" onPress={() => setDay((x) => addDays(x, 1))} />
         </Row>
-        {can('branches') && lk.branches.length ? (
+        {!desktop && can('branches') && lk.branches.length ? (
           <Select icon="business-outline" placeholder="All locations" value={branchId} allowClear options={lk.branchOptions} onChange={setBranchId} />
         ) : null}
         <T variant="small" style={{ marginBottom: space.sm }}>
@@ -214,7 +220,7 @@ export default function Dispatch() {
       </View>
 
       <ScrollView style={{ flex: 1 }} scrollEnabled={!dragging} contentContainerStyle={{ paddingBottom: 140 }}>
-        <View style={{ flexDirection: 'row', paddingLeft: space.sm }}>
+        <View style={{ flexDirection: 'row', paddingLeft: desktop ? padX : space.sm }}>
           {/* Time axis */}
           <View style={{ width: TIME_W, paddingTop: HEAD_H }}>
             {hoursList.map((h) => (
@@ -228,7 +234,7 @@ export default function Dispatch() {
               const list = c.id === UNASSIGNED ? jobsIn(UNASSIGNED) : jobsIn(c.id);
               const laid = layout(list.filter((j) => j.scheduled_start));
               return (
-                <View key={c.id} style={{ width: COL_W, marginRight: 6, zIndex: laid.some((x) => x.j.id === dragging) ? 50 : 1 }}>
+                <View key={c.id} style={{ width: colW, marginRight: 6, zIndex: laid.some((x) => x.j.id === dragging) ? 50 : 1 }}>
                   <Row style={{ height: HEAD_H, paddingHorizontal: 4 }} gap={6}>
                     {c.id === UNASSIGNED ? <Ionicons name="help-circle-outline" size={26} color={colors.textMuted} /> : <Avatar size={28} label={initials(c.name)} color={c.color ?? colors.primary} />}
                     <View style={{ flex: 1 }}>
@@ -261,7 +267,7 @@ export default function Dispatch() {
                       return nowMin >= startH * 60 && nowMin <= endH * 60 ? <View pointerEvents="none" style={{ position: 'absolute', top: yOf(nowMin), left: 0, right: 0, height: 2, backgroundColor: colors.accent }} /> : null;
                     })() : null}
                     {laid.map(({ j, s, e, lane, lanes }) => {
-                      const w = (COL_W - 6) / lanes;
+                      const w = (colW - 6) / lanes;
                       const isPrimary = c.id === UNASSIGNED || !!j.job_assignments.find((a) => a.user_id === c.id)?.is_primary;
                       return (
                         <DispatchCard key={j.id} job={j} isPrimary={isPrimary} selected={selected?.jobId === j.id}

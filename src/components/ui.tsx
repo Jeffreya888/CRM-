@@ -133,6 +133,48 @@ export function ResponsiveRow({ children, weights, gap = space.xl }: { children:
   );
 }
 
+/** A column of a desktop table: `flex` share or fixed `width`, optional right alignment. */
+export interface Column { label: string; flex?: number; width?: number; align?: 'left' | 'right' }
+
+const cellStyle = (c: Column): ViewStyle => (c.width ? { width: c.width } : { flex: c.flex ?? 1, minWidth: 0 });
+
+/** Header row of a desktop table (pair with TableRow; first row of the table). */
+export function TableHeader({ columns, style }: { columns: Column[]; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[styles.tableHead, style]}>
+      {columns.map((c, i) => (
+        <View key={i} style={[cellStyle(c), c.align === 'right' && { alignItems: 'flex-end' }]}>
+          <T variant="overline" style={{ fontSize: 11 }} numberOfLines={1}>{c.label}</T>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** One row of a desktop table. Plain strings render as single-line text. */
+export function TableRow({ columns, cells, onPress, last, style }: {
+  columns: Column[]; cells: ReactNode[]; onPress?: () => void; last?: boolean; style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <Pressable onPress={onPress} disabled={!onPress}
+      style={(state) => {
+        const hovered = (state as { hovered?: boolean }).hovered;
+        return [styles.tableRow, last && styles.tableRowLast, (hovered || state.pressed) && onPress ? { backgroundColor: colors.cardRaised } : null, style];
+      }}>
+      {columns.map((c, i) => {
+        const v = cells[i];
+        return (
+          <View key={i} style={[cellStyle(c), c.align === 'right' && { alignItems: 'flex-end' }]}>
+            {typeof v === 'string' || typeof v === 'number'
+              ? <T numberOfLines={1} style={[{ fontSize: 14 }, c.align === 'right' && { textAlign: 'right', fontVariant: ['tabular-nums'] }]}>{v}</T>
+              : v ?? <T variant="muted">—</T>}
+          </View>
+        );
+      })}
+    </Pressable>
+  );
+}
+
 /**
  * Modal sheet: a full-height page sheet on phones and tablets, a centered
  * dialog (max 640px) on desktop. Replaces
@@ -627,10 +669,19 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   screenPad: { padding: space.lg },
-  desktopPad: { width: '100%', maxWidth: DESKTOP_MAX_WIDTH + 2 * space.xxl, alignSelf: 'center', paddingHorizontal: space.xxl, paddingTop: space.xl },
-  desktopPadWide: { width: '100%', paddingHorizontal: space.xxl, paddingTop: space.xl },
+  desktopPad: { width: '100%', maxWidth: DESKTOP_MAX_WIDTH + 2 * space.xxl, alignSelf: 'center', paddingLeft: space.xxl, paddingRight: space.xxl, paddingTop: space.xl },
+  desktopPadWide: { width: '100%', paddingLeft: space.xxl, paddingRight: space.xxl, paddingTop: space.xl },
   desktopCenter: { width: '100%', maxWidth: DESKTOP_MAX_WIDTH + 2 * space.xxl, alignSelf: 'center' },
   gridCell: { flex: 1, minWidth: 0 },
+  tableHead: {
+    flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: space.md,
+    backgroundColor: colors.bgDeep, borderWidth: 1, borderColor: colors.border, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+  },
+  tableRow: {
+    flexDirection: 'row', alignItems: 'center', gap: space.lg, paddingHorizontal: space.lg, paddingVertical: 14, minHeight: 60,
+    backgroundColor: colors.card, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border,
+  },
+  tableRowLast: { borderBottomLeftRadius: radius.lg, borderBottomRightRadius: radius.lg },
   dialogBackdrop: { flex: 1, backgroundColor: 'rgba(5,8,14,0.72)', alignItems: 'center', justifyContent: 'center', padding: space.xl },
   dialog: {
     width: '100%', maxHeight: '90%', backgroundColor: colors.bg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.borderStrong, overflow: 'hidden',

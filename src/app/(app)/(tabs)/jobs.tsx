@@ -6,10 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { notify } from '../../../components/FormSheet';
 import { ScheduleSheet } from '../../../components/jobs/ScheduleEditor';
 import { priorityTone } from '../../../components/status';
-import { Badge, Button, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, PageTitle, Row, SearchBar, Segmented, Select, T } from '../../../components/ui';
+import { Badge, Button, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, PageTitle, Row, SearchBar, Segmented, Select, T, TableHeader, TableRow, useContentStyle, type Column } from '../../../components/ui';
 import { confirmTentative } from '../../../lib/conflicts';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { JOB_STATUS_LABEL, statusTone } from '../../../lib/jobs';
+import { useIsDesktop } from '../../../lib/layout';
 import { canAdmin, isManager } from '../../../lib/plans';
 import { useLookups } from '../../../lib/lookups';
 import { useOrg } from '../../../lib/session';
@@ -34,7 +35,19 @@ const when = (d: string | null) => {
   return `${isToday(x) ? 'Today' : isTomorrow(x) ? 'Tomorrow' : format(x, 'EEE, MMM d')} · ${format(x, 'h:mm a')}`;
 };
 
+// Desktop table columns.
+const COLUMNS: Column[] = [
+  { label: 'Customer & asset', flex: 2.2 },
+  { label: 'Service', flex: 1.6 },
+  { label: 'Location', flex: 1.3 },
+  { label: 'Scheduled', flex: 1.4 },
+  { label: 'Status', width: 150 },
+  { label: '', width: 104, align: 'right' },
+];
+
 export default function Jobs() {
+  const desktop = useIsDesktop();
+  const desk = useContentStyle();
   const params = useLocalSearchParams<{ filter?: string }>();
   const { orgId, role, session, can, branchId, setBranchId } = useOrg();
   const lk = useLookups();
@@ -90,15 +103,22 @@ export default function Jobs() {
         keyExtractor={(j) => j.id}
         refreshing={q.refreshing}
         onRefresh={q.refresh}
-        contentContainerStyle={{ padding: space.lg, paddingBottom: 110 }}
+        contentContainerStyle={[{ padding: space.lg, paddingBottom: 110 }, desk, desk && { paddingBottom: 64 }]}
         ListHeaderComponent={
           <View>
             <PageTitle title="Jobs" subtitle={`${all.length} job${all.length === 1 ? '' : 's'}${branchName ? ` · ${branchName}` : ''}`}
-              right={<Row gap={0}>
+              right={desktop ? (
+                <Row gap={space.sm}>
+                  <Button small kind="secondary" icon="calendar-outline" title="Schedule" onPress={() => router.push('/schedule')} />
+                  {manager ? <Button small kind="secondary" icon="grid-outline" title="Dispatch board" onPress={() => router.push('/dispatch')} /> : null}
+                  {manager ? <Button small icon="add" title="New job" onPress={() => router.push('/jobs/new')} /> : null}
+                </Row>
+              ) : <Row gap={0}>
                 <IconButton icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} />
                 {manager ? <IconButton icon="grid-outline" label="Dispatch board" onPress={() => router.push('/dispatch')} /> : null}
               </Row>} />
-            {can('branches') && lk.branches.length ? (
+            {/* On desktop the company location is picked in the sidebar. */}
+            {!desktop && can('branches') && lk.branches.length ? (
               <Select label="Company location" icon="business-outline" placeholder="All locations" value={branchId} allowClear
                 options={lk.branchOptions} onChange={(v) => setBranchId(v)} />
             ) : null}
@@ -114,11 +134,41 @@ export default function Jobs() {
             ]} />
             <SearchBar value={search} onChange={setSearch} placeholder="Customer, tail number, job #, airport" />
             <ErrorBanner message={q.error} onRetry={q.reload} />
+            {desktop && rows.length ? <TableHeader columns={COLUMNS} /> : null}
           </View>
         }
-        renderItem={({ item: j }) => {
+        renderItem={({ item: j, index }) => {
           const tentative = j.status === 'tentative';
           const info = assetTypeInfo(j.aircraft?.asset_type ?? 'aircraft');
+          if (desktop) {
+            const asset = [j.aircraft?.tail_number, [j.aircraft?.manufacturer, j.aircraft?.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+            return (
+              <TableRow columns={COLUMNS} last={index === rows.length - 1} onPress={() => router.push(`/jobs/${j.id}`)}
+                style={j.flagged ? { borderLeftColor: colors.danger, borderLeftWidth: 3 } : undefined}
+                cells={[
+                  <View key="c">
+                    <T style={{ fontWeight: '700', fontSize: 15 }} numberOfLines={1}>{j.customer?.name ?? '—'}</T>
+                    <Row gap={6} style={{ marginTop: 2 }}>
+                      <Ionicons name={info.icon} size={14} color={colors.textMuted} />
+                      <T variant="small" numberOfLines={1} style={{ flexShrink: 1 }}>{asset || `No ${info.label.toLowerCase()}`}</T>
+                    </Row>
+                  </View>,
+                  <View key="s">
+                    <T style={{ fontSize: 14, color: colors.primaryText, fontWeight: '600' }} numberOfLines={1}>{j.title ?? j.number}</T>
+                    {j.title ? <T variant="small" numberOfLines={1}>{j.number}</T> : null}
+                  </View>,
+                  j.location ? <T variant="muted" numberOfLines={1}>{[j.location.airport_code, j.location.name].filter(Boolean).join(' · ')}</T> : null,
+                  <T key="w" variant="muted" numberOfLines={1}>{when(j.scheduled_start)}</T>,
+                  <Row key="b" gap={4} style={{ flexWrap: 'wrap' }}>
+                    <Badge label={JOB_STATUS_LABEL[j.status] ?? j.status} tone={statusTone[j.status]} raw />
+                    {j.flagged ? <Badge label="Flagged" tone="danger" raw /> : null}
+                    {j.priority === 'aog' || j.priority === 'high' ? <Badge label={j.priority === 'aog' ? 'AOG' : 'High'} tone={priorityTone[j.priority]} raw /> : null}
+                  </Row>,
+                  tentative && manager ? <Button key="a" small icon="checkmark-circle-outline" title="Confirm" onPress={() => confirm(j.id)} />
+                    : <Ionicons key="a" name="chevron-forward" size={18} color={colors.textFaint} />,
+                ]} />
+            );
+          }
           return (
             <Pressable onPress={() => router.push(`/jobs/${j.id}`)}
               style={({ pressed }) => [{
@@ -171,7 +221,7 @@ export default function Jobs() {
             body={filter === 'all' && !s ? 'Create a job, or accepted quotes and booking requests will show up here.' : 'Try another filter or search.'} />
         )}
       />
-      {manager ? <Fab onPress={() => router.push('/jobs/new')} label="New job" /> : null}
+      {manager && !desktop ? <Fab onPress={() => router.push('/jobs/new')} label="New job" /> : null}
       <ScheduleSheet visible={!!scheduleFor} jobId={scheduleFor} confirm title="Confirm job" onClose={() => setScheduleFor(null)} onSaved={q.reload} />
     </SafeAreaView>
   );

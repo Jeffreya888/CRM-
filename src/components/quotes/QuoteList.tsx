@@ -3,8 +3,9 @@ import { router, Stack } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { quoteTone } from '../status';
-import { Badge, Button, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, ListRow, Row, SearchBar, Segmented, StatTile, T, ToggleRow } from '../ui';
+import { Badge, Button, EmptyState, ErrorBanner, Fab, IconButton, Ionicons, ListRow, Row, SearchBar, Segmented, StatTile, T, TableHeader, TableRow, ToggleRow, useContentStyle, type Column } from '../ui';
 import { dateTime, money, moneyShort } from '../../lib/format';
+import { useIsDesktop } from '../../lib/layout';
 import { useOrg } from '../../lib/session';
 import { supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
@@ -23,8 +24,20 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'accepted', label: 'Accepted' }, { value: 'declined', label: 'Declined' }, { value: 'expired', label: 'Expired' },
 ];
 
+// Desktop table columns.
+const COLUMNS: Column[] = [
+  { label: 'Quote', flex: 1 },
+  { label: 'Customer', flex: 2 },
+  { label: 'Asset', flex: 1 },
+  { label: 'Activity', flex: 2 },
+  { label: 'Status', width: 110 },
+  { label: 'Total', flex: 1.2, align: 'right' },
+];
+
 export function QuoteList() {
   const { orgId, perm, branchId } = useOrg();
+  const desktop = useIsDesktop();
+  const desk = useContentStyle();
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [showOld, setShowOld] = useState(false);
@@ -82,20 +95,31 @@ export function QuoteList() {
         refreshing={q.refreshing}
         onRefresh={q.refresh}
         ListHeaderComponent={
-          <View style={{ padding: space.lg, paddingBottom: 0 }}>
+          <View style={desk ? undefined : { padding: space.lg, paddingBottom: 0 }}>
             <Row style={{ marginBottom: space.lg, flexWrap: 'wrap' }} gap={space.md}>
               <StatTile icon="hourglass-outline" tone="info" label={`Open quotes (${stats.openCount})`} value={moneyShort(stats.openValue)} onPress={() => setFilter('sent')} />
               <StatTile icon="trophy-outline" tone="success" label="Win rate · 90 days" value={stats.winRate == null ? '—' : `${stats.winRate}%`} />
             </Row>
             {stats.winRate != null ? <T variant="small" style={{ marginTop: -space.sm, marginBottom: space.md }}>{stats.won} accepted · {stats.lost} declined in the last 90 days</T> : null}
-            <StartFromPhotosButton style={{ alignSelf: 'flex-start', marginBottom: space.md }} />
-            <SearchBar value={search} onChange={setSearch} placeholder="Number, customer, tail" />
+            {desktop ? (
+              <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
+                <View style={{ flex: 1 }}><SearchBar value={search} onChange={setSearch} placeholder="Number, customer, tail" /></View>
+                <StartFromPhotosButton />
+                <Button icon="add" title="New quote" style={{ minHeight: 48, paddingVertical: 12 }} onPress={() => router.push('/quotes/edit')} />
+              </Row>
+            ) : (
+              <>
+                <StartFromPhotosButton style={{ alignSelf: 'flex-start', marginBottom: space.md }} />
+                <SearchBar value={search} onChange={setSearch} placeholder="Number, customer, tail" />
+              </>
+            )}
             <Segmented value={filter} onChange={setFilter} options={FILTERS.map((f) => ({ ...f, count: counts[f.value] }))} />
             <ToggleRow label="Show replaced versions" value={showOld} onChange={setShowOld} />
             <ErrorBanner message={q.error} onRetry={q.reload} />
+            {desktop && rows.length ? <TableHeader columns={COLUMNS} /> : null}
           </View>
         }
-        renderItem={({ item: d }) => {
+        renderItem={({ item: d, index }) => {
           const viewed = viewedLabel(d);
           const deadline = deadlineOf(d);
           const meta = [
@@ -104,6 +128,30 @@ export function QuoteList() {
             d.superseded_by ? 'Replaced by a newer version' : viewed ?? (d.eff === 'sent' ? 'Not opened yet' : null),
             (d.eff === 'sent' || d.eff === 'viewed') && deadline ? `Deadline ${dateTime(deadline)}` : null,
           ].filter(Boolean).join(' · ');
+          if (desktop) {
+            const activity = [
+              d.options?.length > 1 ? `${d.options.length} packages` : null,
+              d.superseded_by ? 'Replaced by a newer version' : viewed ?? (d.eff === 'sent' ? 'Not opened yet' : null),
+              (d.eff === 'sent' || d.eff === 'viewed') && deadline ? `Deadline ${dateTime(deadline)}` : null,
+            ].filter(Boolean).join(' · ');
+            return (
+              <TableRow columns={COLUMNS} last={index === rows.length - 1} onPress={() => router.push(`/quotes/${d.id}`)}
+                cells={[
+                  <T key="n" style={{ fontWeight: '700', fontSize: 14 }} numberOfLines={1}>{d.number}</T>,
+                  <T key="c" style={{ fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{d.customer?.name ?? '—'}</T>,
+                  d.aircraft?.tail_number ?? null,
+                  <Row key="a" gap={6}>
+                    {d.view_count > 0 && !d.superseded_by ? <Row gap={4}><Ionicons name="eye-outline" size={14} color={colors.primaryText} /><T variant="small" style={{ color: colors.primaryText }}>{d.view_count}</T></Row> : null}
+                    <T variant="small" numberOfLines={1} style={{ flexShrink: 1 }}>{activity || '—'}</T>
+                  </Row>,
+                  <Badge key="s" label={d.eff} tone={quoteTone[d.eff]} />,
+                  <View key="t" style={{ alignItems: 'flex-end' }}>
+                    <T variant="money" style={{ fontSize: 14 }}>{`${d.options?.length > 1 ? 'From ' : ''}${money(d.total)}`}</T>
+                    {Number(d.deposit_amount) > 0 ? <T variant="small">{`Deposit ${d.deposit_paid_at ? 'paid' : money(d.deposit_amount)}`}</T> : null}
+                  </View>,
+                ]} />
+            );
+          }
           return (
             <ListRow
               title={`${d.number} · ${d.customer?.name ?? ''}`}
@@ -124,9 +172,9 @@ export function QuoteList() {
             body={filter === 'all' && !s ? 'Create a quote and send the customer a link to approve it online.' : undefined}
             action={filter === 'all' && !s ? <Button title="New quote" icon="add" onPress={() => router.push('/quotes/edit')} /> : undefined} />
         )}
-        contentContainerStyle={{ paddingBottom: 96 }}
+        contentContainerStyle={[{ paddingBottom: 96 }, desk, desk && { paddingBottom: 64 }]}
       />
-      <Fab onPress={() => router.push('/quotes/edit')} label="New quote" />
+      {desktop ? null : <Fab onPress={() => router.push('/quotes/edit')} label="New quote" />}
     </View>
   );
 }
