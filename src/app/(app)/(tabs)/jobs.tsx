@@ -103,7 +103,7 @@ export default function Jobs() {
         keyExtractor={(j) => j.id}
         refreshing={q.refreshing}
         onRefresh={q.refresh}
-        contentContainerStyle={[{ padding: space.lg, paddingBottom: 110 }, desk, desk && { paddingBottom: 64 }]}
+        contentContainerStyle={desk ? [desk, { paddingBottom: 64 }] : { padding: space.lg, paddingBottom: 110 }}
         ListHeaderComponent={
           <View>
             <PageTitle title="Jobs" subtitle={`${all.length} job${all.length === 1 ? '' : 's'}${branchName ? ` · ${branchName}` : ''}`}

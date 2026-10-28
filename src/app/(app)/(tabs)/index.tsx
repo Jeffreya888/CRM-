@@ -6,9 +6,9 @@ import { useSetupCardDismissed, useSetupSteps } from '../../../components/dashbo
 import { BranchSwitcher, GettingStartedCard, NeedsAttention, ProfitCard, QuickAction, type AttentionItem, type ProfitMonth } from '../../../components/dashboard/widgets';
 import { notify } from '../../../components/FormSheet';
 import { jobTone } from '../../../components/status';
-import { Badge, Button, Card, ErrorBanner, IconTile, Ionicons, ListRow, ResponsiveRow, Row, Screen, Section, StatTile, T, type IconName } from '../../../components/ui';
+import { Badge, Button, Card, ErrorBanner, Grid, IconTile, Ionicons, ListRow, ResponsiveRow, Row, Screen, Section, StatTile, T, type IconName } from '../../../components/ui';
 import { duration, money, time, titleCase } from '../../../lib/format';
-import { useIsDesktop } from '../../../lib/layout';
+import { useColumns, useIsDesktop } from '../../../lib/layout';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { canAdmin, canSeeMoney } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const admin = canAdmin(role);
   const branchesAllowed = can('branches');
   const desktop = useIsDesktop();
+  const tileFit = useColumns(6, 175);
 
   const branchQ = useQuery(async () => {
     if (!branchesAllowed) return [] as Branch[];
@@ -146,15 +147,33 @@ export default function Dashboard() {
       </Card>
     </>
   );
+  // Desktop key numbers: one row when the window is wide enough, otherwise two even rows.
+  const tiles = [
+    <StatTile key="ip" label="In progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push('/jobs?filter=in_progress')} />,
+    <StatTile key="sc" label="Scheduled" value={n('jobs_scheduled')} icon="calendar-outline" tone="info" onPress={() => router.push('/jobs?filter=scheduled')} />,
+    <StatTile key="co" label="Completed" value={n('jobs_completed')} icon="checkmark-circle-outline" tone="success" onPress={() => router.push('/jobs?filter=completed')} />,
+    <StatTile key="cu" label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />,
+    ...(seePrices && q.data ? [
+      <StatTile key="mtd" label="Paid this month" value={short(s.revenue_mtd)} icon="trending-up" tone="success" onPress={() => router.push('/invoices')} />,
+      <StatTile key="tp" label="Total paid" value={short(s.total_paid)} icon="wallet-outline" tone="primary" onPress={() => router.push('/invoices')} />,
+    ] : []),
+  ];
+  const tileColumns = tileFit >= tiles.length ? tiles.length : Math.ceil(tiles.length / 2);
+
+  const actionButtons = [
+    manager ? <QuickAction key="job" primary icon="add" label="New job" onPress={() => router.push('/jobs/new')} /> : null,
+    perm('edit_customers') ? <QuickAction key="customer" icon="person-add-outline" label="Customer" onPress={() => router.push('/customers/new')} /> : null,
+    seePrices ? <QuickAction key="quote" icon="document-text-outline" label="Quote" onPress={() => router.push('/quotes/edit')} /> : null,
+    <QuickAction key="schedule" icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} primary={!manager} />,
+  ];
   const quickActions = (
     <>
       <Section title="Quick actions">
-        <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
-          {manager ? <QuickAction primary icon="add" label="New job" onPress={() => router.push('/jobs/new')} /> : null}
-          {perm('edit_customers') ? <QuickAction icon="person-add-outline" label="Customer" onPress={() => router.push('/customers/new')} /> : null}
-          {seePrices ? <QuickAction icon="document-text-outline" label="Quote" onPress={() => router.push('/quotes/edit')} /> : null}
-          <QuickAction icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} primary={!manager} />
-        </Row>
+        {desktop ? <Grid columns={2} gap={space.sm} rowGap={space.sm}>{actionButtons}</Grid> : (
+          <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
+            {actionButtons}
+          </Row>
+        )}
       </Section>
     </>
   );
@@ -271,14 +290,9 @@ export default function Dashboard() {
       {desktop ? (
         <>
           {/* Desktop: key numbers in one row, then the day on the left and tools on the right. */}
-          <Row gap={space.md} style={{ flexWrap: 'wrap', marginBottom: space.lg }}>
-            <StatTile label="In progress" value={n('jobs_in_progress')} icon="time-outline" tone="warning" onPress={() => router.push('/jobs?filter=in_progress')} />
-            <StatTile label="Scheduled" value={n('jobs_scheduled')} icon="calendar-outline" tone="info" onPress={() => router.push('/jobs?filter=scheduled')} />
-            <StatTile label="Completed" value={n('jobs_completed')} icon="checkmark-circle-outline" tone="success" onPress={() => router.push('/jobs?filter=completed')} />
-            <StatTile label="Customers" value={n('customers')} icon="briefcase-outline" tone="purple" onPress={() => router.push('/customers')} />
-            {seePrices && q.data ? <StatTile label="Paid this month" value={short(s.revenue_mtd)} icon="trending-up" tone="success" onPress={() => router.push('/invoices')} /> : null}
-            {seePrices && q.data ? <StatTile label="Total paid" value={short(s.total_paid)} icon="wallet-outline" tone="primary" onPress={() => router.push('/invoices')} /> : null}
-          </Row>
+          <View style={{ marginBottom: space.lg }}>
+            <Grid columns={tileColumns} gap={space.md} rowGap={space.md}>{tiles}</Grid>
+          </View>
           <ResponsiveRow weights={[1.6, 1]}>
             <View>
               {todayCard}

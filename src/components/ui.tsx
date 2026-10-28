@@ -96,8 +96,8 @@ export function Screen({
  * Card grid: one column on phones and tablets (children render exactly as
  * before), `columns` (or as many as fit, up to `max`) side by side on desktop.
  */
-export function Grid({ children, columns, max = 3, minWidth = 300, gap = space.lg }: {
-  children: ReactNode; columns?: number; max?: number; minWidth?: number; gap?: number;
+export function Grid({ children, columns, max = 3, minWidth = 300, gap = space.lg, rowGap = 0 }: {
+  children: ReactNode; columns?: number; max?: number; minWidth?: number; gap?: number; rowGap?: number;
 }) {
   const desktop = useIsDesktop();
   const auto = useColumns(max, minWidth);
@@ -107,9 +107,9 @@ export function Grid({ children, columns, max = 3, minWidth = 300, gap = space.l
   const rows: ReactNode[][] = [];
   for (let i = 0; i < items.length; i += cols) rows.push(items.slice(i, i + cols));
   return (
-    <View>
+    <View style={{ gap: rowGap }}>
       {rows.map((r, i) => (
-        <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap }}>
+        <View key={i} style={{ flexDirection: 'row', alignItems: 'stretch', gap }}>
           {r.map((c, j) => <View key={j} style={styles.gridCell}>{c}</View>)}
           {Array.from({ length: cols - r.length }, (_, j) => <View key={`pad-${j}`} style={styles.gridCell} />)}
         </View>
