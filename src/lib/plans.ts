@@ -1,6 +1,7 @@
 // Subscription tiers. Product identifiers must match App Store Connect /
 // Google Play and the RevenueCat entitlement ids (see README → Monetization).
 // Keep in sync with public.plan_allows / plan_seat_limit in the database.
+import { APP_NAME } from './config';
 import type { Organization, Plan, Role } from './types';
 
 export type Feature =
@@ -19,6 +20,7 @@ export interface PlanInfo {
   feeBps: number;      // platform fee on card payments
   texts: number;       // included customer texts per month
   aiChecks: number;    // included AI photo checks per month (staff)
+  aiQuestions: number; // included "Ask" assistant questions per month (photo questions use AI checks)
   features: Feature[];
   blurb: string;
   highlights: string[];
@@ -26,6 +28,12 @@ export interface PlanInfo {
 
 /** AI photo checks included during the free trial (the demo workspace gets 5). */
 export const TRIAL_AI_CHECKS = 15;
+/** "Ask" assistant questions included during the free trial (the demo workspace gets 20). */
+export const TRIAL_AI_QUESTIONS = 100;
+/** One purchased AI check also adds this many questions. */
+export const QUESTIONS_PER_EXTRA_CHECK = 10;
+
+const askLine = (n: number) => `Ask ${APP_NAME} AI assistant: ${n.toLocaleString('en-US')} questions/month`;
 
 /** Team and above: customer photo quotes, technician certification, quality checks, job costing report. */
 const TEAM_EXTRAS: Feature[] = ['photo_quotes', 'certification', 'quality_check', 'job_costing'];
@@ -34,22 +42,22 @@ const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'exp
 
 export const PLANS: PlanInfo[] = [
   {
-    id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250, aiChecks: 25,
+    id: 'solo', name: 'Solo', monthly: 39.99, annual: 399.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250, aiChecks: 25, aiQuestions: 300,
     features: CORE,
     blurb: 'For an independent detailer running the whole business from one phone.',
-    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal & card payments', '25 AI photo checks / month', '250 customer texts / month'],
+    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal & card payments', '25 AI photo checks / month', askLine(300), '250 customer texts / month'],
   },
   {
-    id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000, aiChecks: 150,
+    id: 'team', name: 'Team', monthly: 89.99, annual: 899.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000, aiChecks: 150, aiQuestions: 2000,
     features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS],
     blurb: 'For a company coordinating a detailing crew.',
-    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification & quality checks', 'Job costing: profit by class, model & type', 'Customer photo quotes in the portal', '150 AI photo checks / month', '1,000 customer texts / month'],
+    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification & quality checks', 'Job costing: profit by class, model & type', 'Customer photo quotes in the portal', '150 AI photo checks / month', askLine(2000), '1,000 customer texts / month'],
   },
   {
-    id: 'fleet', name: 'Fleet', monthly: 189.99, annual: 1899.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000, aiChecks: 500,
+    id: 'fleet', name: 'Fleet', monthly: 189.99, annual: 1899.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000, aiChecks: 500, aiQuestions: 6000,
     features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS, 'branches', 'integrations', 'stock_locations'],
     blurb: 'For multi-location operations and aircraft management partners.',
-    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations & stock by location', 'Scheduling-software integrations', '500 AI photo checks / month', '3,000 customer texts / month'],
+    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations & stock by location', 'Scheduling-software integrations', '500 AI photo checks / month', askLine(6000), '3,000 customer texts / month'],
   },
 ];
 
@@ -106,6 +114,13 @@ export function aiChecksFor(plan: Plan): number {
   if (plan === 'trial') return TRIAL_AI_CHECKS;
   if (plan === 'expired') return 0;
   return planInfo(plan)?.aiChecks ?? 0;
+}
+
+/** Included "Ask" assistant questions per month for a plan (trial = TRIAL_AI_QUESTIONS). */
+export function aiQuestionsFor(plan: Plan): number {
+  if (plan === 'trial') return TRIAL_AI_QUESTIONS;
+  if (plan === 'expired') return 0;
+  return planInfo(plan)?.aiQuestions ?? 0;
 }
 
 export function seatLimit(plan: Plan): number {

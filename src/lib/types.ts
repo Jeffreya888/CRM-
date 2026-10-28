@@ -233,3 +233,25 @@ export interface ServiceSkill {
 
 /** A problem returned by public.schedule_conflicts. */
 export interface Conflict { type: string; message: string; user_id?: string; job_id?: string; equipment_id?: string }
+
+// ---------------------------------------------------------------------------
+// "Ask" AI assistant (migration 20261028000200_assistant.sql)
+// ---------------------------------------------------------------------------
+export type AircraftDocumentKind = 'manual' | 'approved_products' | 'instructions' | 'other';
+export interface AircraftDocument {
+  id: string; org_id: string; aircraft_id: string; title: string; kind: AircraftDocumentKind; storage_path: string;
+  mime_type: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp'; size_bytes: number | null; notes: string | null;
+  created_by: string | null; created_at: string;
+}
+export interface AssistantThread {
+  id: string; org_id: string; user_id: string; job_id: string | null; aircraft_id: string | null; guide_key: string | null;
+  title: string; created_at: string; updated_at: string;
+}
+export interface AssistantSource {
+  type: 'sop' | 'aircraft_doc' | 'job' | 'general'; key?: string | null; step?: number | null; document_id?: string | null; title: string;
+}
+export type AssistantSafety = 'damage' | 'injury' | 'aircraft_systems';
+export interface AssistantMessage {
+  id: string; org_id: string; thread_id: string; role: 'user' | 'assistant'; content: string; photo_paths: string[];
+  sources: AssistantSource[]; safety: AssistantSafety | null; status: 'done' | 'failed' | 'limit'; created_at: string;
+}
