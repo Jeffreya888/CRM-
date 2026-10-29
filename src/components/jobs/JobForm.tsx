@@ -52,6 +52,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
   const [customerId, setCustomerId] = useState<string | null>(params.customer_id || null);
   const [aircraftId, setAircraftId] = useState<string | null>(params.aircraft_id || null);
   const [locationId, setLocationId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'mobile' | 'shop'>(org.service_mode === 'shop' ? 'shop' : 'mobile');
   const [inherited, setInherited] = useState(false);
   const [branch, setBranch] = useState<string | null>(null);
   const [branchTouched, setBranchTouched] = useState(!!jobId);
@@ -89,6 +90,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
         if (!alive) return;
         const d = j.data as any;
         setCustomerId(d.customer_id); setAircraftId(d.aircraft_id); setLocationId(d.location_id); setBranch(d.branch_id);
+        if (d.service_mode === 'shop' || d.service_mode === 'mobile') setMode(d.service_mode);
         setStatus(d.status); setOrigStatus(d.status); setPriority(d.priority); setTitle(d.title ?? ''); setNotes(d.notes ?? '');
         setInternal(d.internal_notes ?? ''); setParking(d.parking_spot ?? ''); setWeather(!!d.weather_sensitive); setCareOptIn(!!d.care_opt_in);
         if (d.aircraft?.asset_type) setAssetType(d.aircraft.asset_type);
@@ -209,7 +211,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
     }
     try {
       const header: Record<string, unknown> = {
-        customer_id: customerId, aircraft_id: aircraftId, location_id: locationId,
+        customer_id: customerId, aircraft_id: aircraftId, location_id: locationId, service_mode: mode,
         branch_id: can('branches') ? effectiveBranch : null,
         priority, weather_sensitive: weather, care_opt_in: careOptIn,
         parking_spot: parking.trim() || null, notes: notes.trim() || null, internal_notes: internal.trim() || null,
@@ -291,6 +293,9 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
           const a = lk.aircraft.find((x) => x.id === v);
           if (a?.home_location_id) { setLocationId(a.home_location_id); setInherited(true); } else setInherited(false);
         }} />
+      {org.service_mode === 'both' ? (
+        <Segmented value={mode} onChange={setMode} options={[{ value: 'mobile', label: 'Mobile (we go to them)' }, { value: 'shop', label: 'In our shop' }]} />
+      ) : null}
       <Select label={facilityLabel} placeholder="No facility" icon="location-outline" iconColor={colors.success}
         value={locationId} options={lk.locationOptions} allowClear searchable={lk.locationOptions.length > 8}
         onChange={(v) => { setLocationId(v); setInherited(false); }} />

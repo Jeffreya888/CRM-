@@ -26,7 +26,7 @@ export const visibleItems = (items: MenuItem[]) => items.filter((i) => i.show !=
 
 /** Menu groups with the same visibility rules as the More screen. */
 export function useMenu() {
-  const { orgId, role, plan, session, perm, can, businessTypes } = useOrg();
+  const { org, orgId, role, plan, session, perm, can, businessTypes } = useOrg();
   const admin = canAdmin(role);
   const manager = canSeeMoney(role);
   const money = perm('see_prices');
@@ -59,6 +59,7 @@ export function useMenu() {
         { label: 'Crew scheduling & resource reservations', short: 'Crew scheduling', subtitle: 'Availability, time off, hangar and equipment bookings', icon: 'people-circle-outline', tone: 'info', href: '/scheduling', show: manager },
         { label: 'Dispatch board', short: 'Dispatch', subtitle: 'Assign today’s jobs to your crew', icon: 'navigate-outline', tone: 'primary', href: '/dispatch', show: manager },
         { label: 'Schedule', subtitle: 'Week view of all jobs', icon: 'calendar-outline', tone: 'info', href: '/schedule' },
+        { label: 'Route', subtitle: 'Today’s mobile stops in order, with directions', icon: 'map-outline', tone: 'primary', href: '/route', show: org.service_mode !== 'shop' },
         { label: 'Tasks', icon: 'checkbox-outline', tone: 'info', href: '/tasks' },
         { label: 'Assets', subtitle: 'Customers’ aircraft, vehicles and boats', icon: 'airplane-outline', tone: 'warning', href: '/aircraft' },
         { label: facilitiesLabel, short: 'Facilities', icon: 'location-outline', tone: 'danger', href: '/facilities' },

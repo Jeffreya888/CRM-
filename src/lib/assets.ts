@@ -138,6 +138,7 @@ export async function searchModels(query: string, t: AssetType, limit = 25): Pro
 export const AUTOMATION_EXCEPTIONS: { key: string; label: string; hint: string }[] = [
   { key: 'job_reminder', label: 'Job reminders', hint: 'Reminder before a scheduled visit' },
   { key: 'on_our_way', label: 'On our way', hint: 'Heads-up when the crew leaves' },
+  { key: 'ready_for_pickup', label: 'Ready for pickup', hint: 'Text when a shop job is finished' },
   { key: 'job_complete', label: 'Job complete + photos', hint: 'Summary when a job is finished' },
   { key: 'invoice_reminders', label: 'Invoice reminders', hint: 'e.g. turn off for net-60 accounts' },
   { key: 'review_request', label: 'Review requests', hint: 'Ask for a review after a job' },

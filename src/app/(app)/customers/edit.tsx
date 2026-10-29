@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FormFields, normalize, validate, type FieldDef, type FormValues } from '../../../components/FormSheet';
 import { Button, Card, ErrorBanner, KeyValue, Loading, Screen, Section, T } from '../../../components/ui';
 import { CUSTOMER_KINDS } from '../../../lib/assets';
+import { geocode } from '../../../lib/geo';
 import { useLookups } from '../../../lib/lookups';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
@@ -16,12 +17,16 @@ export default function CustomerEdit() {
   const discounts = perm('give_discounts');
   const [values, setValues] = useState<FormValues | null>(id ? null : { kind: 'owner', status: 'active', tax_exempt: false, discount_pct: '' });
   const [error, setError] = useState<string | null>(null);
+  const [initialAddress, setInitialAddress] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
     supabase.from('customers').select('*').eq('id', id).single().then(({ data, error: e }) => {
       if (e) setError(friendlyError(e.message));
-      else setValues({ ...data, tags: (data?.tags ?? []).join(', ') });
+      else {
+        setValues({ ...data, tags: (data?.tags ?? []).join(', ') });
+        setInitialAddress(data?.service_address ?? null);
+      }
     });
   }, [id]);
 
@@ -32,6 +37,7 @@ export default function CustomerEdit() {
     { key: 'status', label: 'Status', type: 'select', options: [{ value: 'lead', label: 'Lead' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }] },
     { key: 'email', label: 'Email', type: 'email' },
     { key: 'phone', label: 'Phone', type: 'phone' },
+    { key: 'service_address', label: 'Service address', type: 'text', placeholder: 'Where mobile crews go: home, office, marina slip', hint: 'Used for directions, travel fees and the route.' },
     { key: 'billing_address', label: 'Billing address', type: 'multiline' },
     { key: 'preferred_location_id', label: 'Preferred facility', type: 'select', options: locationOptions, allowClear: true },
     { key: 'source', label: 'How they found you', type: 'text', placeholder: 'Referral, FBO, website, trade show…' },
@@ -62,6 +68,16 @@ export default function CustomerEdit() {
       if (row.discount_pct < 0 || row.discount_pct > 100) return setError('Discount must be between 0 and 100');
     }
     if (row.payment_terms_days != null && (row.payment_terms_days < 0 || row.payment_terms_days > 365)) return setError('Payment terms must be 0–365 days');
+    // Map point for travel fees and routes (US addresses; skipped if lookup is unavailable).
+    const addr = String(row.service_address ?? '').trim();
+    if (addr !== String(initialAddress ?? '').trim()) {
+      row.service_lat = null;
+      row.service_lng = null;
+      if (addr) {
+        const p = await geocode(addr).catch(() => null);
+        if (p) { row.service_lat = p.lat; row.service_lng = p.lng; }
+      }
+    }
     try {
       if (id) {
         const { error: e } = await supabase.from('customers').update(row).eq('id', id);

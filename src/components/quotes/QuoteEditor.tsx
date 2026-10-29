@@ -18,6 +18,7 @@ import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 import type { ConditionLevel, LineItem, Quote, QuoteOption, Service } from '../../lib/types';
 import { QuotePhotos, uploadQuotePhotos } from './QuotePhotos';
+import { isTravelLine, TravelFeeSection } from './TravelFeeSection';
 import { buildTemplateContent, DEFAULT_OPTION_NAMES, usePriceGuide } from './quoteUtils';
 import { onlinePaymentsLive } from '../../lib/payments';
 
@@ -29,6 +30,7 @@ interface Header {
   notes: string; terms: string; deposit_type: DepositType; deposit_value: string;
   /** undefined = not chosen yet (follows the selected asset's condition). */
   condition_level: ConditionLevel | null | undefined; condition_pct: number;
+  service_mode: 'mobile' | 'shop'; travel_miles: string;
 }
 
 let keySeq = 0;
@@ -59,6 +61,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
     tax_rate: Number(org.tax_rate) || 0, taxPct: String(+(Number(org.tax_rate) * 100).toFixed(4)),
     notes: '', terms: org.default_quote_terms ?? '', deposit_type: 'none', deposit_value: '',
     condition_level: undefined, condition_pct: 0,
+    service_mode: org.service_mode === 'shop' ? 'shop' : 'mobile', travel_miles: '',
   });
   const [status, setStatus] = useState<Quote['status']>('draft');
   const [number, setNumber] = useState<string | null>(null);
@@ -96,6 +99,8 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
         notes: q.notes ?? '', terms: q.terms ?? '', deposit_type: q.deposit_type ?? 'none',
         deposit_value: q.deposit_type && q.deposit_type !== 'none' ? String(num(q.deposit_value)) : '',
         condition_level: q.condition_level ?? null, condition_pct: num(q.condition_pct),
+        service_mode: q.service_mode === 'shop' ? 'shop' : 'mobile',
+        travel_miles: q.travel_miles != null ? String(num(q.travel_miles)) : '',
       });
       if (opts.length) {
         setPackages(opts.map((op) => ({ key: newKey(), name: op.name, description: op.description ?? '', items: rows.filter((r) => r.option_id === op.id) })));
@@ -223,6 +228,16 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
     }),
   ];
 
+  /** Puts the travel fee on the quote (every package), replacing an earlier travel line. */
+  const applyTravel = (line: { description: string; unit_price: number } | null) => {
+    const swap = (list: LineItem[]) => {
+      const rest = list.filter((it) => !isTravelLine(it.description));
+      return line ? [...rest, { service_id: null, description: line.description, quantity: 1, unit_price: line.unit_price, taxable: false }] : rest;
+    };
+    if (packages) setPackages((ps) => ps!.map((pk) => ({ ...pk, items: swap(pk.items) })));
+    else setItems((list) => swap(list));
+  };
+
   const togglePackages = (on: boolean) => {
     if (on) {
       setPackages(DEFAULT_OPTION_NAMES.map((name, i) => ({ key: newKey(), name, description: '', items: i === 0 ? items : [] })));
@@ -276,6 +291,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
         tax_rate: header.tax_rate, notes: header.notes.trim() || null, terms: header.terms.trim() || null,
         deposit_type: header.deposit_type, deposit_value: header.deposit_type === 'none' ? 0 : num(header.deposit_value),
         condition_level: condLevel, condition_pct: condLevel ? condPct : 0,
+        service_mode: header.service_mode, travel_miles: header.travel_miles === '' ? null : num(header.travel_miles),
         ...(canDiscount ? { discount: header.discount } : {}),
       };
       let quoteId = id;
@@ -390,6 +406,10 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
       <DateTimeField label="Quote date" mode="date" value={header.issue_date} allowClear={false} onChange={(v) => v && set('issue_date', v)} />
       <DateTimeField label="Approval deadline (date and time) *" mode="datetime" value={header.valid_until_at} onChange={(v) => set('valid_until_at', v)} />
       <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg }}>After this time the customer can no longer accept the quote online.</T>
+
+      <TravelFeeSection org={org} mode={header.service_mode} onMode={(m) => set('service_mode', m)}
+        miles={header.travel_miles} onMiles={(m) => set('travel_miles', m)} customerId={header.customer_id} locationId={header.location_id}
+        onApply={applyTravel} />
 
       <Section title="Services" icon="list-outline">
         <ToggleRow label="Offer packages (Good / Better / Best)" hint="Up to 3 options; the customer picks one and signs." value={!!packages} onChange={togglePackages} />

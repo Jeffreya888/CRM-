@@ -5,6 +5,7 @@ import { Image, Platform, View } from 'react-native';
 import { FormSheet, type FieldDef } from '../../components/FormSheet';
 import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
 import { JobCostingCard } from '../../components/settings/JobCostingCard';
+import { WorkModeCard } from '../../components/settings/WorkModeCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { PaymentsCard } from '../../components/settings/PaymentsCard';
 import { Badge, Button, Card, ErrorBanner, IconTile, KeyValue, ListRow, Row, Screen, Section, T, ToggleRow } from '../../components/ui';
@@ -229,6 +230,12 @@ export default function Settings() {
           <T variant="small" style={{ marginTop: space.xs }}>Applied to Flight Ready price guide suggestions so they match prices in your area.</T>
         </Card>
       </Section>
+
+      {admin ? (
+        <Section title="Where you work" icon="navigate-outline">
+          <WorkModeCard org={org} onChanged={refresh} />
+        </Section>
+      ) : null}
 
       {admin ? (
         <Section title="Job costing & quality" icon="calculator-outline">

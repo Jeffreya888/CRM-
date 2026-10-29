@@ -9,6 +9,7 @@ import { EstimateVsActual } from '../../../components/costing/EstimateVsActual';
 import { confirmAction, FormSheet, notify } from '../../../components/FormSheet';
 import { ConditionCard, chooseSource, DamageSheet, GuideStepSheet, PhotoStrip, PhotoViewer, ProfitCard, type JobPhoto } from '../../../components/jobs/JobCards';
 import { QC_BLOCK_MESSAGE, QualityCheck, qcBlocksCompletion } from '../../../components/jobs/QualityCheck';
+import { MobileStopCard, ServiceModeRow, ShopVisitCard } from '../../../components/jobs/MobileShopCards';
 import { ScheduleSheet } from '../../../components/jobs/ScheduleEditor';
 import { StepTimeLine, StepTimesSummary, stepItems, stepTimings } from '../../../components/jobs/StepTimes';
 import { SignaturePad } from '../../../components/SignaturePad';
@@ -21,7 +22,7 @@ import { directionsUrl, errorCode, fetchGuide, JOB_STATUS_LABEL, MAX_JOB_PHOTOS,
 import { canAdmin, canEdit, isManager } from '../../../lib/plans';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { useOrg } from '../../../lib/session';
-import { callFunction, friendlyError, supabase } from '../../../lib/supabase';
+import { friendlyError, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
 import type { PhotoKind, ServiceGuide } from '../../../lib/types';
 import { useQuery } from '../../../lib/useQuery';
@@ -57,7 +58,7 @@ export default function JobDetail() {
 
   const q = useQuery(async () => {
     const [j, items, checklist, photos, time, crew, supplies, activity, holds] = await Promise.all([
-      supabase.from('jobs').select('*, customer:customers(id, name, phone, email), aircraft:aircraft(id, tail_number, manufacturer, model, category, length_ft, notes, interior_notes, asset_type), location:locations(*), branch:branches(id, name)').eq('id', id).single(),
+      supabase.from('jobs').select('*, customer:customers(id, name, phone, email, service_address), aircraft:aircraft(id, tail_number, manufacturer, model, category, length_ft, notes, interior_notes, asset_type), location:locations(*), branch:branches(id, name)').eq('id', id).single(),
       showMoney ? supabase.from('job_items').select('*').eq('job_id', id).order('sort_order') : Promise.resolve({ data: [] as any[] }),
       supabase.from('job_checklist_items').select('*').eq('job_id', id).order('sort_order'),
       supabase.from('job_photos').select('*').eq('job_id', id).order('created_at'),
@@ -169,19 +170,6 @@ export default function JobDetail() {
   };
 
   const start = () => (before.length ? setStatus('in_progress') : needPhotos('before'));
-  // Lets the customer know the crew is heading out (Automation center → On our way).
-  const onOurWay = async () => {
-    try {
-      const { data, error } = await supabase.rpc('queue_on_our_way', { p_job: id });
-      if (error) throw error;
-      const ids = (data ?? []) as string[];
-      if (!ids.length) return notify('Already sent', 'The customer was already told you are on the way.');
-      for (const message_id of ids) await callFunction('send-message', { message_id });
-      notify('Customer notified', 'We let the customer know you are on the way.');
-    } catch (e: any) {
-      notify('Could not send', friendlyError(e.message));
-    }
-  };
   const done = checklist.filter((c) => c.done).length;
   const complete = () => {
     if (!after.length) return needPhotos('after');
@@ -369,8 +357,16 @@ export default function JobDetail() {
               <T style={{ color: colors.textMuted }}>{j.branch.name}</T>
             </Row>
           ) : null}
+          <ServiceModeRow jobId={id} mode={j.service_mode === 'shop' ? 'shop' : 'mobile'} canChange={manager && OPEN(j.status)} onChanged={q.reload} />
           {j.notes ? <><Divider /><T variant="muted">{j.notes}</T></> : null}
         </Card>
+
+        {j.service_mode === 'shop' ? (
+          <ShopVisitCard job={j} assetType={j.aircraft?.asset_type ?? null} canEdit={editable && j.status !== 'cancelled'}
+            canNotify={canEdit(role)} invoiceId={invoice?.id ?? null} onChanged={q.reload} />
+        ) : (
+          <MobileStopCard job={j} customer={j.customer} canEdit={manager && OPEN(j.status)} canNotify={canEdit(role)} onChanged={q.reload} />
+        )}
 
         <View onLayout={(e) => { photoY.current = e.nativeEvent.layout.y; }}>
           <PhotoStrip title="Before photos" tone="warning" photos={before} required={['scheduled', 'on_hold', 'tentative'].includes(j.status)}
@@ -406,9 +402,6 @@ export default function JobDetail() {
           </Row>
         ) : null}
 
-        {canEdit(role) && (j.status === 'scheduled' || j.status === 'tentative') ? (
-          <Button kind="secondary" icon="car-outline" title="On our way" onPress={onOurWay} style={{ marginTop: space.md }} />
-        ) : null}
         {j.location ? (
           <Section title={j.location.kind === 'marina' ? 'Marina' : j.location.kind === 'service_site' ? 'Service site' : 'Airport / FBO'} icon="location-outline">
             <Card>

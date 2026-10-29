@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthShell } from '../components/AuthShell';
 import { BusinessTypePicker, toBusinessTypes } from '../components/security/BusinessTypePicker';
-import { Button, Card, Divider, ErrorBanner, Field, IconTile, Row, T, ToggleRow } from '../components/ui';
+import { Button, Card, Divider, ErrorBanner, Field, IconTile, Row, Segmented, T, ToggleRow } from '../components/ui';
 import { ensureDemoWorkspace } from '../lib/demo';
 import { isAnonymous, parseInvite, pendingInvite } from '../lib/security';
 import { useSession } from '../lib/session';
@@ -56,6 +56,7 @@ function CreateOrJoin() {
   const [name, setName] = useState('');
   const [types, setTypes] = useState<AssetType[]>(() => toBusinessTypes(session?.user.user_metadata?.business_types));
   const [seed, setSeed] = useState(true);
+  const [mode, setMode] = useState<'mobile' | 'shop' | 'both'>('mobile');
   const [code, setCode] = useState('');
   const [invite, setInvite] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,8 +67,9 @@ function CreateOrJoin() {
 
   const create = async () => {
     setError(null);
-    const { error } = await supabase.rpc('create_organization', { p_name: name.trim(), p_seed_services: seed, p_business_types: types });
+    const { data: orgId, error } = await supabase.rpc('create_organization', { p_name: name.trim(), p_seed_services: seed, p_business_types: types });
     if (error) return setError(friendlyError(error.message));
+    if (mode !== 'mobile' && orgId) await supabase.from('organizations').update({ service_mode: mode }).eq('id', orgId as string);
     await refresh();
   };
 
@@ -90,6 +92,9 @@ function CreateOrJoin() {
       <Field label="Company name" placeholder="e.g. Precision Aircraft Detailing" value={name} onChangeText={setName} icon="business-outline" />
       <T style={{ fontWeight: '600', marginBottom: space.sm }}>What do you detail?</T>
       <BusinessTypePicker value={types} onChange={setTypes} />
+      <T style={{ fontWeight: '600', marginBottom: space.sm }}>How do you work?</T>
+      <Segmented value={mode} onChange={setMode}
+        options={[{ value: 'mobile', label: 'Mobile' }, { value: 'shop', label: 'Shop' }, { value: 'both', label: 'Both' }]} />
       <ToggleRow label="Load starter price book" hint="Common detailing services with size-based pricing for the types you picked. Edit anytime." value={seed} onChange={setSeed} />
       <Button title="Create company & start free trial" onPress={create} disabled={name.trim().length < 2} />
       <T variant="small" style={{ marginTop: space.sm, textAlign: 'center' }}>14 days free with every feature. No card required.</T>

@@ -1209,6 +1209,11 @@ begin
   insert into jobs (org_id, number, customer_id, title, status, service_mode) values (o, public._next_number(o, 'job'), c, 'Mobile one', 'scheduled', 'mobile') returning id into j3;
   assert (select service_mode from jobs where id = j3) = 'mobile', 'per-job override kept';
   insert into ctx values ('bay1', j1), ('bay2', j2), ('mob', j3);
+  -- A job made from a mobile quote stays mobile even in a shop company.
+  insert into quotes (org_id, number, customer_id, service_mode) values (o, 'Q-MOB-1', c, 'mobile');
+  insert into jobs (org_id, number, customer_id, title, status, quote_id)
+    values (o, public._next_number(o, 'job'), c, 'From mobile quote', 'scheduled', (select id from quotes where number = 'Q-MOB-1' and org_id = o));
+  assert (select service_mode from jobs where title = 'From mobile quote') = 'mobile', 'job follows its quote';
   -- Check-in details stamp the time.
   update jobs set checkin_odometer = '42,180 mi', checkin_keys = 'Hook 7' where id = j1;
   assert (select checked_in_at is not null from jobs where id = j1), 'check-in time stamped';

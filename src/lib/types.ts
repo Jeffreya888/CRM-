@@ -40,6 +40,14 @@ export interface Organization {
   /** Square connection (server-only; set by the square-connect function). */
   square_merchant_id: string | null; square_location_id: string | null; square_location_name: string | null;
   square_charges_enabled: boolean;
+  /** Mobile (we come to you), shop (customers bring it in) or both. */
+  service_mode: 'mobile' | 'shop' | 'both';
+  base_address: string | null; base_lat: number | null; base_lng: number | null;
+  shop_bays: number; shop_hours: string | null;
+  travel_fee_mode: 'off' | 'per_mile' | 'zones';
+  travel_free_miles: number; travel_rate_per_mile: number; travel_min_fee: number;
+  travel_zones: { up_to_miles: number; fee: number }[];
+  service_radius_miles: number | null;
   role_permissions: RolePermissions;
   is_demo: boolean; demo_expires_at: string | null;
   accountant_email: string | null;
@@ -148,6 +156,7 @@ export interface QuoteOption { id: string; quote_id: string; name: string; descr
 
 export interface Quote {
   id: string; org_id: string; number: string; customer_id: string; aircraft_id: string | null; location_id: string | null; branch_id: string | null;
+  service_mode: 'mobile' | 'shop' | null; travel_miles: number | null;
   status: QuoteStatus; issue_date: string; valid_until: string; valid_until_at: string | null; discount: number; tax_rate: number; subtotal: number; tax: number;
   total: number; notes: string | null; terms: string | null; public_token: string; accepted_at: string | null; accepted_name: string | null;
   version: number; parent_quote_id: string | null; superseded_by: string | null; selected_option_id: string | null;
@@ -195,7 +204,7 @@ export interface RecurringSchedule {
   next_index: number; visits_created: number; active: boolean; created_at: string;
 }
 
-export type AutomationKey = 'job_reminder' | 'on_our_way' | 'job_complete' | 'invoice_reminders' | 'review_request' | 'quote_follow_up' | 'recurring_heads_up' | 'care_plan_charge';
+export type AutomationKey = 'job_reminder' | 'on_our_way' | 'ready_for_pickup' | 'job_complete' | 'invoice_reminders' | 'review_request' | 'quote_follow_up' | 'recurring_heads_up' | 'care_plan_charge';
 export interface Automation { org_id: string; key: AutomationKey; enabled: boolean; channel: 'email' | 'sms' | 'both'; settings: Record<string, any>; subject: string | null; body: string }
 
 export interface Message {

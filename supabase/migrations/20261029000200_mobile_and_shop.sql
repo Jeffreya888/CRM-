@@ -52,10 +52,20 @@ alter table public.jobs
   add column picked_up_at timestamptz;
 create index jobs_shop_window on public.jobs (org_id, scheduled_start) where service_mode = 'shop';
 
--- New jobs and quotes start with the company's way of working.
+create or replace function public._quote_service_mode(p_quote text)
+returns text language sql stable security definer set search_path = public as $$
+  select service_mode from quotes where id = p_quote::uuid;
+$$;
+revoke execute on function public._quote_service_mode(text) from public, anon, authenticated;
+
+-- New jobs and quotes start with the company's way of working (a job made
+-- from a quote keeps the quote's).
 create or replace function public.trg_default_service_mode()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
+  if new.service_mode is null and tg_table_name = 'jobs' then
+    new.service_mode := public._quote_service_mode(to_jsonb(new) ->> 'quote_id');
+  end if;
   if new.service_mode is null then
     select case service_mode when 'shop' then 'shop' else 'mobile' end into new.service_mode
     from organizations where id = new.org_id;

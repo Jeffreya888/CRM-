@@ -13,7 +13,7 @@ export const MESSAGE_STATUS: Record<Message['status'], { label: string; tone: To
 };
 
 export const AUTOMATION_LABEL: Record<string, string> = {
-  job_reminder: 'Job reminder', on_our_way: 'On our way', job_complete: 'Job complete', invoice_reminders: 'Invoice reminder',
+  job_reminder: 'Job reminder', on_our_way: 'On our way', ready_for_pickup: 'Ready for pickup', job_complete: 'Job complete', invoice_reminders: 'Invoice reminder',
   review_request: 'Review request', quote_follow_up: 'Quote follow-up', recurring_heads_up: 'Recurring heads-up', care_plan_charge: 'Care plan receipt',
 };
 
