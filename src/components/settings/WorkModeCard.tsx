@@ -14,10 +14,15 @@ const num = (v: unknown) => (v == null || v === '' ? '' : String(+Number(v).toFi
 const clean = (v: string) => v.replace(/[^0-9.]/g, '');
 
 const MODES: { value: Mode; label: string }[] = [
-  { value: 'mobile', label: 'We come to you' },
-  { value: 'shop', label: 'Customers bring it in' },
+  { value: 'mobile', label: 'Mobile' },
+  { value: 'shop', label: 'Shop' },
   { value: 'both', label: 'Both' },
 ];
+const MODE_HINT: Record<Mode, string> = {
+  mobile: 'You go to the customer: directions, travel fees, On our way texts and a daily route.',
+  shop: 'Customers bring it in: check-in at drop-off, Ready for pickup texts and shop bays on the calendar.',
+  both: 'Some jobs mobile, some in your shop. Pick on each quote and job.',
+};
 
 /**
  * Settings → "Where you work" (owner/admin): mobile, shop or both; the base
@@ -97,15 +102,15 @@ export function WorkModeCard({ org, onChanged }: { org: Organization; onChanged:
   return (
     <Card>
       <ErrorBanner message={error} />
-      <T variant="small" style={{ marginBottom: space.sm }}>How you work. Each job can still be set to mobile or shop.</T>
       <Segmented value={v.mode} options={MODES} onChange={(m) => set('mode', m)} />
+      <T variant="small" style={{ marginTop: -space.sm, marginBottom: space.md }}>{MODE_HINT[v.mode]}</T>
 
       <Field label={shop ? 'Shop address' : 'Where your crews start'} icon="location-outline" value={v.address} onChangeText={(t) => set('address', t)}
         placeholder="123 Hangar Rd, Austin, TX 78719" hint={mobile ? 'Travel distances are measured from here.' : 'Shown to customers in the pickup message.'} />
       {note ? <T variant="small" style={{ marginTop: -space.sm, marginBottom: space.md }}>{note}</T> : null}
 
       {shop ? (
-        <Row gap={space.md}>
+        <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
           <Field style={{ flex: 1 }} label="Shop bays" keyboardType="number-pad" value={v.bays} onChangeText={(t) => set('bays', t.replace(/[^0-9]/g, ''))}
             placeholder="0" hint="The calendar won't book more at once. 0 = no limit." />
           <Field style={{ flex: 1 }} label="Pickup hours" value={v.hours} onChangeText={(t) => set('hours', t)} placeholder="Mon–Sat 8–6" />
@@ -119,7 +124,7 @@ export function WorkModeCard({ org, onChanged }: { org: Organization; onChanged:
           <Segmented value={v.fee} onChange={(f: FeeMode) => set('fee', f)}
             options={[{ value: 'off', label: 'None' }, { value: 'per_mile', label: 'Per mile' }, { value: 'zones', label: 'By distance zone' }]} />
           {v.fee === 'per_mile' ? (
-            <Row gap={space.md}>
+            <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
               <Field style={{ flex: 1 }} label="Free miles" keyboardType="decimal-pad" value={v.free} onChangeText={(t) => set('free', clean(t))} placeholder="10" />
               <Field style={{ flex: 1 }} label={`Per mile (${org.currency})`} keyboardType="decimal-pad" value={v.rate} onChangeText={(t) => set('rate', clean(t))} placeholder="1.50" />
               <Field style={{ flex: 1 }} label="Minimum" keyboardType="decimal-pad" value={v.min} onChangeText={(t) => set('min', clean(t))} placeholder="0" />
@@ -150,7 +155,7 @@ export function WorkModeCard({ org, onChanged }: { org: Organization; onChanged:
         </>
       ) : null}
 
-      <Button title={dirty ? 'Save' : 'Saved'} icon="checkmark" onPress={save} loading={busy} disabled={!dirty} />
+      <Button title={dirty ? 'Save where you work' : 'Saved'} icon="checkmark" onPress={save} loading={busy} disabled={!dirty} />
     </Card>
   );
 }

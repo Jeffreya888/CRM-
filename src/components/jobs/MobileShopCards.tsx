@@ -143,7 +143,8 @@ export function MobileStopCard({ job, customer, canEdit, canNotify, onChanged }:
               </Pressable>
             ))}
           </View>
-          <Button kind="ghost" title="Send without a time" onPress={() => onOurWay(null)} />
+          <Button kind="secondary" title="Send without a time" onPress={() => onOurWay(null)} />
+          <Button kind="ghost" title="Cancel" onPress={() => setEtaOpen(false)} style={{ marginTop: space.sm }} />
         </ScrollView>
       </SheetModal>
     </Card>
