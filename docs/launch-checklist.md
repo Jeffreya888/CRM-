@@ -6,7 +6,7 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 - [ ] Buy the domain (e.g. flightready.app) and create a support mailbox (e.g. support@…).
 - [ ] Apple Developer Program ($99/yr), App Store Connect access.
 - [ ] Google Play Console ($25 once) if you launch on Android.
-- [ ] Accounts: Supabase, Stripe, RevenueCat, Resend, Telnyx, Expo (EAS), Anthropic (receipt scanning).
+- [ ] Accounts: Supabase, Stripe, Square (if offering it), RevenueCat, Resend, Telnyx, Expo (EAS), Anthropic (receipt scanning).
 - [ ] Fill in the legal placeholders on the website (`src/components/site/legalContent.ts`): `[Legal company name]`, `[Business address]`, `[State]`, `[Effective date]`. Have a lawyer review Privacy and Terms.
 - **Check:** `https://<domain>/privacy`, `/terms` and `/support` open and show no placeholders.
 
@@ -67,6 +67,18 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 - [ ] Payment methods: Cards + ACH Direct Debit.
 - **Check (test mode):** pay an invoice, a quote deposit and start a care plan; each shows as paid in the app with the platform fee recorded.
 
+### 6c. Payments with Square (optional second processor)
+Companies choose Stripe or Square in Settings → Payments. Square covers the same things (invoices, quote deposits, monthly care plans) plus in-person payments with Tap to Pay or a Square reader. Same platform fee.
+- [ ] [Square Developer Console](https://developer.squareup.com/apps) → create an application. Use the **Sandbox** credentials first, production when testing is done.
+- [ ] OAuth → Redirect URL: `https://<ref>.supabase.co/functions/v1/square-connect`.
+- [ ] Secrets: `SQUARE_APPLICATION_ID`, `SQUARE_APPLICATION_SECRET` (OAuth page), `SQUARE_ENVIRONMENT` (`sandbox` or `production`), `SQUARE_TOKEN_KEY` (generate with `openssl rand -base64 32`; keep it forever — it encrypts the companies' Square tokens).
+- [ ] Webhooks → Add subscription → URL `https://<ref>.supabase.co/functions/v1/square-webhook`; events `payment.created`, `payment.updated`, `refund.created`, `refund.updated`, `oauth.authorization.revoked`. Secrets: `SQUARE_WEBHOOK_SIGNATURE_KEY` (shown on the subscription) and `SQUARE_WEBHOOK_URL` (the exact URL above).
+- [ ] Apple Pay on the payment pages: Square Developer Console → Apple Pay → download the domain file and publish it at `https://<domain>/.well-known/apple-developer-merchantid-domain-association` (put it in `public/.well-known/` before the web export). Each company's domain registration happens automatically when they connect.
+- [ ] App builds: set `EXPO_PUBLIC_SQUARE_APPLICATION_ID` in EAS (same application ID; it starts Square's in-person SDK). Then a new build — in-person payments don't work in Expo Go.
+- [ ] Tap to Pay on iPhone: request the entitlement from Apple ([developer.apple.com/tap-to-pay](https://developer.apple.com/tap-to-pay/)). After approval, add `SQUARE_TAP_TO_PAY_IOS=1` to the EAS build environment and rebuild. Before approval iPhones can still use a Square reader; Android Tap to Pay needs no extra approval.
+- [ ] First Android build: check it compiles with Square's SDK (the config plugin sets Kotlin 2.2.21, which Square requires).
+- **Check (sandbox):** Settings → Payments → Square → Connect (sandbox seller) → "Square connected". Pay an invoice and a deposit on the website with test card `4111 1111 1111 1111`, start a care plan from a recurring schedule and sign up on the link; each shows as paid with the platform fee. In the app on a phone: invoice → **Tap to Pay** → the Square screen appears (sandbox shows a mock reader). Refund one payment in the Square dashboard and see it removed from the invoice.
+
 ### 6b. Web subscriptions (Stripe Billing on your platform account)
 Companies can sign up and pay on the website; the iPhone/Android apps keep using in-app purchase (section 5) and never link to web checkout or web prices.
 - [ ] Stripe → Product catalog: three products (Solo, Team, Fleet), each with a **monthly** and a **yearly** recurring price matching `src/lib/plans.ts` ($39.99/$399.99, $89.99/$899.99, $189.99/$1,899.99). Set the price ids as secrets: `STRIPE_PRICE_SOLO_MONTHLY`, `STRIPE_PRICE_SOLO_ANNUAL`, `STRIPE_PRICE_TEAM_MONTHLY`, `STRIPE_PRICE_TEAM_ANNUAL`, `STRIPE_PRICE_FLEET_MONTHLY`, `STRIPE_PRICE_FLEET_ANNUAL`. A plan/period without its secret shows "Not available yet" on the web paywall.
@@ -97,6 +109,7 @@ Run the full day with a test company: sign up → services & prices → customer
 - [ ] Email delivery verified.
 - [ ] Store products, purchase and restore verified on a device.
 - [ ] Stripe test payments verified (or companies told to arrange payment directly).
+- [ ] Square sandbox payments, a care plan charge and Tap to Pay verified (if offering Square).
 - [ ] Texting registered (or left off at launch).
 - [ ] Legal pages final; support email answered.
 - [ ] Scheduling integrations described as "request access" until a vendor approves API access.

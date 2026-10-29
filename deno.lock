@@ -186,6 +186,7 @@
         "npm:expo-status-bar@~57.0.1",
         "npm:expo-web-browser@~57.0.3",
         "npm:expo@~57.0.27",
+        "npm:mobile-payments-sdk-react-native@2026.8.1",
         "npm:react-dom@19.2.3",
         "npm:react-native-gesture-handler@2.32",
         "npm:react-native-purchases@^10.12.2",

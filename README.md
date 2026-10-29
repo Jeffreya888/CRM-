@@ -6,7 +6,8 @@ the **Apple App Store** (plus Google Play and the web) and sold as a subscriptio
 - **App:** Expo SDK 57 / React Native / Expo Router (iOS, Android, web)
 - **Backend:** Supabase (Postgres + Row Level Security, Auth, Storage, Edge Functions)
 - **Revenue:** subscriptions via App Store / Play (RevenueCat), plus a platform fee on
-  every card payment processed for subscribers (Stripe Connect)
+  every card payment processed for subscribers (Stripe Connect or Square, the company's choice;
+  Square adds Tap to Pay and Square readers in the app)
 - **Website:** marketing site, pricing, privacy, terms and support are public routes of
   the same web build that hosts the customer portal.
 
@@ -97,7 +98,7 @@ Flight Schedule Pro).
   exportable, but new records are blocked **in the database** until a plan is active.
 - Subscriptions belong to the company (RevenueCat app user id = organization id) and are sold
   through Apple/Google In-App Purchase (guideline 3.1.1). Customer payments for physical detailing
-  services go through Stripe Connect, which Apple allows (3.1.3(e)).
+  services go through Stripe Connect or Square, which Apple allows (3.1.3(e)).
 - Extra text packs are consumable in-app purchases (product ids containing `texts`).
 
 ## Setup (development)

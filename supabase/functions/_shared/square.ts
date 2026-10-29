@@ -44,7 +44,9 @@ export type SquarePayment = {
 export const squareEnvironment = (): "production" | "sandbox" =>
   Deno.env.get("SQUARE_ENVIRONMENT") === "sandbox" ? "sandbox" : "production";
 
-const apiBase = () => (squareEnvironment() === "sandbox" ? "https://connect.squareupsandbox.com" : "https://connect.squareup.com");
+// SQUARE_API_BASE points the functions at a stand-in server in automated tests.
+const apiBase = () => Deno.env.get("SQUARE_API_BASE")
+  ?? (squareEnvironment() === "sandbox" ? "https://connect.squareupsandbox.com" : "https://connect.squareup.com");
 
 export const squareConfigured = () => !!(Deno.env.get("SQUARE_APPLICATION_ID") && Deno.env.get("SQUARE_APPLICATION_SECRET") && Deno.env.get("SQUARE_TOKEN_KEY"));
 
@@ -66,6 +68,7 @@ export async function squareFetch<T = Record<string, unknown>>(
     method: opts.method ?? (opts.body ? "POST" : "GET"),
     headers,
     body: opts.body ? JSON.stringify(opts.body) : undefined,
+    signal: AbortSignal.timeout(30_000),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
