@@ -74,6 +74,7 @@ export const conflictIcon = (t: string) =>
   : t === 'missing_requirement' ? 'id-card-outline'
   : t.startsWith('equipment') ? 'construct-outline'
   : t.startsWith('hangar') ? 'home-outline'
+  : t === 'bays_full' ? 'car-sport-outline'
   : 'alert-circle-outline';
 
 /** Promise-based confirm that works on native and web. */

@@ -37,7 +37,7 @@ do $$ begin
   assert (select cardinality(checklist) from services where guide_key = 'exterior_wash')
        = (select jsonb_array_length(steps) from service_guides where key = 'exterior_wash' and org_id is null), 'checklist from guide steps';
   assert (select recur_every || ' ' || recur_unit from services where guide_key = 'ceramic_coating') = '12 month', 'recurring in months';
-  assert (select count(*) from automations) = 8, 'automations seeded';
+  assert (select count(*) from automations) = 9, 'automations seeded';
   assert (select count(*) from automations where enabled and key in ('job_reminder','invoice_reminders')) = 2, 'smart defaults on';
   assert (select count(*) from crew_hours) = 5, 'default crew hours';
   assert (public.dashboard_stats((select v from ctx where k='alpha')) ? 'revenue_week'), 'weekly revenue stat';
@@ -1188,6 +1188,59 @@ do $$ begin
   end;
   update organizations set payment_mode = 'stripe' where id = (select v from ctx where k='edge');
   assert (select payment_mode from organizations where id = (select v from ctx where k='edge')) = 'stripe', 'owner switches processor';
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ---------- Mobile & shop -----------------------------------------------------
+reset role;
+do $$ declare
+  o uuid := (select v from ctx where k='edge');
+  c uuid := (select id from customers where name = 'Edge Customer');
+  j1 uuid; j2 uuid; j3 uuid;
+begin
+  -- New jobs take the company's way of working.
+  update organizations set service_mode = 'shop', shop_bays = 2, base_address = '1 Hangar Rd, Austin TX', shop_hours = 'Mon–Sat 8–6' where id = o;
+  insert into jobs (org_id, number, customer_id, title, status, scheduled_start, scheduled_end)
+    values (o, public._next_number(o, 'job'), c, 'Bay job 1', 'scheduled', '2030-05-01 14:00+00', '2030-05-01 20:00+00') returning id into j1;
+  insert into jobs (org_id, number, customer_id, title, status, scheduled_start, scheduled_end)
+    values (o, public._next_number(o, 'job'), c, 'Bay job 2', 'scheduled', '2030-05-01 15:00+00', '2030-05-01 18:00+00') returning id into j2;
+  assert (select service_mode from jobs where id = j1) = 'shop', 'job defaults to shop';
+  insert into jobs (org_id, number, customer_id, title, status, service_mode) values (o, public._next_number(o, 'job'), c, 'Mobile one', 'scheduled', 'mobile') returning id into j3;
+  assert (select service_mode from jobs where id = j3) = 'mobile', 'per-job override kept';
+  insert into ctx values ('bay1', j1), ('bay2', j2), ('mob', j3);
+  -- Check-in details stamp the time.
+  update jobs set checkin_odometer = '42,180 mi', checkin_keys = 'Hook 7' where id = j1;
+  assert (select checked_in_at is not null from jobs where id = j1), 'check-in time stamped';
+  -- Automations: ready for pickup exists for every company.
+  assert (select count(*) from automations where key = 'ready_for_pickup') = (select count(*) from organizations), 'ready_for_pickup seeded';
+  update customers set phone = '+15125550100', sms_consent = true, sms_opted_out = false, email = 'edge@example.com' where id = c;
+  update automations set enabled = true where org_id = o and key in ('on_our_way','ready_for_pickup');
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ declare res jsonb; ids uuid[]; o uuid := (select ctx.v from ctx where k='edge'); begin
+  -- Third car in a 2-bay shop at the same time.
+  res := public.schedule_conflicts(o, null, '2030-05-01 16:00+00', '2030-05-01 17:00+00');
+  assert res @> '[{"type":"bays_full"}]', 'bays full: ' || res::text;
+  res := public.schedule_conflicts(o, null, '2030-05-01 21:00+00', '2030-05-01 22:00+00');
+  assert not (res @> '[{"type":"bays_full"}]'), 'free after both are out';
+  -- Picked up early frees the bay.
+  update jobs set picked_up_at = now() where id = (select v from ctx where k='bay2');
+  res := public.schedule_conflicts(o, null, '2030-05-01 16:00+00', '2030-05-01 17:00+00');
+  assert not (res @> '[{"type":"bays_full"}]'), 'picked-up car frees its bay';
+  -- Mobile job: on our way with arrival time.
+  update jobs set service_address = '500 Lake Dr, Austin TX' where id = (select v from ctx where k='mob');
+  ids := public.queue_on_our_way((select v from ctx where k='mob'), 25);
+  assert cardinality(ids) = 1, 'one text queued';
+  assert (select body from messages where id = ids[1]) like '%arrive in about 25 minutes%', (select body from messages where id = ids[1]);
+  assert (select eta_minutes = 25 and on_my_way_at is not null from jobs where id = (select v from ctx where k='mob')), 'eta saved';
+  -- Shop job: ready for pickup names the shop and hours.
+  ids := public.queue_ready_for_pickup((select v from ctx where k='bay1'));
+  assert (select body from messages where id = ids[1]) like '%ready for pickup! Pick up at 1 Hangar Rd, Austin TX (Mon–Sat 8–6).%', (select body from messages where id = ids[1]);
+  assert (select ready_at is not null from jobs where id = (select v from ctx where k='bay1')), 'ready time saved';
+  -- Settings are the owner's to change.
+  update organizations set travel_fee_mode = 'per_mile', travel_rate_per_mile = 1.5, travel_free_miles = 10, service_radius_miles = 60 where id = o;
 end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
