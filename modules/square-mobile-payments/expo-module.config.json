@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "appDelegateSubscribers": ["SquareMobilePaymentsAppDelegate"]
+  },
+  "android": {}
+}

@@ -4,8 +4,10 @@ import { Linking, View } from 'react-native';
 import { invoiceTone } from '../status';
 import { Badge, Button, Card, Divider, ErrorBanner, Ionicons, Row, Section, T } from '../ui';
 import { date, money } from '../../lib/format';
+import { PORTAL_URL } from '../../lib/config';
 import { callFunction } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
+import { SquarePayForm } from '../payments/SquarePayForm';
 import { Notice } from './PortalShell';
 import { goToCheckout, publicError, type PublicDoc } from './publicDoc';
 
@@ -14,6 +16,7 @@ export function PublicInvoice({ d, token, paid }: { d: PublicDoc; token: string;
   const doc = d.doc;
   const cur = d.org.currency ?? 'USD';
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<'paid' | 'pending' | null>(null);
   const balance = Number(doc.balance) || 0;
   const due = balance > 0 && !['void', 'paid'].includes(doc.status);
   const overdue = due && (doc.status === 'overdue' || isPast(new Date(`${doc.due_date}T23:59:59`)));
@@ -94,9 +97,10 @@ export function PublicInvoice({ d, token, paid }: { d: PublicDoc; token: string;
       </Card>
 
       <ErrorBanner message={error} />
-      {paid ? <Notice tone="success" icon="checkmark-circle" title="Payment received. Thank you!" body="A receipt is on its way to your email." /> : null}
+      {paid || result === 'paid' ? <Notice tone="success" icon="checkmark-circle" title="Payment received. Thank you!" body="A receipt is on its way to your email." /> : null}
+      {result === 'pending' ? <Notice tone="info" icon="time" title="Bank payment processing" body="Thank you. Bank payments take a few business days to clear." /> : null}
 
-      {due && !paid ? (
+      {due && !paid && !result ? (
         direct ? (
           <Card>
             <T variant="h3">Pay your detailer directly</T>
@@ -107,6 +111,12 @@ export function PublicInvoice({ d, token, paid }: { d: PublicDoc; token: string;
               {d.org.phone ? <Button small kind="secondary" icon="call-outline" title={d.org.phone} onPress={() => Linking.openURL(`tel:${d.org.phone!.replace(/[^0-9+]/g, '')}`).catch(() => {})} /> : null}
               {d.org.email ? <Button small kind="secondary" icon="mail-outline" title="Email" onPress={() => Linking.openURL(`mailto:${d.org.email}?subject=${encodeURIComponent(`Invoice ${doc.number}`)}`).catch(() => {})} /> : null}
             </Row>
+          </Card>
+        ) : d.org.payment_mode === 'square' ? (
+          <Card>
+            <T variant="h3" style={{ marginBottom: space.sm }}>Pay {money(balance, cur)}</T>
+            <SquarePayForm kind="invoice" token={token} pageUrl={`${PORTAL_URL}/portal/invoice/${token}`}
+              buttonLabel={`Pay ${money(balance, cur)}`} onDone={(s) => setResult(s === 'pending' ? 'pending' : 'paid')} />
           </Card>
         ) : (
           <Button title={`Pay ${money(balance, cur)}`} icon="card-outline" onPress={pay} />

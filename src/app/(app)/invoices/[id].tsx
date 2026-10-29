@@ -7,7 +7,9 @@ import { confirmAction, FormSheet, notify } from '../../../components/FormSheet'
 import { invoiceTone } from '../../../components/status';
 import { Badge, Button, Card, Divider, EmptyState, ErrorBanner, IconButton, Ionicons, KeyValue, ListRow, Loading, Row, Screen, Section, T } from '../../../components/ui';
 import { date, dateTime, money, titleCase } from '../../../lib/format';
+import { onlinePaymentsLive } from '../../../lib/payments';
 import { canAdmin } from '../../../lib/plans';
+import { inPersonSupported, openReaderSettings, takeInPersonPayment } from '../../../lib/squareReader';
 import { useOrg } from '../../../lib/session';
 import { callFunction, friendlyError, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
@@ -45,13 +47,29 @@ export default function InvoiceDetail() {
   const isDeposit = (p: any) => /^deposit/i.test(p.reference ?? '');
 
   const collectCard = run(async () => {
-    if (!org.stripe_charges_enabled) {
-      notify('Set up payments first', canAdmin(role) ? 'Go to Settings → Online payments to connect Stripe.' : 'Ask your company owner to connect Stripe in Settings.');
+    if (!onlinePaymentsLive(org)) {
+      notify('Set up payments first', canAdmin(role) ? 'Go to Settings → Payments to connect Stripe or Square.' : 'Ask your company owner to connect Stripe or Square in Settings.');
       return;
     }
     const { url } = await callFunction<{ url: string }>('invoice-checkout', { invoice_id: id });
     await WebBrowser.openBrowserAsync(url);
   });
+
+  // Square: Tap to Pay on this phone or a paired Square reader.
+  const inPerson = org.payment_mode === 'square' && org.square_charges_enabled && !org.is_demo && inPersonSupported() && d.status !== 'draft';
+  const tapToPay = async () => {
+    try {
+      const r = await takeInPersonPayment(id);
+      if (r.status === 'paid') notify('Payment received', 'The card payment was recorded on this invoice.');
+      else if (r.status === 'failed') notify('Payment not completed', r.message);
+      q.reload();
+    } catch (e: any) {
+      notify('Payment not completed', friendlyError(e.message));
+    }
+  };
+  const readers = async () => {
+    try { await openReaderSettings(); } catch (e: any) { notify('Card readers', friendlyError(e.message)); }
+  };
 
   return (
     <Screen refreshing={q.refreshing} onRefresh={q.refresh}>
@@ -98,10 +116,14 @@ export default function InvoiceDetail() {
 
       {open ? (
         <Section title="Get paid">
+          {inPerson && can('online_payments') && !d.covered_by_plan ? (
+            <Button icon="phone-portrait-outline" title={`Tap to Pay · ${money(d.balance, cur)}`} onPress={tapToPay} style={{ marginBottom: space.sm }} />
+          ) : null}
           <Row>
-            {can('online_payments') && !direct && !d.covered_by_plan ? <Button style={{ flex: 1 }} icon="card-outline" title="Take card payment" onPress={collectCard} /> : null}
+            {can('online_payments') && !direct && !d.covered_by_plan ? <Button style={{ flex: 1 }} kind={inPerson ? 'secondary' : 'primary'} icon="card-outline" title={inPerson ? 'Pay link' : 'Take card payment'} onPress={collectCard} /> : null}
             <Button style={{ flex: 1 }} kind="secondary" icon="cash-outline" title="Record payment" onPress={() => setPaySheet(true)} />
           </Row>
+          {inPerson ? <Button small kind="ghost" icon="bluetooth-outline" title="Pair a Square card reader" onPress={readers} style={{ marginTop: space.xs, alignSelf: 'flex-start' }} /> : null}
           {direct ? <T variant="small" style={{ marginTop: space.sm }}>Your company takes payment directly (no card checkout). The customer&apos;s payment page shows how to reach you. Record payments here when they arrive.</T> : null}
         </Section>
       ) : null}

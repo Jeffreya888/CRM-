@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.squaremobilepayments'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.squaremobilepayments"
+  defaultConfig {
+    versionCode 1
+    versionName "1.0.0"
+  }
+}
+
+repositories {
+  maven { url 'https://sdk.squareup.com/public/android/' }
+}
+
+dependencies {
+  // Same SDK version as mobile-payments-sdk-react-native.
+  implementation "com.squareup.sdk:mobile-payments-sdk:2.6.1"
+}

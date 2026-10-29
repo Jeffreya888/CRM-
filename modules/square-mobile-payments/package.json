@@ -1,0 +1,7 @@
+{
+  "name": "square-mobile-payments",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Starts Square's Mobile Payments SDK at app launch (Tap to Pay and Square readers) and configures the native projects.",
+  "main": "index.js"
+}

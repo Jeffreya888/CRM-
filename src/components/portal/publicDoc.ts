@@ -15,8 +15,8 @@ export interface PublicDoc {
   org: {
     name: string; email: string | null; phone: string | null; address: string | null; logo_url: string | null; currency?: string;
     accepts_cards: boolean; timezone?: string; google_review_url?: string | null; website?: string | null;
-    /** Not returned yet; when present, 'direct' shows "pay your detailer directly". */
-    payment_mode?: 'stripe' | 'direct';
+    /** 'direct' shows "pay your detailer directly"; 'square' pays with Square's card form on the page. */
+    payment_mode?: 'stripe' | 'square' | 'direct';
   };
   customer: { name: string; company: string | null; email: string | null; billing_address: string | null };
   aircraft: { tail_number: string; model: string | null; asset_type: string } | null;
@@ -40,7 +40,7 @@ export function loadPublicDoc(kind: string, token: string, force = false): Promi
   return p;
 }
 
-/** Sends the visitor to a Stripe Checkout page. */
+/** Sends the visitor to a hosted checkout page (Stripe). */
 export async function goToCheckout(url: string) {
   if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.href = url;
   else await WebBrowser.openBrowserAsync(url);

@@ -35,7 +35,11 @@ export interface Organization {
   business_types: AssetType[];
   google_review_url: string | null;
   auto_send_invoices: boolean;
-  payment_mode: 'stripe' | 'direct';
+  /** Who takes online payments: Stripe, Square, or nobody (arranged directly). */
+  payment_mode: 'stripe' | 'square' | 'direct';
+  /** Square connection (server-only; set by the square-connect function). */
+  square_merchant_id: string | null; square_location_id: string | null; square_location_name: string | null;
+  square_charges_enabled: boolean;
   role_permissions: RolePermissions;
   is_demo: boolean; demo_expires_at: string | null;
   accountant_email: string | null;

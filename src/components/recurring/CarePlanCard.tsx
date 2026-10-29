@@ -10,7 +10,7 @@ import { confirmAction, notify } from '../FormSheet';
 import { Badge, Button, Card, ErrorBanner, Row, T } from '../ui';
 import { CARE_PLAN_TONE } from './RecurringBits';
 
-/** Monthly care plan: send the Stripe card-on-file link, show status, cancel. */
+/** Monthly care plan: send the card-on-file link (Stripe or Square), show status, cancel. */
 export function CarePlanCard({ schedule, onChanged }: { schedule: RecurringSchedule; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);

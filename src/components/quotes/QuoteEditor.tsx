@@ -19,6 +19,7 @@ import { useQuery } from '../../lib/useQuery';
 import type { ConditionLevel, LineItem, Quote, QuoteOption, Service } from '../../lib/types';
 import { QuotePhotos, uploadQuotePhotos } from './QuotePhotos';
 import { buildTemplateContent, DEFAULT_OPTION_NAMES, usePriceGuide } from './quoteUtils';
+import { onlinePaymentsLive } from '../../lib/payments';
 
 interface Pkg { key: string; name: string; description: string; items: LineItem[] }
 type DepositType = 'none' | 'percent' | 'fixed';
@@ -462,8 +463,8 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
                 </Row>
               )) : <T variant="money">{money(depositFor(singleTotals.total), cur)}</T>}
               {savedDeposit != null ? <T variant="small" style={{ marginTop: 4 }}>Last saved: {money(savedDeposit, cur)}</T> : null}
-              {!org.stripe_charges_enabled || org.payment_mode === 'direct' ? (
-                <T variant="small" style={{ marginTop: 4, color: colors.warning }}>Card deposits need Stripe payments turned on in Settings.</T>
+              {!onlinePaymentsLive(org) ? (
+                <T variant="small" style={{ marginTop: 4, color: colors.warning }}>Card deposits need Stripe or Square payments turned on in Settings.</T>
               ) : null}
             </Card>
           </>

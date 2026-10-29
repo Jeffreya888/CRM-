@@ -78,7 +78,8 @@
           "faceIDPermission": "Flight Ready uses Face ID to lock the app so customer details and gate codes stay private."
         }
       ],
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      "./modules/square-mobile-payments/app.plugin.js"
     ],
     "experiments": {
       "typedRoutes": false

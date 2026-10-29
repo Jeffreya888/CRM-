@@ -4,6 +4,7 @@ import type { IconName } from '../ui';
 import { useOrg } from '../../lib/session';
 import { supabase } from '../../lib/supabase';
 import { useQuery } from '../../lib/useQuery';
+import { onlinePaymentsLive } from '../../lib/payments';
 
 export interface SetupStep {
   key: string;
@@ -70,8 +71,8 @@ export function useSetupSteps() {
     },
     {
       key: 'payments', title: 'Connect payments', icon: 'card-outline', href: '/settings', action: 'Set up payments',
-      body: 'Connect Stripe so customers can pay invoices online, or choose “arranged directly”.',
-      done: org.payment_mode === 'direct' || !!org.stripe_charges_enabled,
+      body: 'Connect Stripe or Square so customers can pay invoices online, or choose “arranged directly”.',
+      done: org.payment_mode === 'direct' || onlinePaymentsLive(org),
     },
     {
       key: 'job', title: 'Create & complete your first job', icon: 'camera-outline', href: '/jobs/new', action: 'New job',

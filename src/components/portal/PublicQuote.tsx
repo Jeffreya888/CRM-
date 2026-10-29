@@ -13,6 +13,8 @@ import { colors, radius, space } from '../../lib/theme';
 import type { LineItem, QuoteOption } from '../../lib/types';
 import { Notice } from './PortalShell';
 import { goToCheckout, publicError, type PublicDoc } from './publicDoc';
+import { SquarePayForm } from '../payments/SquarePayForm';
+import { PORTAL_URL } from '../../lib/config';
 
 type Reason = (typeof DECLINE_REASONS)[number]['value'];
 const CONDITION_WORDS: Record<string, string> = { light: 'light', moderate: 'moderate', heavy: 'heavy', severe: 'severe' };
@@ -37,6 +39,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
   const [signing, setSigning] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   const [depositDue, setDepositDue] = useState<number>(doc.deposit_paid_at ? 0 : Number(doc.deposit_amount) || 0);
+  const [depositPaidNow, setDepositPaidNow] = useState(false);
   const [datesSent, setDatesSent] = useState<boolean>(!!d.job_requested);
   const [dates, setDates] = useState<(string | null)[]>([null]);
   const [dateNotes, setDateNotes] = useState('');
@@ -113,7 +116,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
     setDeclining(false);
   };
 
-  const showDeposit = status === 'accepted' && depositDue > 0 && depositReturn !== 'paid';
+  const showDeposit = status === 'accepted' && depositDue > 0 && depositReturn !== 'paid' && !depositPaidNow;
   const signatureSvg = safeSignatureSvg(doc.signature_svg);
 
   return (
@@ -272,7 +275,7 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
           </Notice>
 
           <ErrorBanner message={error} />
-          {depositReturn === 'paid' || doc.deposit_paid_at ? (
+          {depositReturn === 'paid' || doc.deposit_paid_at || depositPaidNow ? (
             <Notice tone="success" icon="card" title="Deposit received" body="Thank you. It will be credited on your final invoice." />
           ) : null}
           {showDeposit ? (
@@ -280,7 +283,10 @@ export function PublicQuote({ d, token, depositReturn }: { d: PublicDoc; token: 
               <T variant="h3">Pay your deposit</T>
               <T variant="muted" style={{ marginVertical: space.sm }}>{money(depositDue, cur)} secures your booking.</T>
               {depositReturn === 'cancelled' ? <T variant="small" style={{ color: colors.warning, marginBottom: space.sm }}>The payment was not completed. You can try again.</T> : null}
-              {d.org.accepts_cards ? (
+              {d.org.accepts_cards && d.org.payment_mode === 'square' ? (
+                <SquarePayForm kind="deposit" token={token} pageUrl={`${PORTAL_URL}/portal/quote/${token}`}
+                  buttonLabel={`Pay deposit · ${money(depositDue, cur)}`} onDone={() => setDepositPaidNow(true)} />
+              ) : d.org.accepts_cards ? (
                 <Button icon="card-outline" title={`Pay deposit · ${money(depositDue, cur)}`} onPress={payDeposit} />
               ) : (
                 <T>Please arrange the deposit directly with {d.org.name}{d.org.phone ? ` (${d.org.phone})` : ''}.</T>
