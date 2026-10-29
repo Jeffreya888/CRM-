@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const query = db
       .from("invoices")
-      .select("id, org_id, number, status, balance, public_token, customer:customers(name, email), org:organizations(name, currency, stripe_account_id, stripe_charges_enabled, plan, payment_mode, is_demo)");
+      .select("id, org_id, number, status, balance, public_token, customer:customers(name, email), org:organizations(name, currency, stripe_account_id, stripe_charges_enabled, square_charges_enabled, plan, payment_mode, is_demo)");
     const { data: inv } = body.public_token
       ? await query.eq("public_token", body.public_token).maybeSingle()
       : await query.eq("id", body.invoice_id ?? "").maybeSingle();
@@ -33,6 +33,11 @@ Deno.serve(async (req) => {
     if (["draft", "void", "paid"].includes(inv.status)) return error(`Invoice is ${inv.status}`);
     if (org.is_demo) return error("Payments are turned off in the demo workspace");
     if (org.payment_mode === "direct") return error(`${org.name} arranges payment directly. Please contact them to pay this invoice.`);
+    // Square: the customer pays on our invoice page with Square's card form (square-pay).
+    if (org.payment_mode === "square") {
+      if (!org.square_charges_enabled) return error("This business has not enabled online payments yet");
+      return json({ url: `${portalUrl()}/portal/invoice/${inv.public_token}` });
+    }
     if (!org.stripe_account_id || !org.stripe_charges_enabled) return error("This business has not enabled online payments yet");
     const amountCents = Math.round(Number(inv.balance) * 100);
     if (amountCents < 50) return error("Nothing left to pay");

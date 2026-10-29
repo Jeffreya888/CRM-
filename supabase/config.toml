@@ -443,3 +443,14 @@ verify_jwt = false
 
 [functions.telnyx-webhook]
 verify_jwt = false
+
+# Square: the OAuth callback is a browser redirect, the webhook is signed,
+# and payment pages are public; each authenticates itself.
+[functions.square-connect]
+verify_jwt = false
+
+[functions.square-pay]
+verify_jwt = false
+
+[functions.square-webhook]
+verify_jwt = false

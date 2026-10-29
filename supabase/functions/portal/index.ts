@@ -174,7 +174,7 @@ async function session(db: SupabaseClient, token: unknown): Promise<Session | nu
 
 async function portalData(db: SupabaseClient, s: Session) {
   const [orgR, custR, assetsR] = await Promise.all([
-    db.from("organizations").select("name, logo_url, phone, email, timezone, google_review_url, stripe_charges_enabled, payment_mode, is_demo, business_types, photo_quotes_enabled").eq("id", s.org_id).single(),
+    db.from("organizations").select("name, logo_url, phone, email, timezone, google_review_url, stripe_charges_enabled, square_charges_enabled, payment_mode, is_demo, business_types, photo_quotes_enabled").eq("id", s.org_id).single(),
     db.from("customers").select("id, name, email, phone, company").eq("id", s.customer_id).single(),
     db.from("aircraft").select("id, tail_number, asset_type, manufacturer, model, category").eq("customer_id", s.customer_id).eq("org_id", s.org_id).eq("active", true).order("tail_number"),
   ]);
@@ -202,7 +202,7 @@ async function portalData(db: SupabaseClient, s: Session) {
     org: {
       name: o.name, logo_url: o.logo_url ?? null, phone: o.phone ?? null, email: o.email ?? null, timezone: o.timezone,
       google_review_url: o.google_review_url ?? null,
-      accepts_cards: !!(o.stripe_charges_enabled && o.payment_mode === "stripe" && !o.is_demo),
+      accepts_cards: !o.is_demo && ((o.payment_mode === "stripe" && !!o.stripe_charges_enabled) || (o.payment_mode === "square" && !!o.square_charges_enabled)),
       photo_quotes_enabled: o.photo_quotes_enabled !== false && photoPlan.data === true,
     },
     customer: custR.data,

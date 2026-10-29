@@ -19,6 +19,7 @@ import { type PrefKey, pushesFor, sendPushes, tokensFor } from "../_shared/push.
 import { duePhrase, renderTemplate } from "../_shared/templates.ts";
 import { isEmail } from "../_shared/email.ts";
 import { toE164 } from "../_shared/sms.ts";
+import { chargeDueCarePlans } from "../_shared/squareBilling.ts";
 import {
   addDays, daysBetween, deliverMessage, fmtDate, fmtDateTime, fmtTime, fmtYmd, invoiceEmailText, links, localDate, money,
   type Org, ORG_COLS, outbox, queueMessage, type Row, textingActive, ymdAsDate,
@@ -50,6 +51,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
     if (expenses.error) throw expenses.error;
     return { jobs: jobs.data, expenses: expenses.data };
   });
+  await step("square_care_plans", () => chargeDueCarePlans(db));
   await step("automations", () => automations(db));
   await step("send", () => sendQueued(db));
   await step("push", () => pushOutbox(db));

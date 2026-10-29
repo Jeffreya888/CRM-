@@ -1,14 +1,19 @@
 // Monthly care plans: a recurring schedule billed as a flat monthly amount,
-// auto-charged to the customer's card on file through Stripe Billing on the
-// detailing company's connected account (platform fee by plan).
+// auto-charged to the customer's card on file (platform fee by plan) through
+// the company's processor:
+//   - Stripe: Stripe Billing subscription on the connected account.
+//   - Square: card saved on the customer's Square profile, charged monthly by
+//     the automation worker (see _shared/squareBilling.ts).
 //
-// POST { action: "start", schedule_id } → { url }  Checkout link (mode subscription)
-//                                                   for the detailer to send to the customer.
+// POST { action: "start", schedule_id } → { url }  Card-on-file link (Stripe Checkout,
+//                                                   or our Square page) for the detailer
+//                                                   to send to the customer.
 // POST { action: "cancel", schedule_id } → { ok: true }
 //
 // Caller must be an owner/admin/manager of the schedule's company.
-// Subscription events arrive on the Connect webhook (see stripe-webhook).
+// Stripe subscription events arrive on the Connect webhook (see stripe-webhook).
 import { Stripe } from "../_shared/deps.ts";
+import { disableCard, sellerFor } from "../_shared/square.ts";
 import { adminClient, callerCanMoney, callerRole, MANAGER_ROLES, orgFeeBps, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
 
@@ -21,7 +26,7 @@ Deno.serve(async (req) => {
     const db = adminClient();
     const { data: s } = await db
       .from("recurring_schedules")
-      .select("id, org_id, title, billing, care_plan_amount, care_plan_status, stripe_subscription_id, customer_id, customer:customers(id, name, email, phone, stripe_customer_id), asset:aircraft(tail_number, manufacturer, model), service:services(name), org:organizations(name, currency, stripe_account_id, stripe_charges_enabled, payment_mode, is_demo, public_slug)")
+      .select("id, org_id, title, billing, care_plan_amount, care_plan_status, care_plan_provider, care_plan_token, square_card_id, stripe_subscription_id, customer_id, customer:customers(id, name, email, phone, stripe_customer_id), asset:aircraft(tail_number, manufacturer, model), service:services(name), org:organizations(name, currency, stripe_account_id, stripe_charges_enabled, square_charges_enabled, payment_mode, is_demo, public_slug)")
       .eq("id", schedule_id)
       .maybeSingle();
     if (!s) return error("Schedule not found", 404);
@@ -40,7 +45,11 @@ Deno.serve(async (req) => {
     const s_ = stripe();
 
     if (action === "cancel") {
-      if (s.stripe_subscription_id && acct) {
+      if (s.care_plan_provider === "square") {
+        const seller = await sellerFor(db, s.org_id);
+        if (seller && s.square_card_id) await disableCard(seller, s.square_card_id);
+        await db.from("recurring_schedules").update({ care_plan_next_charge_at: null, square_card_id: null }).eq("id", s.id);
+      } else if (s.stripe_subscription_id && acct) {
         try {
           await s_.subscriptions.cancel(s.stripe_subscription_id, {}, { stripeAccount: acct });
         } catch (e) {
@@ -58,9 +67,29 @@ Deno.serve(async (req) => {
 
     // ---- start ----
     if (org.is_demo) return error("Payments are turned off in the demo workspace");
-    if (org.payment_mode !== "stripe") return error("Card payments are off (payments are arranged directly). Turn on Stripe in Settings to use care plans.");
-    if (!acct || !org.stripe_charges_enabled) return error("Set up online payments (Stripe) in Settings before starting a care plan");
     if (s.billing !== "care_plan") return error("Set this schedule's billing to “Monthly care plan” first");
+    if (org.payment_mode === "square") {
+      if (!org.square_charges_enabled) return error("Finish connecting Square in Settings → Payments before starting a care plan");
+      if (s.care_plan_provider !== "square" && s.care_plan_status === "active") return error("This care plan is active on Stripe. Cancel it first to move it to Square.");
+      const amount = Math.round(Number(s.care_plan_amount ?? 0) * 100);
+      if (amount < 100) return error("Enter the monthly care plan amount first");
+      const token = s.care_plan_token ?? crypto.randomUUID().replace(/-/g, "");
+      const firstTime = s.care_plan_status !== "active" && s.care_plan_status !== "past_due";
+      await db.from("recurring_schedules").update({
+        care_plan_provider: "square", care_plan_token: token,
+        ...(firstTime ? { care_plan_status: "pending" } : {}),
+      }).eq("id", s.id);
+      await db.from("activities").insert({
+        org_id: s.org_id, customer_id: s.customer_id, kind: "system", created_by: caller.userId,
+        body: firstTime
+          ? `Care plan sign-up link created (${(amount / 100).toFixed(2)} ${(org.currency ?? "USD").toUpperCase()}/month, Square)`
+          : "Card update link sent for the monthly care plan (Square)",
+      });
+      return json({ url: `${portalUrl()}/portal/care/${token}` });
+    }
+    if (s.care_plan_status === "active" && s.care_plan_provider === "square") return error("This care plan is active on Square. Cancel it first to move it to Stripe.");
+    if (org.payment_mode !== "stripe") return error("Card payments are off (payments are arranged directly). Turn on Stripe or Square in Settings to use care plans.");
+    if (!acct || !org.stripe_charges_enabled) return error("Set up online payments (Stripe) in Settings before starting a care plan");
     const amountCents = Math.round(Number(s.care_plan_amount ?? 0) * 100);
     if (amountCents < 50) return error("Enter the monthly care plan amount first");
     if (s.care_plan_status === "active" && s.stripe_subscription_id) return error("This care plan is already active");
@@ -114,7 +143,7 @@ Deno.serve(async (req) => {
       cancel_url: `${back}?care_plan=cancelled`,
     }, { stripeAccount: acct });
 
-    await db.from("recurring_schedules").update({ care_plan_status: "pending" }).eq("id", s.id);
+    await db.from("recurring_schedules").update({ care_plan_status: "pending", care_plan_provider: "stripe" }).eq("id", s.id);
     await db.from("activities").insert({
       org_id: s.org_id, customer_id: s.customer_id, kind: "system", created_by: caller.userId,
       body: `Care plan sign-up link created (${(amountCents / 100).toFixed(2)} ${(org.currency ?? "USD").toUpperCase()}/month)`,
