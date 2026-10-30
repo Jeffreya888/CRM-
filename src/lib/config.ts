@@ -1,6 +1,6 @@
 /** Branding + runtime configuration. Rename the product here and in app.json. */
 export const APP_NAME = 'Tarmo';
-export const APP_TAGLINE = 'The detailing OS. Aviation first, marine and auto too.';
+export const APP_TAGLINE = 'The detailing OS. Built for aviation. Ready for marine and auto.';
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
