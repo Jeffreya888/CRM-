@@ -1,7 +1,7 @@
 // Run: npm test   (uses Node's built-in test runner with type stripping)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeTotals, conditionPct, estimateHours, priceService, withCondition } from './pricing.ts';
+import { computeTotals, conditionPct, estimateHours, priceService, pricingSummary, withCondition } from './pricing.ts';
 import { effectivePlan, hasFeature, trialDaysLeft } from './plans.ts';
 
 const svc = { base_price: 150, price_per_foot: 9, hourly_rate: 95, category_prices: { light_jet: 650 }, est_hours: 3 };
@@ -81,4 +81,22 @@ test('condition pricing and hour estimates', () => {
   assert.equal(estimateHours({ pricing_method: 'flat', est_hours: 3, category_hours: { large_jet: 8 } }, { category: 'large_jet', length_ft: 90 }), 8);
   assert.equal(estimateHours({ pricing_method: 'flat', est_hours: 3, category_hours: {} }, { category: 'light_jet', length_ft: 50 }), 3);
   assert.equal(estimateHours({ pricing_method: 'hourly', est_hours: 3 }, null), 1);
+});
+
+test('per foot: rate by boat class, minimum charge', () => {
+  const wash = { pricing_method: 'per_foot' as const, base_price: 100, price_per_foot: 5, hourly_rate: 0, category_prices: {}, est_hours: 1,
+    foot_rates: { boat_small: 4, boat_medium: 5, boat_large: 6, yacht: 7 } };
+  assert.equal(priceService(wash, { category: 'boat_small', length_ft: 22 }), 100, 'minimum applies (22 × $4 = $88)');
+  assert.equal(priceService(wash, { category: 'boat_medium', length_ft: 32 }), 160);
+  assert.equal(priceService(wash, { category: 'yacht', length_ft: 80 }), 560);
+  assert.equal(priceService(wash, { category: 'other', length_ft: 30 }), 150, 'unlisted class uses price_per_foot');
+  assert.equal(pricingSummary(wash), '$4–7/ft by size (min $100)');
+});
+
+test('vehicle classes price by category', () => {
+  const full = { pricing_method: 'per_category' as const, base_price: 225, price_per_foot: 0, hourly_rate: 0, est_hours: 4,
+    category_prices: { car: 225, suv_full: 325, truck_hd: 375, exotic: 340 } };
+  assert.equal(priceService(full, { category: 'suv_full', length_ft: null }), 325);
+  assert.equal(priceService(full, { category: 'truck_hd', length_ft: null }), 375);
+  assert.equal(priceService(full, { category: 'motorcycle', length_ft: null }), 225, 'unlisted class uses the default');
 });

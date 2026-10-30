@@ -19,12 +19,18 @@ export const AIRCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typi
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export const VEHICLE_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; typicalSpanFt: number; examples: string }[] = [
-  { value: 'car', label: 'Car', typicalLengthFt: 15, typicalSpanFt: 6.2, examples: 'Sedan, coupe, hatchback' },
-  { value: 'suv', label: 'SUV', typicalLengthFt: 16, typicalSpanFt: 6.6, examples: 'Range Rover, Tahoe, Model X' },
-  { value: 'truck', label: 'Truck', typicalLengthFt: 19, typicalSpanFt: 6.8, examples: 'F-150, Silverado, RAM' },
-  { value: 'van', label: 'Van', typicalLengthFt: 20, typicalSpanFt: 6.7, examples: 'Sprinter, Transit' },
+  { value: 'compact', label: 'Coupe / Compact', typicalLengthFt: 14, typicalSpanFt: 5.9, examples: 'Civic, Mini Cooper, Mazda3' },
+  { value: 'car', label: 'Sedan', typicalLengthFt: 16, typicalSpanFt: 6.1, examples: 'Camry, Accord, Model 3, 3 Series' },
+  { value: 'crossover', label: 'Small SUV / Crossover', typicalLengthFt: 15, typicalSpanFt: 6.1, examples: 'RAV4, CR-V, Model Y, Macan' },
+  { value: 'suv', label: 'Midsize SUV', typicalLengthFt: 16, typicalSpanFt: 6.5, examples: 'Highlander, Explorer, Grand Cherokee, X5' },
+  { value: 'suv_full', label: 'Full-size SUV', typicalLengthFt: 18, typicalSpanFt: 6.8, examples: 'Tahoe, Suburban, Escalade, Sequoia' },
+  { value: 'truck_mid', label: 'Midsize Truck', typicalLengthFt: 18, typicalSpanFt: 6.3, examples: 'Tacoma, Ranger, Colorado' },
+  { value: 'truck', label: 'Full-size Truck', typicalLengthFt: 19, typicalSpanFt: 6.8, examples: 'F-150, Silverado 1500, RAM 1500' },
+  { value: 'truck_hd', label: 'Heavy-duty Truck', typicalLengthFt: 21, typicalSpanFt: 6.9, examples: 'F-250/350, RAM 2500/3500, duallys' },
+  { value: 'van', label: 'Van / Minivan', typicalLengthFt: 19, typicalSpanFt: 6.7, examples: 'Odyssey, Sienna, Sprinter, Transit' },
+  { value: 'exotic', label: 'Exotic / High-end', typicalLengthFt: 15, typicalSpanFt: 6.5, examples: 'Ferrari, Lamborghini, 911, Rolls-Royce' },
   { value: 'rv', label: 'RV / Motorhome', typicalLengthFt: 35, typicalSpanFt: 8.5, examples: 'Class A, B, C' },
-  { value: 'motorcycle', label: 'Motorcycle', typicalLengthFt: 7, typicalSpanFt: 3, examples: '' },
+  { value: 'motorcycle', label: 'Motorcycle', typicalLengthFt: 7, typicalSpanFt: 3, examples: 'Harley-Davidson, Gold Wing' },
 ];
 
 export const WATERCRAFT_CATEGORIES: { value: AircraftCategory; label: string; typicalLengthFt: number; typicalSpanFt: number; examples: string }[] = [
@@ -69,6 +75,8 @@ export interface PriceableService {
   price_per_sqft?: number;
   hourly_rate: number;
   category_prices: Partial<Record<AircraftCategory, number>>;
+  /** Per-foot pricing: rate per foot for each size class (classes not listed use price_per_foot). */
+  foot_rates?: Partial<Record<AircraftCategory, number>>;
   est_hours: number | null;
 }
 
@@ -95,7 +103,8 @@ export function footprintOf(a?: PriceableAircraft | null): number {
 /**
  * Suggested unit price for a service on an aircraft.
  * - flat: base_price
- * - per_foot: max(base_price, length × price_per_foot) — base acts as a minimum charge
+ * - per_foot: max(base_price, length × rate) — base acts as a minimum charge; the rate is
+ *   foot_rates[class] when set (rate per foot by size class), else price_per_foot
  * - per_category: category_prices[category], falling back to base_price
  * - per_sqft: max(base_price, length × wingspan/beam × price_per_sqft)
  * - hourly: est_hours × hourly_rate (quantity can be adjusted on the line)
@@ -105,8 +114,11 @@ export function priceService(service: PriceableService, aircraft?: PriceableAirc
   switch (service.pricing_method) {
     case 'flat':
       return round2(base);
-    case 'per_foot':
-      return round2(Math.max(base, lengthOf(aircraft) * (Number(service.price_per_foot) || 0)));
+    case 'per_foot': {
+      const classRate = aircraft ? service.foot_rates?.[aircraft.category] : undefined;
+      const rate = classRate != null ? Number(classRate) : Number(service.price_per_foot) || 0;
+      return round2(Math.max(base, lengthOf(aircraft) * rate));
+    }
     case 'per_sqft':
       return round2(Math.max(base, footprintOf(aircraft) * (Number(service.price_per_sqft) || 0)));
     case 'per_category': {
@@ -121,7 +133,11 @@ export function priceService(service: PriceableService, aircraft?: PriceableAirc
 export function pricingSummary(s: PriceableService): string {
   switch (s.pricing_method) {
     case 'flat': return `$${s.base_price} flat`;
-    case 'per_foot': return `$${s.price_per_foot}/ft${s.base_price ? ` (min $${s.base_price})` : ''}`;
+    case 'per_foot': {
+      const rates = Object.values(s.foot_rates ?? {}).map(Number).filter((n) => n > 0);
+      const rate = rates.length ? `$${Math.min(...rates)}–${Math.max(...rates)}/ft by size` : `$${s.price_per_foot}/ft`;
+      return `${rate}${s.base_price ? ` (min $${s.base_price})` : ''}`;
+    }
     case 'per_sqft': return `$${s.price_per_sqft ?? 0}/sq ft${s.base_price ? ` (min $${s.base_price})` : ''}`;
     case 'per_category': return 'By size class';
     case 'hourly': return `$${s.hourly_rate}/hr`;

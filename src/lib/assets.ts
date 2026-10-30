@@ -1,7 +1,7 @@
 // Helpers for customer assets (aircraft, vehicles, watercraft), facilities,
 // leads and per-customer settings. Owned by the Customers/Assets area.
 import { Platform } from 'react-native';
-import { AIRCRAFT_CATEGORIES, WATERCRAFT_CATEGORIES, guessCategory } from './pricing';
+import { AIRCRAFT_CATEGORIES, VEHICLE_CATEGORIES, WATERCRAFT_CATEGORIES, guessCategory } from './pricing';
 import { supabase } from './supabase';
 import type { Aircraft, AircraftCategory, AircraftModel, AssetType, Location, Stage } from './types';
 
@@ -118,7 +118,7 @@ export const widthLabel = (t: AssetType) => (t === 'watercraft' ? 'Beam' : 'Wing
 
 /** Categories in the catalog per asset type (catalog holds aircraft and boats). */
 export const catalogCategories = (t: AssetType): AircraftCategory[] =>
-  (t === 'watercraft' ? WATERCRAFT_CATEGORIES : AIRCRAFT_CATEGORIES).map((c) => c.value);
+  (t === 'watercraft' ? WATERCRAFT_CATEGORIES : t === 'vehicle' ? VEHICLE_CATEGORIES : AIRCRAFT_CATEGORIES).map((c) => c.value);
 
 /** Searches the built-in model catalog by manufacturer and/or model words. */
 export async function searchModels(query: string, t: AssetType, limit = 25): Promise<AircraftModel[]> {

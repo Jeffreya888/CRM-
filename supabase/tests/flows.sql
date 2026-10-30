@@ -22,7 +22,7 @@ grant all on ctx to authenticated, anon;
 do $$ begin
   assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
   assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
-  assert (select count(*) from service_guides where org_id is null) = 51, 'platform guides loaded (16 aviation + 17 auto + 18 marine)';
+  assert (select count(*) from service_guides where org_id is null) = 52, 'platform guides loaded (16 aviation + 17 auto + 19 marine)';
 end $$;
 
 -- ---------- Alice creates an org with aircraft + vehicles ------------------
@@ -46,10 +46,17 @@ end $$;
 -- Business types can be added (seeding services) but not removed.
 update organizations set business_types = array['aircraft','vehicle','watercraft'];
 do $$ begin
-  assert (select count(*) from services where asset_type = 'watercraft') = 18, 'watercraft services seeded on add (6 + 12 new)';
+  assert (select count(*) from services where asset_type = 'watercraft') = 19, 'watercraft services seeded on add (6 + 12 new + full detail)';
   assert not exists (select 1 from services s where s.guide_key is not null and s.asset_type in ('vehicle','watercraft')
                      and not exists (select 1 from service_guides g where g.org_id is null and g.key = s.guide_key)), 'every starter service has its SOP';
   assert not exists (select 1 from services where asset_type in ('vehicle','watercraft') and guide_key is not null and cardinality(checklist) = 0), 'starter services get SOP checklists';
+  assert (select (category_prices->>'suv_full')::numeric from services where guide_key = 'vehicle_full_detail') = 325, 'vehicle starter price by size class';
+  assert (select (category_prices->>'car')::numeric from services where guide_key = 'vehicle_ceramic_coating') = 1200, 'sedan ceramic starter price';
+  assert (select (foot_rates->>'yacht')::numeric from services where guide_key = 'boat_wash_l1') = 7, 'boat maintenance wash per-foot rate';
+  assert (select (foot_rates->>'boat_small')::numeric from services where guide_key = 'boat_ceramic_coating') = 65, 'boat ceramic per-foot rate';
+  assert (select base_price from services where guide_key = 'boat_full_detail') = 500, 'boat full detail minimum';
+  assert (select category from aircraft_models where manufacturer = 'Toyota' and model = 'Tacoma') = 'truck_mid', 'vehicle catalog has models with size classes';
+  assert (select count(*) from aircraft_models where category in ('compact','car','crossover','suv','suv_full','truck_mid','truck','truck_hd','van','exotic','rv','motorcycle')) >= 500, 'vehicle catalog loaded';
   begin
     update organizations set business_types = array['aircraft'];
     raise exception 'removing a business type should fail';
@@ -290,7 +297,7 @@ do $$ begin
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
   assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
   assert (select count(*) from services) = 0, 'tech cannot read service prices';
-  assert (select count(*) from service_menu) = 49, 'tech reads the service menu without prices';
+  assert (select count(*) from service_menu) = 50, 'tech reads the service menu without prices';
   assert (select count(*) from member_pay) = 0, 'tech cannot see pay rates';
   assert (select count(*) from location_secrets) = 0, 'tech cannot see gate codes';
   assert (select count(*) from crew_hours where user_id = auth.uid()) = 5, 'new member gets default hours';
@@ -341,7 +348,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d
 select public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
 do $$ begin
   assert (select count(*) from invoices) = 1, 'manager sees invoices';
-  assert (select count(*) from services) = 49, 'manager sees prices';
+  assert (select count(*) from services) = 50, 'manager sees prices';
   assert (select count(*) from member_pay) = 0, 'manager cannot see pay rates';
   assert (select count(*) from location_secrets) = 1, 'manager sees gate codes';
   begin
@@ -532,7 +539,7 @@ do $$ begin
   assert (select count(*) from training_media) = 0, 'isolation: training';
   assert (select count(*) from messages) = 0, 'isolation: messages';
   assert (select count(*) from audit_log) = 0, 'isolation: audit log';
-  assert (select count(*) from service_guides) = 51, 'platform guides visible to all';
+  assert (select count(*) from service_guides) = 52, 'platform guides visible to all';
   begin
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');
@@ -607,7 +614,7 @@ do $$ begin
   assert (select is_demo and plan = 'fleet' from organizations), 'demo is Fleet';
   assert (select count(*) from branches) = 2, 'demo branches';
   assert (select count(*) from jobs) >= 3, 'demo jobs';
-  assert (select count(*) from services) = 49, 'demo has all business types';
+  assert (select count(*) from services) = 50, 'demo has all business types';
   assert public.create_demo_workspace() = (select v from ctx where k='demo'), 'demo is reused';
   begin
     perform public.invite_member((select v from ctx where k='demo'), 'x@example.com', 'technician');

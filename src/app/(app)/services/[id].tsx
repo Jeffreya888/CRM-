@@ -85,6 +85,9 @@ export default function ServiceDetail() {
           <T variant="small" style={{ marginTop: 6 }}>
             Priced by {lengthNoun} length{Number(s.base_price) ? `, minimum ${usd(s.base_price)}` : ''}.
             {s.asset_type === 'aircraft' ? ` A 50 ft light jet is ${usd(Math.max(Number(s.base_price), 50 * Number(s.price_per_foot)))}.` : ''}
+            {categoriesFor(s.asset_type).some((c) => s.foot_rates?.[c.value] != null)
+              ? ` Rate by size: ${categoriesFor(s.asset_type).filter((c) => s.foot_rates?.[c.value] != null).map((c) => `${c.label} ${usd(Number(s.foot_rates![c.value]))}/ft`).join(' · ')}.`
+              : ''}
           </T>
         ) : null}
         {money && s.pricing_method === 'per_sqft' ? (

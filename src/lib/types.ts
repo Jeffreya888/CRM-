@@ -8,7 +8,7 @@ export type AssetType = 'aircraft' | 'vehicle' | 'watercraft';
 export type AircraftCategory =
   | 'piston_single' | 'piston_twin' | 'turboprop' | 'very_light_jet' | 'light_jet'
   | 'midsize_jet' | 'super_midsize_jet' | 'large_jet' | 'airliner' | 'helicopter' | 'other'
-  | 'car' | 'suv' | 'truck' | 'van' | 'rv' | 'motorcycle'
+  | 'compact' | 'car' | 'crossover' | 'suv' | 'suv_full' | 'truck_mid' | 'truck' | 'truck_hd' | 'van' | 'exotic' | 'rv' | 'motorcycle'
   | 'boat_small' | 'boat_medium' | 'boat_large' | 'yacht';
 export type PricingMethod = 'flat' | 'per_foot' | 'per_sqft' | 'per_category' | 'hourly';
 export type ConditionLevel = 'light' | 'moderate' | 'heavy' | 'severe';
@@ -122,6 +122,8 @@ export interface AircraftModel { id: string; manufacturer: string; model: string
 export interface Service {
   id: string; org_id: string; name: string; description: string | null; category: string; pricing_method: PricingMethod;
   base_price: number; price_per_foot: number; hourly_rate: number; category_prices: Partial<Record<AircraftCategory, number>>;
+  /** Per-foot pricing: rate per foot by size class (others use price_per_foot). */
+  foot_rates?: Partial<Record<AircraftCategory, number>>;
   est_hours: number | null; est_hours_max: number | null; taxable: boolean; checklist: string[]; active: boolean; sort_order: number;
   pricing_tiers: PricingTier[]; equipment: string[];
   asset_type: AssetType; guide_key: string | null; recur_every: number | null; recur_unit: RecurUnit | null;

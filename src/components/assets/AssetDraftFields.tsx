@@ -5,6 +5,7 @@ import { categoriesFor } from '../../lib/pricing';
 import { space } from '../../lib/theme';
 import { Field, Row, Select } from '../ui';
 import { AssetModelPicker } from './AssetModelPicker';
+import { VinLookup } from './VinLookup';
 
 /**
  * The type-specific fields of an asset:
@@ -26,17 +27,32 @@ export function AssetDraftFields({ draft, onChange, belowTail }: {
   if (t === 'vehicle') {
     return (
       <View>
-        <Row gap={space.sm}>
-          <Field style={{ flex: 1 }} label="Make" placeholder="Porsche" value={draft.manufacturer} onChangeText={(v) => set({ manufacturer: v })} />
-          <Field style={{ flex: 1 }} label="Model" placeholder="911 Carrera" value={draft.model} onChangeText={(v) => set({ model: v })} />
-        </Row>
+        <VinLookup vin={draft.vin} onVin={(v) => set({ vin: v })}
+          onFound={(f) => {
+            setTypeText([f.manufacturer, f.model].filter(Boolean).join(' '));
+            set({ vin: f.vin, manufacturer: f.manufacturer, model: f.model, model_id: f.model_id, category: f.category,
+              year: f.year ? String(f.year) : draft.year, length_ft: f.length_ft != null ? String(f.length_ft) : draft.length_ft });
+          }} />
+        <AssetModelPicker
+          assetType="vehicle"
+          text={typeText}
+          selectedId={draft.model_id}
+          onChangeText={(text) => {
+            setTypeText(text);
+            const g = splitFreeText(text, t);
+            set({ manufacturer: g.manufacturer, model: g.model, model_id: null });
+          }}
+          onPick={(m) => { setTypeText(`${m.manufacturer} ${m.model}`); set({
+            manufacturer: m.manufacturer, model: m.model, model_id: m.id, category: m.category,
+            length_ft: m.length_ft != null ? String(m.length_ft) : draft.length_ft,
+          }); }}
+        />
         <Row gap={space.sm}>
           <Field style={{ flex: 1 }} label="Year" placeholder="2022" keyboardType="number-pad" maxLength={4} value={draft.year} onChangeText={(v) => set({ year: v })} />
           <Field style={{ flex: 1 }} label="License plate" placeholder="ABC1234" autoCapitalize="characters" value={draft.plate} onChangeText={(v) => set({ plate: v })} />
         </Row>
-        <Field label="VIN (optional)" autoCapitalize="characters" autoCorrect={false} maxLength={17} value={draft.vin} onChangeText={(v) => set({ vin: v })} />
         <Field label="Nickname (optional)" placeholder="e.g. Blue Tahoe" hint="Shown instead of the plate if set." value={draft.tail_number} onChangeText={(v) => set({ tail_number: v })} />
-        <Select label="Size class" value={draft.category} options={classOptions} onChange={(v) => v && set({ category: v })} inline />
+        <Select label="Size class (sets the price)" value={draft.category} options={classOptions} onChange={(v) => v && set({ category: v })} searchable />
         <Field label="Length (ft, optional)" keyboardType="decimal-pad" value={draft.length_ft} onChangeText={(v) => set({ length_ft: v })} />
       </View>
     );

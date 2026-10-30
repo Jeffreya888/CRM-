@@ -60,6 +60,7 @@ export default function ServiceEdit() {
     recur: 'none', recurEvery: '', guide_key: null, taxable: true, active: true, requires_cert: false,
   });
   const [catPrices, setCatPrices] = useState<Record<string, string>>({});
+  const [footRates, setFootRates] = useState<Record<string, string>>({});
   const [catHours, setCatHours] = useState<Record<string, string>>({});
   const [steps, setSteps] = useState<string[]>([]);
   const [tiers, setTiers] = useState<{ name: string; detail: string; price: string }[]>([]);
@@ -74,6 +75,7 @@ export default function ServiceEdit() {
       const s = data as Service;
       setForm(toForm(s));
       setCatPrices(Object.fromEntries(Object.entries(s.category_prices ?? {}).map(([k, v]) => [k, String(v)])));
+      setFootRates(Object.fromEntries(Object.entries(s.foot_rates ?? {}).map(([k, v]) => [k, String(v)])));
       setCatHours(Object.fromEntries(Object.entries(s.category_hours ?? {}).map(([k, v]) => [k, String(v)])));
       setSteps(s.checklist ?? []);
       setTiers((s.pricing_tiers ?? []).map((t) => ({ name: t.name ?? '', detail: t.detail ?? '', price: String(t.price ?? '') })));
@@ -129,6 +131,7 @@ export default function ServiceEdit() {
       pricing_method: m, base_price: Number(form.base_price) || 0, price_per_foot: Number(form.price_per_foot) || 0, hourly_rate: Number(form.hourly_rate) || 0,
       price_per_sqft: Number(form.price_per_sqft) || 0,
       category_prices: sizeMap(catPrices),
+      foot_rates: m === 'per_foot' ? sizeMap(footRates) : {},
       category_hours: sizeMap(catHours),
       requires_cert: form.guide_key ? form.requires_cert : false,
       est_hours: lo, est_hours_max: hi,
@@ -195,13 +198,14 @@ export default function ServiceEdit() {
 
       <Section title="By size class">
         <T variant="small" style={{ marginBottom: space.sm }}>
-          {m === 'per_category' ? 'Price and hours for each size. ' : 'Hours for each size (optional). '}
+          {m === 'per_category' ? 'Price and hours for each size. ' : m === 'per_foot' ? 'Rate per foot and hours for each size (blank uses the rate above). ' : 'Hours for each size (optional). '}
           Hours are used for scheduling and job costing; blank uses the time above.
         </T>
         <Card style={{ padding: space.md }}>
           <Row style={{ marginBottom: 4 }}>
             <T variant="small" style={{ flex: 1 }}>Size</T>
             {m === 'per_category' ? <T variant="small" style={{ width: 96 }}>Price ($)</T> : null}
+            {m === 'per_foot' ? <T variant="small" style={{ width: 96 }}>$ per foot</T> : null}
             <T variant="small" style={{ width: 80 }}>Hours</T>
           </Row>
           {sizes.map((c) => (
@@ -210,6 +214,10 @@ export default function ServiceEdit() {
               {m === 'per_category' ? (
                 <Field style={{ width: 96, marginBottom: space.sm }} keyboardType="decimal-pad" placeholder="—" accessibilityLabel={`${c.label} price`}
                   value={catPrices[c.value] ?? ''} onChangeText={(v) => setCatPrices((p) => ({ ...p, [c.value]: v.replace(/[^0-9.]/g, '') }))} />
+              ) : null}
+              {m === 'per_foot' ? (
+                <Field style={{ width: 96, marginBottom: space.sm }} keyboardType="decimal-pad" placeholder={form.price_per_foot || '—'} accessibilityLabel={`${c.label} rate per foot`}
+                  value={footRates[c.value] ?? ''} onChangeText={(v) => setFootRates((p) => ({ ...p, [c.value]: v.replace(/[^0-9.]/g, '') }))} />
               ) : null}
               <Field style={{ width: 80, marginBottom: space.sm }} keyboardType="decimal-pad" placeholder="—" accessibilityLabel={`${c.label} hours`}
                 value={catHours[c.value] ?? ''} onChangeText={(v) => setCatHours((p) => ({ ...p, [c.value]: v.replace(/[^0-9.]/g, '') }))} />

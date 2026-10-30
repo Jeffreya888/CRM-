@@ -24,7 +24,7 @@ export function AssetModelPicker({
   label,
   placeholder,
 }: {
-  assetType: 'aircraft' | 'watercraft';
+  assetType: 'aircraft' | 'watercraft' | 'vehicle';
   /** Current free text (usually "Manufacturer Model"). */
   text: string;
   onChangeText: (text: string) => void;
@@ -57,14 +57,15 @@ export function AssetModelPicker({
   }, [text, open, assetType]);
 
   const boats = assetType === 'watercraft';
+  const cars = assetType === 'vehicle';
   const showList = open && text.trim().length >= 2;
 
   return (
     <View style={{ marginBottom: space.lg }}>
       <Field
-        label={label ?? (boats ? 'Make & model' : 'Aircraft type')}
+        label={label ?? (boats || cars ? 'Make & model' : 'Aircraft type')}
         icon="search"
-        placeholder={placeholder ?? (boats ? 'e.g. Boston Whaler 280 Outrage' : 'e.g. G650, Citation CJ4, King Air 350')}
+        placeholder={placeholder ?? (boats ? 'e.g. Boston Whaler 280 Outrage' : cars ? 'e.g. Toyota Tacoma, Tahoe, Model Y' : 'e.g. G650, Citation CJ4, King Air 350')}
         value={text}
         autoCorrect={false}
         onChangeText={(v) => {
@@ -72,7 +73,7 @@ export function AssetModelPicker({
           setOpen(true);
           if (v.trim().length < 2) setResults([]);
         }}
-        hint={selectedId && !showList ? undefined : boats ? 'Pick a model to fill in size and beam, or keep typing your own.' : 'Pick a model to fill in size class, length and wingspan, or keep typing your own.'}
+        hint={selectedId && !showList ? undefined : boats ? 'Pick a model to fill in size and beam, or keep typing your own.' : cars ? 'Pick a model to set the size class, or keep typing your own.' : 'Pick a model to fill in size class, length and wingspan, or keep typing your own.'}
         style={{ marginBottom: selectedId && !showList ? space.sm : 0 }}
       />
       {selectedId && !showList ? (
@@ -98,7 +99,7 @@ export function AssetModelPicker({
                 pressed && { backgroundColor: colors.cardRaised },
               ]}
             >
-              <Ionicons name={boats ? 'boat-outline' : m.category === 'helicopter' ? 'navigate-outline' : 'airplane-outline'} size={18} color={colors.primaryText} />
+              <Ionicons name={boats ? 'boat-outline' : cars ? (m.category === 'motorcycle' ? 'bicycle-outline' : 'car-outline') : m.category === 'helicopter' ? 'navigate-outline' : 'airplane-outline'} size={18} color={colors.primaryText} />
               <View style={{ flex: 1 }}>
                 <T style={{ fontWeight: '600' }}>{m.manufacturer} {m.model}</T>
                 <T variant="small">
