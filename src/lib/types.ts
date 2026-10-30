@@ -204,7 +204,7 @@ export interface RecurringSchedule {
   next_index: number; visits_created: number; active: boolean; created_at: string;
 }
 
-export type AutomationKey = 'job_reminder' | 'on_our_way' | 'ready_for_pickup' | 'job_complete' | 'invoice_reminders' | 'review_request' | 'quote_follow_up' | 'recurring_heads_up' | 'care_plan_charge';
+export type AutomationKey = 'job_reminder' | 'on_our_way' | 'ready_for_pickup' | 'quote_win_back' | 'customer_win_back' | 'service_due' | 'job_rebook' | 'job_complete' | 'invoice_reminders' | 'review_request' | 'quote_follow_up' | 'recurring_heads_up' | 'care_plan_charge';
 export interface Automation { org_id: string; key: AutomationKey; enabled: boolean; channel: 'email' | 'sms' | 'both'; settings: Record<string, any>; subject: string | null; body: string }
 
 export interface Message {

@@ -107,6 +107,10 @@ export function AutomationCard({ a, editable, smsActive, hasReviewLink, onSaved 
             </Row>
           ) : null}
           {a.key === 'recurring_heads_up' ? numField('days_before', 'Days before the visit', 'Each recurring schedule can choose its own number of days.') : null}
+          {a.key === 'quote_win_back' ? numField('after_days', 'Days after the quote closes', 'Sent once per quote, only if the customer has nothing booked and no newer quote.') : null}
+          {a.key === 'customer_win_back' ? numField('after_days', 'Days since their last visit', 'Sent once per quiet stretch (minimum 30 days), only if nothing is booked.') : null}
+          {a.key === 'service_due' ? numField('days_before', 'Days before the service is due', 'Uses the service reminders on each asset (e.g. coating maintenance every 12 months).') : null}
+          {a.key === 'job_rebook' ? numField('after_days', 'Days after the cancellation', 'Sent once per canceled job, only if nothing else is booked.') : null}
           {a.key === 'on_our_way' ? <T variant="small" style={{ marginBottom: space.md }}>Technicians send this from the job screen when they leave.</T> : null}
 
           {a.key === 'invoice_reminders' ? (

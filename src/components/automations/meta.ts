@@ -2,7 +2,7 @@ import type { IconName } from '../ui';
 import type { AutomationKey } from '../../lib/types';
 
 export const AUTOMATION_ORDER: AutomationKey[] = [
-  'job_reminder', 'on_our_way', 'ready_for_pickup', 'job_complete', 'invoice_reminders', 'review_request', 'quote_follow_up', 'recurring_heads_up', 'care_plan_charge',
+  'job_reminder', 'on_our_way', 'ready_for_pickup', 'job_complete', 'invoice_reminders', 'review_request', 'quote_follow_up', 'recurring_heads_up', 'care_plan_charge', 'quote_win_back', 'customer_win_back', 'service_due', 'job_rebook',
 ];
 
 export const AUTOMATION_META: Record<AutomationKey, { title: string; icon: IconName; description: string }> = {
@@ -15,6 +15,10 @@ export const AUTOMATION_META: Record<AutomationKey, { title: string; icon: IconN
   quote_follow_up: { title: 'Quote follow-ups', icon: 'document-text-outline', description: 'Nudges customers who have not answered a quote, and again before it expires.' },
   recurring_heads_up: { title: 'Recurring visit heads-up', icon: 'repeat-outline', description: 'Lets the customer know a recurring visit is coming up, with a link to ask for another time.' },
   care_plan_charge: { title: 'Care plan receipts', icon: 'card-outline', description: 'Sends a receipt after each monthly care plan charge.' },
+  quote_win_back: { title: 'Win back lost quotes', icon: 'refresh-circle-outline', description: 'One friendly message after a quote expires or is declined, inviting the customer to get an updated quote.' },
+  customer_win_back: { title: 'Win back quiet customers', icon: 'person-add-outline', description: 'Reaches customers who have not booked in a while, with a link to pick a time.' },
+  service_due: { title: 'Service due', icon: 'calendar-number-outline', description: 'Tells the customer when a recurring service (coating maintenance, brightwork, washes) is due, with a link to book.' },
+  job_rebook: { title: 'Rebook canceled jobs', icon: 'calendar-outline', description: 'A few days after a job is canceled, invites the customer to pick a new date.' },
 };
 
 export const CHANNEL_OPTIONS = [

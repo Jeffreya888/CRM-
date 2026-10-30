@@ -37,7 +37,7 @@ do $$ begin
   assert (select cardinality(checklist) from services where guide_key = 'exterior_wash')
        = (select jsonb_array_length(steps) from service_guides where key = 'exterior_wash' and org_id is null), 'checklist from guide steps';
   assert (select recur_every || ' ' || recur_unit from services where guide_key = 'ceramic_coating') = '12 month', 'recurring in months';
-  assert (select count(*) from automations) = 9, 'automations seeded';
+  assert (select count(*) from automations) = 13, 'automations seeded';
   assert (select count(*) from automations where enabled and key in ('job_reminder','invoice_reminders')) = 2, 'smart defaults on';
   assert (select count(*) from crew_hours) = 5, 'default crew hours';
   assert (public.dashboard_stats((select v from ctx where k='alpha')) ? 'revenue_week'), 'weekly revenue stat';
@@ -1249,5 +1249,15 @@ do $$ declare res jsonb; ids uuid[]; o uuid := (select ctx.v from ctx where k='e
 end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
+
+-- ---------- Win-back follow-ups ----------------------------------------------
+do $$ declare j uuid := (select v from ctx where k='mob'); begin
+  assert (select count(*) from automations where key in ('quote_win_back','customer_win_back','service_due','job_rebook') and enabled)
+       = 4 * (select count(*) from organizations), 'win-back automations seeded and on';
+  update jobs set status = 'cancelled' where id = j;
+  assert (select cancelled_at is not null from jobs where id = j), 'cancel time stamped';
+  update jobs set status = 'scheduled' where id = j;
+  assert (select cancelled_at is null from jobs where id = j), 'cleared when un-canceled';
+end $$;
 
 \echo ALL FLOW TESTS PASSED

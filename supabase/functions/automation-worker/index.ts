@@ -359,6 +359,10 @@ async function automations(db: SupabaseClient) {
   await sub("review_request", () => reviewRequests(db));
   await sub("quote_follow_up", () => quoteFollowUps(db));
   await sub("recurring_heads_up", () => recurringHeadsUp(db));
+  await sub("quote_win_back", () => quoteWinBack(db));
+  await sub("customer_win_back", () => customerWinBack(db));
+  await sub("service_due", () => serviceDue(db));
+  await sub("job_rebook", () => jobRebook(db));
   await sub("auto_sent_invoices", () => autoSentInvoices(db));
   // care_plan_charge receipts are sent by stripe-webhook when the charge succeeds.
   return out;
@@ -575,6 +579,165 @@ async function quoteFollowUps(db: SupabaseClient) {
         await db.from("quotes").update({ follow_ups_sent: q.follow_ups_sent + 1, last_follow_up_at: new Date().toISOString() }).eq("id", q.id);
         n += queued;
       }
+    }
+  }
+  return n;
+}
+
+// ---------------------------------------------------------------------------
+// Win-back: work that slipped away. Each goes out once, only within a recent
+// window (no blasting old history), and never when the customer has work booked.
+// ---------------------------------------------------------------------------
+const DAY = 864e5;
+const BOOKED = ["tentative", "scheduled", "in_progress", "on_hold"];
+
+/** Customers (of these companies) with a job booked from now on. */
+async function customersWithWorkBooked(db: SupabaseClient, customerIds: string[]): Promise<Set<string>> {
+  const booked = new Set<string>();
+  for (const ids of chunk([...new Set(customerIds)], 200)) {
+    const { data } = await db.from("jobs").select("customer_id").in("customer_id", ids).in("status", BOOKED)
+      .or(`scheduled_start.is.null,scheduled_start.gte.${new Date(Date.now() - DAY).toISOString()}`);
+    for (const r of data ?? []) booked.add(r.customer_id);
+  }
+  return booked;
+}
+
+/** Expired or declined quotes: one message `after_days` later (within 45 days of closing). */
+export async function quoteWinBack(db: SupabaseClient) {
+  const autos = await enabledAutomations(db, "quote_win_back");
+  if (!autos.size) return 0;
+  const now = Date.now();
+  let n = 0;
+  for (const ids of chunk([...autos.keys()], 100)) {
+    const { data, error } = await db.from("quotes")
+      .select(`id, org_id, number, status, total, customer_id, valid_until, valid_until_at, declined_at,
+        customer:customers(${CUSTOMER_COLS}), aircraft:aircraft(tail_number, manufacturer, model)`)
+      // Unanswered quotes past their deadline count as expired even if nobody opened them since.
+      .in("org_id", ids).in("status", ["expired", "declined", "sent", "viewed"]).is("superseded_by", null).is("win_back_sent_at", null)
+      .gte("created_at", new Date(now - 180 * DAY).toISOString());
+    if (error) throw error;
+    const rows = (data ?? []) as Row[];
+    const booked = await customersWithWorkBooked(db, rows.map((q) => q.customer_id));
+    for (const q of rows) {
+      const { a, org } = autos.get(q.org_id)!;
+      const closed = q.status === "declined" && q.declined_at ? Date.parse(q.declined_at)
+        : q.valid_until_at ? Date.parse(q.valid_until_at) : Date.parse(`${q.valid_until}T23:59:00Z`);
+      if (closed > now) continue; // still open: quote_follow_up handles it
+      const due = closed + Number(a.settings?.after_days ?? 10) * DAY;
+      if (!(due <= now) || now - closed > 45 * DAY) continue;
+      if (booked.has(q.customer_id)) continue;
+      // A newer quote for the same customer already replaced this one.
+      const { count } = await db.from("quotes").select("id", { count: "exact", head: true })
+        .eq("customer_id", q.customer_id).gt("created_at", new Date(closed).toISOString());
+      if (count) {
+        await db.from("quotes").update({ win_back_sent_at: new Date().toISOString() }).eq("id", q.id);
+        continue;
+      }
+      const c = one(q.customer), asset = one(q.aircraft);
+      n += await queueAutomation(db, a, org, c, {
+        ...baseValues(org, c), asset: assetLabel(asset), tail: asset?.tail_number ?? "",
+        quote_number: q.number, total: money(q.total, org.currency), amount: money(q.total, org.currency),
+      }, { dedupe: `quote_win_back:${q.id}`, quote_id: q.id });
+      await db.from("quotes").update({ win_back_sent_at: new Date().toISOString() }).eq("id", q.id);
+    }
+  }
+  return n;
+}
+
+/** Customers whose last job was `after_days` ago with nothing booked: one message per quiet period. */
+export async function customerWinBack(db: SupabaseClient) {
+  const autos = await enabledAutomations(db, "customer_win_back");
+  if (!autos.size) return 0;
+  const now = Date.now();
+  let n = 0;
+  for (const [orgId, { a, org }] of autos) {
+    const after = Math.max(30, Number(a.settings?.after_days ?? 120));
+    // Last finished visit per customer, in the window [after, after + 60 days] ago.
+    const { data, error } = await db.from("jobs")
+      .select(`customer_id, scheduled_start, actual_end, customer:customers(${CUSTOMER_COLS}, status, win_back_sent_at), aircraft:aircraft(tail_number, manufacturer, model)`)
+      .eq("org_id", orgId).in("status", ["completed", "invoiced"])
+      .gte("scheduled_start", new Date(now - (after + 60) * DAY).toISOString())
+      .order("scheduled_start", { ascending: false }).limit(2000);
+    if (error) throw error;
+    const last = new Map<string, Row>();
+    for (const j of (data ?? []) as Row[]) if (!last.has(j.customer_id)) last.set(j.customer_id, j);
+    const candidates = [...last.values()].filter((j) => {
+      const when = Date.parse(j.actual_end ?? j.scheduled_start);
+      const c = one(j.customer);
+      return when <= now - after * DAY && c && c.status !== "inactive" && !(c.win_back_sent_at && Date.parse(c.win_back_sent_at) > when);
+    });
+    if (!candidates.length) continue;
+    // Anyone with a more recent visit (outside this page) or work booked is not lapsed.
+    const booked = await customersWithWorkBooked(db, candidates.map((j) => j.customer_id));
+    for (const j of candidates) {
+      if (booked.has(j.customer_id)) continue;
+      const { count } = await db.from("jobs").select("id", { count: "exact", head: true })
+        .eq("customer_id", j.customer_id).in("status", ["completed", "invoiced"]).gt("scheduled_start", j.scheduled_start);
+      if (count) continue;
+      const c = one(j.customer), asset = one(j.aircraft);
+      n += await queueAutomation(db, a, org, c, { ...baseValues(org, c), asset: assetLabel(asset), tail: asset?.tail_number ?? "" },
+        { dedupe: `customer_win_back:${j.customer_id}:${(j.actual_end ?? j.scheduled_start).slice(0, 10)}` });
+      await db.from("customers").update({ win_back_sent_at: new Date().toISOString() }).eq("id", j.customer_id);
+    }
+  }
+  return n;
+}
+
+/** Service reminders coming due: the customer hears `days_before` the due date, once per due date. */
+export async function serviceDue(db: SupabaseClient) {
+  const autos = await enabledAutomations(db, "service_due");
+  if (!autos.size) return 0;
+  const now = Date.now();
+  let n = 0;
+  for (const ids of chunk([...autos.keys()], 100)) {
+    const { data, error } = await db.from("service_reminders")
+      .select(`id, org_id, title, due_on, customer_notified_for, service:services(name),
+        aircraft:aircraft(tail_number, manufacturer, model, customer:customers(${CUSTOMER_COLS}))`)
+      .in("org_id", ids).in("status", ["upcoming", "due"])
+      .lte("due_on", new Date(now + 60 * DAY).toISOString().slice(0, 10))
+      .gte("due_on", new Date(now - 14 * DAY).toISOString().slice(0, 10));
+    if (error) throw error;
+    const rows = ((data ?? []) as Row[]).filter((r) => r.customer_notified_for !== r.due_on);
+    const asset = (r: Row) => one(r.aircraft);
+    const booked = await customersWithWorkBooked(db, rows.map((r) => one(asset(r)?.customer)?.id).filter(Boolean));
+    for (const r of rows) {
+      const { a, org } = autos.get(r.org_id)!;
+      const daysBefore = Number(a.settings?.days_before ?? 7);
+      if (Date.parse(`${r.due_on}T12:00:00Z`) - daysBefore * DAY > now) continue;
+      const c = one(asset(r)?.customer);
+      if (!c) continue;
+      if (!booked.has(c.id)) {
+        n += await queueAutomation(db, a, org, c, {
+          ...baseValues(org, c), asset: assetLabel(asset(r)), tail: asset(r)?.tail_number ?? "",
+          service: one(r.service)?.name ?? r.title, date: fmtYmd(r.due_on), due_phrase: duePhrase(r.due_on),
+        }, { dedupe: `service_due:${r.id}:${r.due_on}` });
+      }
+      await db.from("service_reminders").update({ customer_notified_for: r.due_on }).eq("id", r.id);
+    }
+  }
+  return n;
+}
+
+/** Canceled jobs: "pick a new date?" `after_days` later (within 21 days), unless something is booked. */
+export async function jobRebook(db: SupabaseClient) {
+  const autos = await enabledAutomations(db, "job_rebook");
+  if (!autos.size) return 0;
+  const now = Date.now();
+  let n = 0;
+  for (const ids of chunk([...autos.keys()], 100)) {
+    const { data, error } = await db.from("jobs").select(JOB_SELECT + ", customer_id, cancelled_at")
+      .in("org_id", ids).eq("status", "cancelled").is("rebook_sent_at", null)
+      .gte("cancelled_at", new Date(now - 21 * DAY).toISOString());
+    if (error) throw error;
+    const rows = (data ?? []) as Row[];
+    const booked = await customersWithWorkBooked(db, rows.map((j) => j.customer_id));
+    for (const j of rows) {
+      const { a, org } = autos.get(j.org_id)!;
+      if (Date.parse(j.cancelled_at) + Number(a.settings?.after_days ?? 3) * DAY > now) continue;
+      if (!booked.has(j.customer_id)) {
+        n += await queueAutomation(db, a, org, one(j.customer), jobValues(org, j, j.scheduled_start), { dedupe: `job_rebook:${j.id}`, job_id: j.id });
+      }
+      await db.from("jobs").update({ rebook_sent_at: new Date().toISOString() }).eq("id", j.id);
     }
   }
   return n;
