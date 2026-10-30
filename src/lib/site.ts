@@ -1,4 +1,4 @@
-// Copy and links for the public Flight Ready website (src/app/(site)).
+// Copy and links for the public Tarmo website (src/app/(site)).
 import type { ComponentProps } from 'react';
 import type Ionicons from '@expo/vector-icons/Ionicons';
 import { PLANS, TRIAL_AI_CHECKS, TRIAL_AI_QUESTIONS } from './plans';
@@ -7,7 +7,7 @@ import { APP_NAME } from './config';
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 /** Store listings. Replace the placeholders once the apps are live. */
-export const APP_STORE_URL = process.env.EXPO_PUBLIC_APP_STORE_URL ?? 'https://apps.apple.com/app/flight-ready/id0000000000';
+export const APP_STORE_URL = process.env.EXPO_PUBLIC_APP_STORE_URL ?? 'https://apps.apple.com/app/tarmo/id0000000000';
 export const PLAY_STORE_URL = process.env.EXPO_PUBLIC_PLAY_STORE_URL ?? 'https://play.google.com/store/apps/details?id=com.flightready.app';
 
 export const SITE_TAGLINE = 'The operating system for professional detailing — aviation, marine and automotive';
@@ -134,7 +134,7 @@ export const GUIDE_EXAMPLES = [
   'Leather Shampoo & Conditioning',
 ];
 
-/** The four capabilities that set Flight Ready apart (homepage spotlight). */
+/** The four capabilities that set Tarmo apart (homepage spotlight). */
 export const EDGE: { title: string; body: string; icon: IconName; tone: 'blue' | 'gold' | 'green'; sample: { label: string; value: string }[] }[] = [
   {
     title: 'FAA tail-number autofill', icon: 'airplane-outline', tone: 'blue',
@@ -183,10 +183,10 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 ];
 
 export const HOME_FAQ: { q: string; a: string }[] = [
-  { q: 'Who is Flight Ready for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
+  { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
   { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
-  { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Flight Ready looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
+  { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Tarmo looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
   { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
   { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },
   { q: 'How do my customers pay?', a: 'Connect Stripe and customers pay invoices, deposits and care plans by card from a private link. Prefer checks or ACH? Record them in a tap.' },
@@ -197,7 +197,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
 export const PRICING_FAQ: { q: string; a: string }[] = [
   { q: 'How does billing work?', a: `Subscribe on the web or in the app. On the web you pay by card (billed securely by Stripe); in the iPhone or Android app the subscription is billed by Apple (App Store) or Google (Google Play). Your plan renews automatically each month or year until you cancel.` },
   { q: 'Can I cancel anytime?', a: 'Yes. If you subscribed on the web, cancel anytime from Settings → Manage billing. If you subscribed in the app, cancel from your App Store or Google Play subscription settings at least 24 hours before renewal. You keep access until the end of the paid period, and your data stays available to export.' },
-  { q: 'What is the platform fee?', a: 'When your customers pay you by card through Flight Ready (invoices, deposits, care plans), a small platform fee applies: 1.5% on Solo, 1% on Team and 0.5% on Fleet. It is separate from Stripe’s own processing fee. Payments you record yourself — cash, check, ACH outside the app — carry no platform fee.' },
+  { q: 'What is the platform fee?', a: 'When your customers pay you by card through Tarmo (invoices, deposits, care plans), a small platform fee applies: 1.5% on Solo, 1% on Team and 0.5% on Fleet. It is separate from Stripe’s own processing fee. Payments you record yourself — cash, check, ACH outside the app — carry no platform fee.' },
   { q: 'What happens after the free trial?', a: `Your ${TRIAL_DAYS}-day trial includes every feature. When it ends, pick a plan to keep adding records. Nothing is deleted, and you can still view and export your data.` },
   { q: 'Can I export my data?', a: 'Yes. Owners can download a full export (spreadsheets plus photos) at any time from Settings.' },
   { q: 'Can I change plans later?', a: 'Yes, upgrade or downgrade anytime. Web subscriptions change in Settings → Manage billing; app subscriptions are changed through the App Store or Google Play and take effect according to their rules.' },

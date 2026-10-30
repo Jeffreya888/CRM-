@@ -32,7 +32,7 @@ export function LineItemsEditor({
   taxRate: number;
   currency?: string;
   hideDiscount?: boolean;
-  /** Optional price override for a service (e.g. the Flight Ready price guide for this model). Return null to use normal pricing. */
+  /** Optional price override for a service (e.g. the Tarmo price guide for this model). Return null to use normal pricing. */
   priceFor?: (s: Service) => number | null;
   /** Optional label shown above the total (e.g. the package name). */
   title?: string;

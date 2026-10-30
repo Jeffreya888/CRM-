@@ -1,4 +1,4 @@
-# Flight Ready — CRM for aircraft, auto & marine detailers
+# Tarmo — CRM for aircraft, auto & marine detailers
 
 A multi-tenant CRM + field-service app for detailing companies, built to ship on
 the **Apple App Store** (plus Google Play and the web) and sold as a subscription.
@@ -20,7 +20,7 @@ Full feature spec agreed with the owner: [docs/feature-plan.md](docs/feature-pla
 
 **Business types & assets** — aircraft, vehicles and watercraft (choose at sign-up, add later).
 Built-in catalog of 545 aircraft and 604 boat models with size class, length and wingspan/beam;
-Flight Ready price guide per model (company regional adjustment). **FAA tail number autofill**: type
+Tarmo price guide per model (company regional adjustment). **FAA tail number autofill**: type
 an N-number and the public FAA registry fills in make, model (matched to the catalog), year, serial
 and registered owner (registry imported weekly by `.github/workflows/faa-registry.yml`).
 

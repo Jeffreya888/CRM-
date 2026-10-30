@@ -1,4 +1,4 @@
-// Dark navy theme sampled from the original Flight Ready design.
+// Dark navy theme sampled from the original Tarmo design.
 export const colors = {
   primary: '#4698E1',
   primaryDark: '#2F7BC4',

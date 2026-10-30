@@ -1,4 +1,4 @@
-// Flight Ready platform admin actions (users listed in platform_admins only).
+// Tarmo platform admin actions (users listed in platform_admins only).
 // POST { action: 'set_sms', org_id, status, number? }
 //      { action: 'set_integration', id, status }
 //      { action: 'support_handled', id }
@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
         if (status === "active") {
           await outbox(db, { org_id, audience: "owners", kind: "texting_ready", title: "Customer texting is ready", body: `Your texting number is ${patch.sms_number ?? org.sms_number}. Turn texting on in Customer texting.`, url: "/texting" });
         } else if (status === "suspended") {
-          await outbox(db, { org_id, audience: "owners", kind: "texting_suspended", title: "Customer texting is paused", body: "Contact Flight Ready support for details.", url: "/texting" });
+          await outbox(db, { org_id, audience: "owners", kind: "texting_suspended", title: "Customer texting is paused", body: "Contact Tarmo support for details.", url: "/texting" });
         }
         return json({ ok: true });
       }
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
           await outbox(db, {
             org_id: r.org_id, audience: "owners", kind: "integration_status",
             title: `${PROVIDERS[r.provider] ?? r.provider} connection ${status === "live" ? "is live" : "approved"}`,
-            body: status === "live" ? "Your external schedule now shows in Flight Ready." : "The vendor granted access. We are finishing the connection.",
+            body: status === "live" ? "Your external schedule now shows in Tarmo." : "The vendor granted access. We are finishing the connection.",
             url: "/integrations",
           });
         }

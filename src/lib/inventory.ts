@@ -169,14 +169,14 @@ export function parseWhole(s: string | null | undefined): number | null {
 // ---------------------------------------------------------------------------
 // Scanning & QR labels
 // ---------------------------------------------------------------------------
-export const APP_SCHEME = 'flightready';
+export const APP_SCHEME = 'tarmo';
 export const equipmentQrUrl = (token: string) => `${APP_SCHEME}://equipment/${token}`;
 
 export type ScanResult = { kind: 'equipment'; token: string } | { kind: 'code'; code: string };
 /** Recognises our equipment QR labels; anything else is a product barcode. */
 export function parseScan(raw: string): ScanResult {
   const text = raw.trim();
-  const m = /^(?:flightready:\/\/|https?:\/\/[^/]+\/)(?:equipment\/(?:qr\/)?)([A-Za-z0-9]+)\/?$/i.exec(text);
+  const m = /^(?:tarmo:\/\/|https?:\/\/[^/]+\/)(?:equipment\/(?:qr\/)?)([A-Za-z0-9]+)\/?$/i.exec(text);
   if (m) return { kind: 'equipment', token: m[1]! };
   return { kind: 'code', code: text };
 }
@@ -210,7 +210,7 @@ export function labelsHtml(items: Pick<Equipment, 'name' | 'serial_number' | 'qr
       <div class="name">${esc(e.name)}</div>
       ${e.serial_number ? `<div class="meta">S/N ${esc(e.serial_number)}</div>` : ''}
       ${e.assigned_label ? `<div class="meta">${esc(e.assigned_label)}</div>` : ''}
-      <div class="hint">${company ? esc(company) + ' · ' : ''}Scan in Flight Ready to view history or report a problem</div>
+      <div class="hint">${company ? esc(company) + ' · ' : ''}Scan in Tarmo to view history or report a problem</div>
     </div>`).join('');
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Equipment labels</title>

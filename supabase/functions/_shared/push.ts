@@ -5,7 +5,7 @@ export type PrefKey = "job_assignments" | "service_reminders" | "payments" | "qu
 export type PushToken = { token: string; user_id: string; private: boolean };
 
 /** Generic text shown on the lock screen when someone turned on "Private lock screen". */
-export const PRIVATE_TITLE = "Flight Ready";
+export const PRIVATE_TITLE = "Tarmo";
 export const PRIVATE_BODY = "You have a new update. Open the app to see it.";
 
 // Tokens whose owner wants a private lock screen. Filled by tokensFor() so that

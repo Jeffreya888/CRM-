@@ -3,8 +3,8 @@
 import type { LegalSection } from './LegalDoc';
 
 export const PRIVACY_INTRO = [
-  'This Privacy Policy explains how [Legal company name] ("Flight Ready", "we", "us" or "our") collects, uses, shares and protects personal information when you visit our website, use the Flight Ready mobile and web applications, or otherwise interact with us (together, the "Service").',
-  'Flight Ready is business software for detailing companies that service aircraft, vehicles and watercraft. If you are a customer of a detailing company that uses Flight Ready, that company decides what information it keeps about you; see "Customer data controlled by detailing companies" below.',
+  'This Privacy Policy explains how [Legal company name] ("Tarmo", "we", "us" or "our") collects, uses, shares and protects personal information when you visit our website, use the Tarmo mobile and web applications, or otherwise interact with us (together, the "Service").',
+  'Tarmo is business software for detailing companies that service aircraft, vehicles and watercraft. If you are a customer of a detailing company that uses Tarmo, that company decides what information it keeps about you; see "Customer data controlled by detailing companies" below.',
 ];
 
 export const PRIVACY: LegalSection[] = [
@@ -65,7 +65,7 @@ export const PRIVACY: LegalSection[] = [
   {
     title: 'Customer data controlled by detailing companies',
     body: [
-      'Each detailing company that uses Flight Ready controls the records it stores about its own customers, contacts, crew and assets ("Customer Data"). We process Customer Data only to provide the Service to that company and as it instructs, and we keep each company’s data separated from every other company’s data.',
+      'Each detailing company that uses Tarmo controls the records it stores about its own customers, contacts, crew and assets ("Customer Data"). We process Customer Data only to provide the Service to that company and as it instructs, and we keep each company’s data separated from every other company’s data.',
       'If you are a customer of a detailing company and want to access, correct or delete information about you, please contact that company directly. If you contact us, we will forward your request to the company and assist it as required by law.',
     ],
   },
@@ -140,14 +140,14 @@ export const PRIVACY: LegalSection[] = [
 ];
 
 export const TERMS_INTRO = [
-  'These Terms of Service ("Terms") are a legal agreement between you and [Legal company name] ("Flight Ready", "we", "us" or "our") and govern your use of the Flight Ready website, mobile and web applications and related services (the "Service"). By creating an account or using the Service you agree to these Terms and to our Privacy Policy. If you use the Service on behalf of a company, you agree to these Terms on its behalf and confirm that you have authority to do so.',
+  'These Terms of Service ("Terms") are a legal agreement between you and [Legal company name] ("Tarmo", "we", "us" or "our") and govern your use of the Tarmo website, mobile and web applications and related services (the "Service"). By creating an account or using the Service you agree to these Terms and to our Privacy Policy. If you use the Service on behalf of a company, you agree to these Terms on its behalf and confirm that you have authority to do so.',
 ];
 
 export const TERMS: LegalSection[] = [
   {
     title: 'The Service',
     body: [
-      'Flight Ready is business management software for detailing companies that care for aircraft, vehicles and watercraft. It includes tools for scheduling, job documentation, quotes, invoices, payments, customer communication, recurring care, supplies, team management and reporting, along with built-in SOPs (step-by-step service guides), price guides, FAA registry lookup and AI photo condition reports. We may add, change or remove features over time.',
+      'Tarmo is business management software for detailing companies that care for aircraft, vehicles and watercraft. It includes tools for scheduling, job documentation, quotes, invoices, payments, customer communication, recurring care, supplies, team management and reporting, along with built-in SOPs (step-by-step service guides), price guides, FAA registry lookup and AI photo condition reports. We may add, change or remove features over time.',
     ],
   },
   {
@@ -183,7 +183,7 @@ export const TERMS: LegalSection[] = [
   {
     title: 'Payments and the platform fee',
     body: [
-      'Companies can accept card payments from their customers (for example, invoices, quote deposits and care plans) through Stripe Connect. To do so you must create a Stripe account and accept Stripe’s terms, including the Stripe Connected Account Agreement. Stripe, not Flight Ready, processes and settles those payments.',
+      'Companies can accept card payments from their customers (for example, invoices, quote deposits and care plans) through Stripe Connect. To do so you must create a Stripe account and accept Stripe’s terms, including the Stripe Connected Account Agreement. Stripe, not Tarmo, processes and settles those payments.',
       'For each payment processed through the Service, we charge a platform fee based on your plan at the time of the payment: 1.5% on Solo, 1% on Team and 0.5% on Fleet. The platform fee is deducted automatically from the payment and is separate from, and in addition to, Stripe’s processing fees. Payments you record yourself (such as cash, checks or transfers made outside the Service) do not incur a platform fee. We may change the platform fee with at least 30 days’ notice.',
       'You are responsible for your own taxes, refunds, chargebacks and disputes with your customers, and for the accuracy of the amounts you charge.',
     ],
@@ -217,7 +217,7 @@ export const TERMS: LegalSection[] = [
   {
     title: 'Aviation and service disclaimer',
     body: [
-      'Flight Ready is a business management tool. It does not provide aircraft maintenance, inspection or airworthiness advice, and nothing in the Service replaces the aircraft, vehicle, vessel or product manufacturer’s manuals, instructions or approved procedures, or applicable regulations.',
+      'Tarmo is a business management tool. It does not provide aircraft maintenance, inspection or airworthiness advice, and nothing in the Service replaces the aircraft, vehicle, vessel or product manufacturer’s manuals, instructions or approved procedures, or applicable regulations.',
       'The built-in SOPs (service guides) and price guides are general guidance only. Always follow the manufacturer’s manual and the owner or operator’s requirements, use products approved for the surface being treated, and rely on qualified personnel. Suggested prices are estimates and are not a promise of any price or profit; you set your own prices. AI photo condition reports are automated estimates that can be wrong; confirm the condition in person before quoting or starting work. FAA registry details come from public FAA data that may be out of date; confirm registration details with the owner or operator. You are solely responsible for the work your company performs and for its safety and quality.',
     ],
   },
@@ -248,13 +248,13 @@ export const TERMS: LegalSection[] = [
   {
     title: 'Limitation of liability',
     body: [
-      'TO THE FULLEST EXTENT PERMITTED BY LAW, FLIGHT READY AND ITS AFFILIATES, OFFICERS, EMPLOYEES AND SUPPLIERS WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, REVENUE, DATA OR GOODWILL, OR FOR DAMAGE TO ANY AIRCRAFT, VEHICLE, VESSEL OR OTHER PROPERTY, ARISING OUT OF OR RELATED TO THE SERVICE. OUR TOTAL LIABILITY FOR ALL CLAIMS RELATED TO THE SERVICE WILL NOT EXCEED THE GREATER OF THE AMOUNTS YOU PAID FOR THE SERVICE AND PLATFORM FEES IN THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM, OR ONE HUNDRED U.S. DOLLARS (US$100). Some jurisdictions do not allow certain limitations, so some of these may not apply to you.',
+      'TO THE FULLEST EXTENT PERMITTED BY LAW, TARMO AND ITS AFFILIATES, OFFICERS, EMPLOYEES AND SUPPLIERS WILL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR PUNITIVE DAMAGES, OR FOR LOST PROFITS, REVENUE, DATA OR GOODWILL, OR FOR DAMAGE TO ANY AIRCRAFT, VEHICLE, VESSEL OR OTHER PROPERTY, ARISING OUT OF OR RELATED TO THE SERVICE. OUR TOTAL LIABILITY FOR ALL CLAIMS RELATED TO THE SERVICE WILL NOT EXCEED THE GREATER OF THE AMOUNTS YOU PAID FOR THE SERVICE AND PLATFORM FEES IN THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM, OR ONE HUNDRED U.S. DOLLARS (US$100). Some jurisdictions do not allow certain limitations, so some of these may not apply to you.',
     ],
   },
   {
     title: 'Indemnity',
     body: [
-      'You will defend, indemnify and hold harmless Flight Ready and its affiliates, officers and employees from any claims, damages, losses and expenses (including reasonable attorneys’ fees) arising from your company’s services and work, your Customer Data, your messages to customers, your use of the Service in violation of these Terms, or your violation of any law or third-party right.',
+      'You will defend, indemnify and hold harmless Tarmo and its affiliates, officers and employees from any claims, damages, losses and expenses (including reasonable attorneys’ fees) arising from your company’s services and work, your Customer Data, your messages to customers, your use of the Service in violation of these Terms, or your violation of any law or third-party right.',
     ],
   },
   {

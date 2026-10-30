@@ -7,7 +7,7 @@ import { colors, space } from '../../lib/theme';
 import { Button, Ionicons, T } from '../ui';
 
 /** Asks for Face ID / fingerprint (falls back to the device passcode). */
-export async function unlockWithBiometrics(prompt = 'Unlock Flight Ready'): Promise<boolean> {
+export async function unlockWithBiometrics(prompt = 'Unlock Tarmo'): Promise<boolean> {
   const res = await LocalAuthentication.authenticateAsync({ promptMessage: prompt, cancelLabel: 'Cancel', disableDeviceFallback: false });
   return res.success;
 }
@@ -89,7 +89,7 @@ export function AppLockGate() {
       <View style={{ width: 84, height: 84, borderRadius: 24, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name="lock-closed" size={40} color={colors.primary} />
       </View>
-      <T variant="h2" style={{ marginTop: space.lg }}>Flight Ready is locked</T>
+      <T variant="h2" style={{ marginTop: space.lg }}>Tarmo is locked</T>
       <T variant="muted" style={{ marginTop: space.xs, textAlign: 'center' }}>Unlock with Face ID, fingerprint or your phone passcode.</T>
       <Button style={{ marginTop: space.xl, minWidth: 220 }} icon="finger-print" title="Unlock" onPress={tryUnlock} />
     </View>

@@ -8,7 +8,7 @@ export const SOCIALS: { key: 'instagram' | 'facebook' | 'youtube' | 'linkedin'; 
   { key: 'linkedin', label: 'Linkedin', icon: 'logo-linkedin', bg: '#1C3350', fg: '#4A9EE0', base: 'https://linkedin.com/company/', placeholder: 'Company page or link' },
 ];
 
-/** Accepts a full URL or a handle like "@flightready". */
+/** Accepts a full URL or a handle like "@tarmo". */
 export function socialUrl(base: string, value: string): string {
   const v = value.trim();
   if (/^https?:\/\//i.test(v)) return v;

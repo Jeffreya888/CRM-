@@ -78,7 +78,7 @@ export default function EquipmentLabels() {
     >
       <Stack.Screen options={{ title }} />
       <T variant="muted" style={{ marginBottom: space.md }}>
-        Stick a label on each piece of equipment. Anyone on your team can scan it with Flight Ready to see its history, check it out, or report a problem.
+        Stick a label on each piece of equipment. Anyone on your team can scan it with Tarmo to see its history, check it out, or report a problem.
       </T>
       {items.length === 0 ? <EmptyState icon="qr-code-outline" title="No equipment to label" /> : null}
       <Row gap={space.md} style={{ flexWrap: 'wrap', justifyContent: 'center' }}>

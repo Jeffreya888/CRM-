@@ -16,7 +16,7 @@ export default function GettingStarted() {
       <Card>
         <T variant="h3">{allDone ? 'You’re all set up' : 'Your first 7 steps'}</T>
         <T variant="muted" style={{ marginTop: 2 }}>
-          {allDone ? 'Nice work. Your company is ready to run on Flight Ready.' : 'Each step checks itself off as you go.'}
+          {allDone ? 'Nice work. Your company is ready to run on Tarmo.' : 'Each step checks itself off as you go.'}
         </T>
         <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.cardRaised, marginTop: space.md, overflow: 'hidden' }}>
           <View style={{ width: `${pct}%`, height: 8, backgroundColor: allDone ? colors.success : colors.primary }} />

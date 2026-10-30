@@ -54,7 +54,7 @@ export default function Pricing() {
       </Container>
 
       <Section>
-        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Flight Ready — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from Stripe’s standard processing fee and drops as your plan grows. Cash, checks and payments you record yourself carry no platform fee." />
+        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Tarmo — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from Stripe’s standard processing fee and drops as your plan grows. Cash, checks and payments you record yourself carry no platform fee." />
         <Grid cols={isMobile ? 1 : 3} gap={16}>
           {PLANS.map((p) => (
             <Glass key={p.id} padding={24} style={{ flex: 1, alignItems: 'center' }}>

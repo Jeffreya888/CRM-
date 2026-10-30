@@ -37,15 +37,15 @@ Deno.serve(async (req) => {
 
     const html = emailLayout({
       brand: { name: org?.name, logo_url: org?.logo_url },
-      heading: `Join ${org?.name ?? "your team"} on Flight Ready`,
+      heading: `Join ${org?.name ?? "your team"} on Tarmo`,
       bodyHtml: `<p style="line-height:1.5">${esc(who)} invited you to join <b>${esc(org?.name)}</b> as <b>${esc(role)}</b>.</p>
-        <p style="line-height:1.5">Tap the button on your phone to accept, or open Flight Ready, choose <b>Join your company</b> and enter this code:</p>
+        <p style="line-height:1.5">Tap the button on your phone to accept, or open Tarmo, choose <b>Join your company</b> and enter this code:</p>
         <p style="font-size:26px;font-weight:700;letter-spacing:4px;margin:8px 0 4px">${esc(inv.code)}</p>`,
       button: { label: "Accept invitation", url: link },
       footerHtml: `<p style="color:#64748b;font-size:13px;line-height:1.5">This invitation expires ${esc(expires)}. If you weren't expecting it, you can ignore this email.</p>`,
     });
-    const text = `${who} invited you to join ${org?.name} on Flight Ready as ${role}.\n\nAccept: ${link}\nOr open Flight Ready → Join your company and enter code ${inv.code}.\n\nThis invitation expires ${expires}.`;
-    await sendEmail({ to: inv.email, subject: `You're invited to join ${org?.name} on Flight Ready`, html, text, replyTo: org?.email, fromName: org?.name, quota: { db, orgId: inv.org_id } });
+    const text = `${who} invited you to join ${org?.name} on Tarmo as ${role}.\n\nAccept: ${link}\nOr open Tarmo → Join your company and enter code ${inv.code}.\n\nThis invitation expires ${expires}.`;
+    await sendEmail({ to: inv.email, subject: `You're invited to join ${org?.name} on Tarmo`, html, text, replyTo: org?.email, fromName: org?.name, quota: { db, orgId: inv.org_id } });
     await db.from("invitations").update({ sent_at: new Date().toISOString() }).eq("id", inv.id);
     return json({ sent: true });
   } catch (e) {

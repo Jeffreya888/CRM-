@@ -5,7 +5,7 @@ import { PORTAL_URL, PRIVACY_URL, TERMS_URL } from '../../lib/config';
 
 const base = PORTAL_URL.replace(/\/+$/, '');
 
-/** Public Flight Ready website pages (hosted on the same web build as the portal). */
+/** Public Tarmo website pages (hosted on the same web build as the portal). */
 export const SITE = {
   home: base ? `${base}/welcome` : null,
   pricing: base ? `${base}/pricing` : null,

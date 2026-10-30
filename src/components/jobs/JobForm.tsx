@@ -22,7 +22,7 @@ interface Line {
   quantity: number;
   unit_price: number;
   taxable: boolean;
-  /** Where the price came from: Flight Ready guide, the service's own pricing, or typed by hand. */
+  /** Where the price came from: Tarmo guide, the service's own pricing, or typed by hand. */
   source: 'guide' | 'standard' | 'custom';
   tier?: number | null;
 }
@@ -130,7 +130,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
     if (asset.home_location_id) { setLocationId(asset.home_location_id); setInherited(true); }
   }
 
-  // Flight Ready price guide for the asset's model.
+  // Tarmo price guide for the asset's model.
   const guideKeys = useMemo(() => lines.map((l) => lk.services.find((s) => s.id === l.service_id)?.guide_key ?? '').filter(Boolean), [lines, lk.services]);
   const modelId = asset?.model_id ?? null;
   const gkKey = JSON.stringify([modelId, [...new Set(guideKeys)].sort(), org.price_adjust_pct]);
@@ -313,7 +313,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
                 <T style={{ fontWeight: '600' }}>{l.description}</T>
                 {showMoney ? (
                   <Row style={{ marginTop: 4, flexWrap: 'wrap' }}>
-                    {l.source === 'guide' ? <Badge label="Flight Ready price guide" tone="success" raw /> : l.source === 'custom' ? <Badge label="Custom price" raw /> : <Badge label="Standard pricing" tone="info" raw />}
+                    {l.source === 'guide' ? <Badge label="Tarmo price guide" tone="success" raw /> : l.source === 'custom' ? <Badge label="Custom price" raw /> : <Badge label="Standard pricing" tone="info" raw />}
                     {l.source === 'guide' && Number(org.price_adjust_pct) ? <T variant="small">incl. {Number(org.price_adjust_pct) > 0 ? '+' : ''}{Number(org.price_adjust_pct)}% regional adjustment</T> : null}
                   </Row>
                 ) : null}
@@ -339,7 +339,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
           </Row>
         ) : null}
         {showMoney && asset && !asset.model_id && lines.length ? (
-          <T variant="small" style={{ marginBottom: space.md }}>Tip: pick the model from the catalog on the {typeInfo.label.toLowerCase()} to use Flight Ready price-guide prices.</T>
+          <T variant="small" style={{ marginBottom: space.md }}>Tip: pick the model from the catalog on the {typeInfo.label.toLowerCase()} to use Tarmo price-guide prices.</T>
         ) : null}
       </Section>
 

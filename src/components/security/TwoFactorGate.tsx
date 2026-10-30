@@ -44,7 +44,7 @@ export function TwoFactorGate() {
       <AuthShell
         title={factorId ? 'Enter your sign-in code' : 'Set up two-step sign-in'}
         subtitle={factorId
-          ? 'Open your authenticator app and enter the 6-digit code for Flight Ready.'
+          ? 'Open your authenticator app and enter the 6-digit code for Tarmo.'
           : `${org?.name ?? 'Your company'} requires two-step sign-in for everyone. It takes about a minute.`}
       >
         {factorId === undefined ? <ActivityIndicator color={colors.primary} style={{ margin: space.lg }} />

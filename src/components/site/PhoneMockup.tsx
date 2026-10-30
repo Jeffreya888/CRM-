@@ -1,4 +1,4 @@
-// A rendered phone showing the Flight Ready app (built from views, no screenshots).
+// A rendered phone showing the Tarmo app (built from views, no screenshots).
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { colors } from '../../lib/theme';
@@ -75,7 +75,7 @@ export function PhoneMockup({ style }: { style?: StyleProp<ViewStyle> }) {
   return (
     <View
       accessibilityRole="image"
-      accessibilityLabel="The Flight Ready app showing today's jobs, a job with before and after photos, and a Good, Better, Best quote"
+      accessibilityLabel="The Tarmo app showing today's jobs, a job with before and after photos, and a Good, Better, Best quote"
       style={[
         { width: W, borderRadius: 46, padding: 10, backgroundColor: '#05070C', borderWidth: 1.5, borderColor: '#2B3446' },
         webStyle({ boxShadow: '0 60px 120px -40px rgba(70,152,225,0.55), 0 30px 60px -30px rgba(0,0,0,0.9), inset 0 0 0 1px rgba(255,255,255,0.06)' }),

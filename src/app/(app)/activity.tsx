@@ -17,7 +17,7 @@ export default function Activity() {
   const [nonce, setNonce] = useState(0);
   const people = useQuery(async () => ((await must(supabase.from('memberships').select('user_id, display_name, active').eq('org_id', orgId).order('display_name'))) ?? []) as
     { user_id: string; display_name: string | null; active: boolean }[], [orgId]);
-  const nameOf = (id: string | null) => (id ? people.data?.find((p) => p.user_id === id)?.display_name ?? 'Former member' : 'Flight Ready (automatic)');
+  const nameOf = (id: string | null) => (id ? people.data?.find((p) => p.user_id === id)?.display_name ?? 'Former member' : 'Tarmo (automatic)');
 
   if (!admin) {
     return (

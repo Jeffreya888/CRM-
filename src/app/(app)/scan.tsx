@@ -71,14 +71,14 @@ function ScanInner() {
         return;
       }
       if (mode === 'equipment') {
-        // Typed tokens without the flightready:// prefix still work.
+        // Typed tokens without the tarmo:// prefix still work.
         const { data } = await supabase.rpc('equipment_by_qr', { p_token: r.code });
         if (data) {
           setBusy(false);
           router.push({ pathname: '/equipment/[id]', params: { id: data as string, from: 'qr' } });
           return;
         }
-        throw new Error('That is not a Flight Ready equipment label. Print labels from Equipment → QR label.');
+        throw new Error('That is not a Tarmo equipment label. Print labels from Equipment → QR label.');
       }
       const rows = ((await must(supabase.from('inventory_items').select('*').eq('org_id', orgId).or(`barcode.eq.${quote(r.code)},sku.eq.${quote(r.code)}`).limit(2))) ?? []) as InventoryItem[];
       const item = rows.find((x) => x.barcode === r.code) ?? rows[0];

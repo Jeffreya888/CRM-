@@ -389,7 +389,7 @@ export function QuoteEditor({ id, customerId, aircraftId }: { id?: string; custo
       <Select label="Customer *" value={header.customer_id} options={lk.customerOptions} onChange={setCustomer} searchable />
       <Select label={assetLabel} value={header.aircraft_id} options={lk.aircraftOptions(header.customer_id)} onChange={setAsset} allowClear
         placeholder={header.customer_id ? 'Select…' : 'Choose a customer first'} />
-      {guide.hasGuide ? <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg, color: colors.primaryText }}>Services use the Flight Ready price guide for this model{num(org.price_adjust_pct) ? ` (${num(org.price_adjust_pct) > 0 ? '+' : ''}${num(org.price_adjust_pct)}% regional adjustment)` : ''}.</T> : null}
+      {guide.hasGuide ? <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg, color: colors.primaryText }}>Services use the Tarmo price guide for this model{num(org.price_adjust_pct) ? ` (${num(org.price_adjust_pct) > 0 ? '+' : ''}${num(org.price_adjust_pct)}% regional adjustment)` : ''}.</T> : null}
       <Select label="Condition" value={condLevel ?? 'none'} options={conditionOptions} inline={false}
         onChange={(v) => applyCondition(!v || v === 'none' ? null : (v as ConditionLevel))} />
       <T variant="small" style={{ marginTop: -space.md, marginBottom: space.lg }}>

@@ -20,7 +20,7 @@ import { useQuery } from '../../../lib/useQuery';
 
 /**
  * Equipment detail. Also accepts a QR token in place of the id, so the deep
- * link flightready://equipment/<qr_token> (which routes here) resolves too.
+ * link tarmo://equipment/<qr_token> (which routes here) resolves too.
  */
 export default function EquipmentRoute() {
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();

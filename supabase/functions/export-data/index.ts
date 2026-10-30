@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
     }
 
     zip.file("README.txt", [
-      `${org.name} — Flight Ready data export (${date})`,
+      `${org.name} — Tarmo data export (${date})`,
       "",
       "data/*.csv           One spreadsheet per record type (open in Excel, Numbers or Google Sheets).",
       "documents.csv        Every sent quote and invoice with a link to its printable page (Print → Save as PDF).",
@@ -207,13 +207,13 @@ Deno.serve(async (req) => {
     // Keep only the newest export.
     const { data: old } = await db.storage.from(BUCKET).list(`${org_id}/exports`, { limit: 100 });
     const oldPaths = (old ?? []).filter((o) => o.id !== null).map((o) => `${org_id}/exports/${o.name}`);
-    const path = `${org_id}/exports/flight-ready-export-${date}.zip`;
+    const path = `${org_id}/exports/tarmo-export-${date}.zip`;
     const { error: upErr } = await db.storage.from(BUCKET).upload(path, body, { contentType: "application/zip", upsert: true, duplex: "half" });
     if (upErr) throw new Error(`upload: ${upErr.message}`);
     const stale = oldPaths.filter((p) => p !== path);
     if (stale.length) await db.storage.from(BUCKET).remove(stale);
 
-    const { data: signed, error: sErr } = await db.storage.from(BUCKET).createSignedUrl(path, 24 * 3600, { download: `flight-ready-export-${date}.zip` });
+    const { data: signed, error: sErr } = await db.storage.from(BUCKET).createSignedUrl(path, 24 * 3600, { download: `tarmo-export-${date}.zip` });
     if (sErr || !signed) throw new Error(`sign: ${sErr?.message}`);
     await db.from("audit_log").insert({
       org_id, actor: caller.userId, action: "export", entity: "organizations", entity_id: org_id,

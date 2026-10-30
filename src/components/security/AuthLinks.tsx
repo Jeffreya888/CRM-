@@ -14,7 +14,7 @@ export function openSitePage(path: '/pricing' | '/privacy' | '/support' | '/term
   }
   const base = PORTAL_URL.replace(/\/$/, '');
   const url = base ? `${base}${path}` : path === '/privacy' ? PRIVACY_URL : '';
-  if (!url) return notify('Website not set up yet', 'Set EXPO_PUBLIC_PORTAL_URL to your Flight Ready website address.');
+  if (!url) return notify('Website not set up yet', 'Set EXPO_PUBLIC_PORTAL_URL to your Tarmo website address.');
   WebBrowser.openBrowserAsync(url).catch(() => notify('Could not open the page', url));
 }
 

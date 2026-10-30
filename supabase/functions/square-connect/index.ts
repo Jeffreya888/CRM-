@@ -24,7 +24,7 @@ function safeBack(u: unknown): string {
   const portal = portalUrl();
   if (typeof u === "string") {
     if (u === portal || u.startsWith(`${portal}/`)) return u;
-    if (/^flightready:\/\//.test(u) || /^exp(s)?:\/\//.test(u)) return u;
+    if (/^tarmo:\/\//.test(u) || /^exp(s)?:\/\//.test(u)) return u;
   }
   return `${portal}/settings`;
 }

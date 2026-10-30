@@ -85,7 +85,7 @@ export function buildTemplateContent(
 }
 
 /**
- * Suggested prices from the Flight Ready price guide for an aircraft with a
+ * Suggested prices from the Tarmo price guide for an aircraft with a
  * catalog model, with the company's regional adjustment applied.
  * Returns a lookup (service → price or null) for LineItemsEditor.priceFor.
  */

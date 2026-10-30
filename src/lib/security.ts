@@ -94,8 +94,8 @@ export function describeUserAgent(ua: string | null | undefined): string {
   if (!ua) return 'Unknown device';
   const s = ua.toLowerCase();
   if (s.includes('expo') || s.includes('okhttp') || s.includes('cfnetwork') || s.includes('darwin/')) {
-    if (s.includes('okhttp') || s.includes('android')) return 'Flight Ready app on Android';
-    return 'Flight Ready app on iPhone or iPad';
+    if (s.includes('okhttp') || s.includes('android')) return 'Tarmo app on Android';
+    return 'Tarmo app on iPhone or iPad';
   }
   const os = s.includes('iphone') ? 'iPhone'
     : s.includes('ipad') ? 'iPad'

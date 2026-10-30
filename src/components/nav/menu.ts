@@ -96,9 +96,9 @@ export function useMenu() {
       key: 'help', title: 'Help & plan', items: [
         { label: 'Training center', short: 'Training & SOPs', subtitle: 'SOPs (standard operating procedures) and videos', icon: 'school-outline', tone: 'success', href: '/training' },
         { label: 'Getting started', subtitle: 'Your first 7 steps', icon: 'rocket-outline', tone: 'primary', href: '/getting-started', show: admin },
-        { label: 'Flight Ready website & plan information', short: 'About Flight Ready', subtitle: 'Plans, privacy, terms and support', icon: 'globe-outline', tone: 'info', href: '/about' },
+        { label: 'Tarmo website & plan information', short: 'About Tarmo', subtitle: 'Plans, privacy, terms and support', icon: 'globe-outline', tone: 'info', href: '/about' },
         { label: 'Plans & billing', subtitle: plan === 'trial' ? 'Free trial' : titleCase(plan), icon: 'card-outline', tone: 'warning', href: '/paywall', show: admin },
-        { label: 'Platform admin', subtitle: 'Flight Ready platform health', icon: 'speedometer-outline', tone: 'danger', href: '/admin', show: !!q.data?.platformAdmin },
+        { label: 'Platform admin', subtitle: 'Tarmo platform health', icon: 'speedometer-outline', tone: 'danger', href: '/admin', show: !!q.data?.platformAdmin },
       ],
     },
   ];

@@ -34,14 +34,14 @@ const STATUS: Record<Status, { label: string; tone: Tone }> = {
   live: { label: 'Live sync', tone: 'success' },
   declined: { label: 'Declined', tone: 'danger' },
 };
-const NOT_SENT_WARNING = 'Saved in Flight Ready. Not sent to vendor. No schedule is syncing.';
+const NOT_SENT_WARNING = 'Saved in Tarmo. Not sent to vendor. No schedule is syncing.';
 
 function letter(r: Pick<Req, 'provider' | 'management_company' | 'contact_name' | 'notes'>, orgName: string, signer: string | null) {
   return `Hello${r.contact_name ? ` ${r.contact_name}` : ''},
 
 We request authorized read-only flight/cleaning schedule access for our organization. Please confirm eligibility, partner approval, organization scope, API fees, sandbox access, supported fields, rate limits and production approval requirements.
 
-Requesting company: ${orgName} (aircraft detailing, using Flight Ready)
+Requesting company: ${orgName} (aircraft detailing, using Tarmo)
 Schedule owner: ${r.management_company}
 System: ${providerName(r.provider)}
 Access needed: read-only — aircraft tail numbers, upcoming flight/arrival times and locations, and any cleaning or detailing requests. No write access is needed.

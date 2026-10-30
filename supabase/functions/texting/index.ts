@@ -1,6 +1,6 @@
 // Customer texting setup (owner only).
 // POST { action: 'request_number', org_id } → { status }
-// Marks the company "pending" and tells the Flight Ready platform admin, who
+// Marks the company "pending" and tells the Tarmo platform admin, who
 // buys the number, completes carrier (10DLC) registration on the platform
 // Telnyx account and then calls admin-action { action: 'set_sms' }.
 import { adminClient, callerRole } from "../_shared/clients.ts";

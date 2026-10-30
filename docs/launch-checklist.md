@@ -1,9 +1,9 @@
-# Flight Ready — founder launch checklist (private)
+# Tarmo — founder launch checklist (private)
 
-This is for you, the Flight Ready owner. Your subscribers never see it; they get the in-app **Getting started** guide. Work top to bottom. A step is done only when its check passes, not just when an account exists.
+This is for you, the Tarmo owner. Your subscribers never see it; they get the in-app **Getting started** guide. Work top to bottom. A step is done only when its check passes, not just when an account exists.
 
 ## 1. Accounts, domain and support
-- [ ] Buy the domain (e.g. flightready.app) and create a support mailbox (e.g. support@…).
+- [ ] Buy the domain (e.g. tarmo.app) and create a support mailbox (e.g. support@…).
 - [ ] Apple Developer Program ($99/yr), App Store Connect access.
 - [ ] Google Play Console ($25 once) if you launch on Android.
 - [ ] Accounts: Supabase, Stripe, Square (if offering it), RevenueCat, Resend, Telnyx, Expo (EAS), Anthropic (receipt scanning).
@@ -18,7 +18,7 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
   - Minimum password length **10**; email confirmation **on**.
   - Multi-factor: **TOTP enabled**.
   - Apple provider **on** with your iOS bundle id `com.flightready.app` (Sign in with Apple).
-  - Redirect URLs: `flightready://**` and `https://<domain>/**`.
+  - Redirect URLs: `tarmo://**` and `https://<domain>/**`.
   - Custom SMTP: point Auth emails at Resend so sign-up/reset emails come from your domain.
 - [ ] Storage: raise the upload size limit if owners will export large photo libraries.
 - [ ] Make yourself platform admin: `insert into public.platform_admins (user_id) values ('<your auth user id>');`
@@ -53,9 +53,9 @@ This is for you, the Flight Ready owner. Your subscribers never see it; they get
 - **Check:** send yourself an invoice, a team invite and a password reset; all arrive (not spam) and the Message log shows Delivered/Opened.
 
 ## 5. Subscriptions (Apple / Google / RevenueCat)
-- [ ] App Store Connect subscription group "Flight Ready Plans" with six products (ids must contain the plan name): `flightready_solo_monthly` $39.99, `flightready_solo_annual` $399.99, `flightready_team_monthly` $89.99, `flightready_team_annual` $899.99, `flightready_fleet_monthly` $189.99, `flightready_fleet_annual` $1,899.99.
-- [ ] Optional consumable text packs, e.g. `flightready_texts_500`, `flightready_texts_2000`.
-- [ ] AI check packs (consumable; the id must contain `ai_checks` and the number), e.g. `flightready_ai_checks_50`, `flightready_ai_checks_200`. Put them in RevenueCat like the text packs.
+- [ ] App Store Connect subscription group "Tarmo Plans" with six products (ids must contain the plan name): `tarmo_solo_monthly` $39.99, `tarmo_solo_annual` $399.99, `tarmo_team_monthly` $89.99, `tarmo_team_annual` $899.99, `tarmo_fleet_monthly` $189.99, `tarmo_fleet_annual` $1,899.99.
+- [ ] Optional consumable text packs, e.g. `tarmo_texts_500`, `tarmo_texts_2000`.
+- [ ] AI check packs (consumable; the id must contain `ai_checks` and the number), e.g. `tarmo_ai_checks_50`, `tarmo_ai_checks_200`. Put them in RevenueCat like the text packs.
 - [ ] RevenueCat: entitlements `solo`, `team`, `fleet`; current offering with monthly + annual packages; webhook → `/functions/v1/revenuecat-webhook` with `Bearer <REVENUECAT_WEBHOOK_SECRET>`; public SDK keys in the app env.
 - **Check:** sandbox purchase on a real iPhone unlocks the plan; Restore works; the yearly plan shows "Yearly" in Settings.
 
@@ -120,5 +120,5 @@ Run the full day with a test company: sign up → services & prices → customer
 
 ## After launch
 - QuickBooks Online (Phase 2): start Intuit app review during beta; build at ~10–20 paying companies.
-- Send your aircraft pricing file to merge into the Flight Ready price guide (`price_guide` table).
+- Send your aircraft pricing file to merge into the Tarmo price guide (`price_guide` table).
 - Film the videos for brightwork polishing, ceramic coating, carpet extraction and paint correction and attach them to the guide steps in the Training center.

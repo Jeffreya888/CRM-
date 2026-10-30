@@ -21,7 +21,7 @@ function classify(raw: string): Problem {
   return { kind: 'other', message };
 }
 
-/** Deep link from the invite email: flightready://invite/<token> or <site>/invite/<token>. */
+/** Deep link from the invite email: tarmo://invite/<token> or <site>/invite/<token>. */
 export default function InvitePage() {
   const params = useLocalSearchParams<{ token: string }>();
   const token = decodeURIComponent(String(params.token ?? '')).trim();
@@ -32,7 +32,7 @@ export default function InvitePage() {
     return (
       <AuthShell title="Invitation not found">
         <T>This link is missing its invitation code. Open the link from your email again, or type the code on the sign-in screen.</T>
-        <Button style={{ marginTop: space.lg }} title="Go to Flight Ready" onPress={() => router.replace('/')} />
+        <Button style={{ marginTop: space.lg }} title="Go to Tarmo" onPress={() => router.replace('/')} />
       </AuthShell>
     );
   }
@@ -63,7 +63,7 @@ function SignedOut({ token }: { token: string }) {
       <Button title="Sign in & accept" onPress={signIn} disabled={!email || !password} />
       {apple ? <View style={{ marginTop: space.md }}><AppleSignInButton onPress={() => signInWithApple().catch((e) => setError(e.message))} /></View> : null}
       <Divider />
-      <T variant="muted" style={{ textAlign: 'center', marginBottom: space.sm }}>New to Flight Ready?</T>
+      <T variant="muted" style={{ textAlign: 'center', marginBottom: space.sm }}>New to Tarmo?</T>
       <Button kind="secondary" title="Create account" onPress={() => router.push({ pathname: '/sign-up', params: { invite: token, email: email.trim() } })} />
       <Button kind="ghost" title="Forgot password?" onPress={() => router.push('/forgot-password')} style={{ marginTop: space.sm }} />
     </AuthShell>
@@ -121,9 +121,9 @@ function Accept({ token }: { token: string }) {
       <AuthShell title="You’re on the team">
         <Row gap={space.md} style={{ marginBottom: space.lg }}>
           <IconTile icon="checkmark-circle" tone="success" />
-          <T style={{ flex: 1 }}>Your invitation was accepted. Your company is ready in Flight Ready.</T>
+          <T style={{ flex: 1 }}>Your invitation was accepted. Your company is ready in Tarmo.</T>
         </Row>
-        <Button title="Open Flight Ready" onPress={() => router.replace('/')} />
+        <Button title="Open Tarmo" onPress={() => router.replace('/')} />
       </AuthShell>
     );
   }
@@ -148,13 +148,13 @@ function Accept({ token }: { token: string }) {
           <Button style={{ marginTop: space.lg }} title="Sign out & switch email" onPress={async () => { await savePendingInvite(token); await signOut(); }} />
         </>
       ) : problem?.kind === 'expired' || problem?.kind === 'invalid' ? (
-        <T>Ask the person who invited you to send a new invitation from Team in their Flight Ready app. Invitations last 7 days.</T>
+        <T>Ask the person who invited you to send a new invitation from Team in their Tarmo app. Invitations last 7 days.</T>
       ) : problem?.kind === 'full' ? (
         <T>Every seat on this team is in use. Ask the owner to upgrade the plan or free a seat, then try again.</T>
       ) : (
         <Button style={{ marginTop: space.md }} title="Try again" onPress={accept} />
       )}
-      <Button style={{ marginTop: space.md }} kind="ghost" title="Go to Flight Ready" onPress={() => router.replace('/')} />
+      <Button style={{ marginTop: space.md }} kind="ghost" title="Go to Tarmo" onPress={() => router.replace('/')} />
     </AuthShell>
   );
 }

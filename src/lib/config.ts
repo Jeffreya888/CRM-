@@ -1,5 +1,5 @@
 /** Branding + runtime configuration. Rename the product here and in app.json. */
-export const APP_NAME = 'Flight Ready';
+export const APP_NAME = 'Tarmo';
 export const APP_TAGLINE = 'The CRM built for aircraft detailers';
 
 export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';

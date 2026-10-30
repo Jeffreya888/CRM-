@@ -38,7 +38,7 @@ const CHECKLIST: [string, string][] = [
   ['Go / no-go', 'Worker runs green, support inbox monitored, backups verified, App Review demo access works.'],
 ];
 
-/** Flight Ready platform admin (founder only). */
+/** Tarmo platform admin (founder only). */
 export default function PlatformAdmin() {
   const { session } = useSession();
   const uid = session?.user.id ?? '';
@@ -52,7 +52,7 @@ export default function PlatformAdmin() {
     return (
       <Screen>
         <Stack.Screen options={{ title: 'Platform admin' }} />
-        <EmptyState icon="lock-closed-outline" title="Not available" body="This area is only for the Flight Ready team." />
+        <EmptyState icon="lock-closed-outline" title="Not available" body="This area is only for the Tarmo team." />
       </Screen>
     );
   }

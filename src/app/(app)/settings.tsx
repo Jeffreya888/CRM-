@@ -227,7 +227,7 @@ export default function Settings() {
       <Section title="Price guide" action={edit('pricing')}>
         <Card>
           <KeyValue label="Regional adjustment" value={`${Number(org.price_adjust_pct) > 0 ? '+' : ''}${Number(org.price_adjust_pct ?? 0)}%`} />
-          <T variant="small" style={{ marginTop: space.xs }}>Applied to Flight Ready price guide suggestions so they match prices in your area.</T>
+          <T variant="small" style={{ marginTop: space.xs }}>Applied to Tarmo price guide suggestions so they match prices in your area.</T>
         </Card>
       </Section>
 

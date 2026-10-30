@@ -143,7 +143,7 @@ export function directionsUrl(l: { latitude?: number | null; longitude?: number 
 }
 
 // ---------------------------------------------------------------------------
-// Flight Ready price guide
+// Tarmo price guide
 // ---------------------------------------------------------------------------
 /** Suggested prices by guide_key for an asset model, with the company's regional adjustment. */
 export async function guidePrices(modelId: string | null | undefined, keys: string[], adjustPct: number | null | undefined): Promise<Record<string, number>> {

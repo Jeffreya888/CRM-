@@ -26,7 +26,7 @@ const fromGuide = (g: ServiceGuide): Draft => ({
 /**
  * Company SOP editor (table service_guides).
  *  - `?id=<company copy id>` edits the company's copy.
- *  - `?from=<platform guide id>` duplicates a Flight Ready guide (saved as a copy with the same key).
+ *  - `?from=<platform guide id>` duplicates a Tarmo guide (saved as a copy with the same key).
  *  - no params writes a brand-new company guide.
  */
 export default function GuideEdit() {
@@ -113,7 +113,7 @@ export default function GuideEdit() {
       <Stack.Screen options={{ title: id ? 'Edit SOP' : from ? 'Duplicate SOP' : 'New SOP' }} />
       {from ? (
         <Card style={{ backgroundColor: colors.primarySoft, borderColor: colors.primarySoft }}>
-          <T>Your company copy replaces the Flight Ready SOP for your team. Delete your copy any time to go back to the original.</T>
+          <T>Your company copy replaces the Tarmo SOP for your team. Delete your copy any time to go back to the original.</T>
         </Card>
       ) : null}
       <ErrorBanner message={error} />
@@ -176,7 +176,7 @@ export default function GuideEdit() {
         <View style={{ marginTop: space.lg }}>
           <Button kind="ghost" icon="trash-outline" title={draft.based_on ? 'Delete my copy' : 'Delete SOP'} onPress={() => confirmAction(
             draft.based_on ? 'Delete your copy?' : 'Delete this SOP?',
-            draft.based_on ? 'The Flight Ready SOP will be used again.' : 'This SOP will be removed for everyone in your company.',
+            draft.based_on ? 'The Tarmo SOP will be used again.' : 'This SOP will be removed for everyone in your company.',
             async () => {
               const { error: e } = await supabase.from('service_guides').delete().eq('id', id);
               if (e) return setError(friendlyError(e.message));

@@ -10,7 +10,7 @@ import { Button, Card, Ionicons, Row, SearchBar, Section, T } from '../ui';
 
 type Row_ = { price: number; model: { manufacturer: string; model: string; category: AircraftCategory } | null };
 
-/** Flight Ready price guide: suggested price per aircraft model for this service (money users only). */
+/** Tarmo price guide: suggested price per aircraft model for this service (money users only). */
 export function PriceGuideCard({ guideKey, adjustPct }: { guideKey: string | null; adjustPct: number | null | undefined }) {
   const [search, setSearch] = useState('');
   const [all, setAll] = useState(false);
@@ -30,7 +30,7 @@ export function PriceGuideCard({ guideKey, adjustPct }: { guideKey: string | nul
   const shown = all || s ? filtered : filtered.slice(0, 8);
 
   return (
-    <Section title="Flight Ready price guide" icon="pricetags-outline" iconColor={colors.success}>
+    <Section title="Tarmo price guide" icon="pricetags-outline" iconColor={colors.success}>
       {q.loading ? null : rows.length === 0 ? (
         <Card>
           <Row gap={space.md} style={{ alignItems: 'flex-start' }}>

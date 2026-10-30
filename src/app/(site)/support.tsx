@@ -18,7 +18,7 @@ export default function Support() {
         <Container style={{ paddingTop: isMobile ? 44 : 88, paddingBottom: isMobile ? 40 : 72 }}>
           <Eyebrow>Support</Eyebrow>
           <Heading level={1} style={{ maxWidth: 820 }}>
-            Help that keeps you <GradientText>flight ready.</GradientText>
+            Help that keeps your crew <GradientText>moving.</GradientText>
           </Heading>
           <P size="lg" style={{ marginTop: 18, maxWidth: 640 }}>
             Get set up in an afternoon, find quick answers, or send us a note. A real person reads every message.

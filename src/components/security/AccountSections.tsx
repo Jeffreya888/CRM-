@@ -74,7 +74,7 @@ export function PushSection() {
             <T variant="small">
               {state === 'loading' ? 'Checking…'
                 : state === 'on' ? 'This phone gets job and reminder alerts.'
-                : state === 'denied' ? 'Notifications are turned off for Flight Ready in your phone settings.'
+                : state === 'denied' ? 'Notifications are turned off for Tarmo in your phone settings.'
                 : state === 'unsupported' ? 'Push notifications work in the iPhone and Android app.'
                 : 'This phone won’t get alerts. Your other devices are not affected.'}
             </T>
@@ -85,7 +85,7 @@ export function PushSection() {
           <ToggleRow label="Send notifications to this phone" value={state === 'on'} onChange={setDevice} />
         ) : null}
         {state === 'denied' ? (
-          <Button kind="secondary" title="Open phone settings" onPress={() => Linking.openSettings().catch(() => notify('Open Settings → Notifications → Flight Ready'))} />
+          <Button kind="secondary" title="Open phone settings" onPress={() => Linking.openSettings().catch(() => notify('Open Settings → Notifications → Tarmo'))} />
         ) : null}
         <Divider />
         <T variant="overline" style={{ marginBottom: space.md }}>Notify me about</T>

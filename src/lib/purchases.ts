@@ -78,7 +78,7 @@ export interface AiPack extends ConsumablePack {
   checks: number | null;
 }
 
-/** Reads the pack size from a product id like flightready_ai_checks_50. */
+/** Reads the pack size from a product id like tarmo_ai_checks_50. */
 function packCount(id: string): number | null {
   const n = /(\d[\d,]*)\D*$/.exec(id)?.[1];
   return n ? Number(n.replace(/,/g, '')) : null;
@@ -116,7 +116,7 @@ async function buyConsumable(pack: ConsumablePack): Promise<CustomerInfo | null>
   }
 }
 
-/** Extra text packs: consumable products whose id contains "texts", e.g. flightready_texts_500. */
+/** Extra text packs: consumable products whose id contains "texts", e.g. tarmo_texts_500. */
 export async function loadTextPacks(): Promise<TextPack[]> {
   return (await loadConsumables(isTextPack)).map(({ count, ...p }) => ({ ...p, texts: count }));
 }
@@ -124,7 +124,7 @@ export async function loadTextPacks(): Promise<TextPack[]> {
 /** Buys a text pack; the revenuecat-webhook adds the credits to the company. */
 export const buyTextPack = (pack: TextPack) => buyConsumable(pack);
 
-/** Extra AI photo check packs: consumable products whose id contains "ai_checks", e.g. flightready_ai_checks_50. */
+/** Extra AI photo check packs: consumable products whose id contains "ai_checks", e.g. tarmo_ai_checks_50. */
 export async function loadAiPacks(): Promise<AiPack[]> {
   return (await loadConsumables(isAiPack)).map(({ count, ...p }) => ({ ...p, checks: count }));
 }

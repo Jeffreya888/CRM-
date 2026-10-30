@@ -39,7 +39,7 @@ export function GuideLibrary({ lib, loading, orgId, manager, businessTypes, onCh
         <Row gap={space.md} style={{ alignItems: 'flex-start' }}>
           <Ionicons name="book-outline" size={22} color={colors.primaryText} />
           <View style={{ flex: 1 }}>
-            <T style={{ fontWeight: '700' }}>SOPs — Standard Operating Procedures, included free with Flight Ready</T>
+            <T style={{ fontWeight: '700' }}>SOPs — Standard Operating Procedures, included free with Tarmo</T>
             <T variant="muted" style={{ marginTop: 2 }}>
               Written for detailers: products, tools, prep and protection, numbered steps, things to never do, and quality checks. Each SOP&apos;s steps become the job checklist automatically.
               {manager ? ' You can hide an SOP, or duplicate it and make it your own.' : ''}
@@ -67,7 +67,7 @@ export function GuideLibrary({ lib, loading, orgId, manager, businessTypes, onCh
             <ListRow key={r.guide.id} icon={assetTypeInfo(r.guide.asset_type).icon} tone={r.isCopy ? 'purple' : 'info'}
               title={r.guide.title}
               subtitle={[`${r.guide.steps.length} steps`, stepMinutesTotal(r.guide.steps) ? `~${minutesLabel(stepMinutesTotal(r.guide.steps))}` : r.guide.time_estimate?.split('·')[0]?.trim()].filter(Boolean).join(' · ')}
-              meta={r.isCopy ? (r.platform ? 'Your company copy' : 'Your company SOP') : 'Flight Ready SOP'}
+              meta={r.isCopy ? (r.platform ? 'Your company copy' : 'Your company SOP') : 'Tarmo SOP'}
               onPress={() => router.push(`/guides/${r.guide.key}`)} />
           ))}
         </Card>

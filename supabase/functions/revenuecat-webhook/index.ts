@@ -38,7 +38,7 @@ export function billingPeriodFrom(e: Pick<RCEvent, "product_id" | "new_product_i
   return id.includes("annual") || id.includes("year") ? "annual" : "monthly";
 }
 
-/** Text packs: consumables whose product id contains "texts", e.g. flightready_texts_500 → 500. */
+/** Text packs: consumables whose product id contains "texts", e.g. tarmo_texts_500 → 500. */
 export function textPackSize(productId: string | undefined): number | null {
   const id = (productId ?? "").toLowerCase();
   if (!id.includes("texts")) return null;
@@ -47,7 +47,7 @@ export function textPackSize(productId: string | undefined): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
-/** AI check packs: consumables whose product id contains "ai_checks", e.g. flightready_ai_checks_50 → 50. */
+/** AI check packs: consumables whose product id contains "ai_checks", e.g. tarmo_ai_checks_50 → 50. */
 export function aiPackSize(productId: string | undefined): number | null {
   const id = (productId ?? "").toLowerCase();
   if (!id.includes("ai_checks")) return null;

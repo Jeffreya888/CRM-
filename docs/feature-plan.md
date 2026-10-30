@@ -1,7 +1,7 @@
-# Flight Ready — feature plan (from the original app walkthrough)
+# Tarmo — feature plan (from the original app walkthrough)
 
 Decisions agreed with the owner while reviewing screenshots of the original
-Flight Ready app. Status: **built** (owner said "sending complete"). See README for the feature summary. Phase 2 (competitive edge: FAA autofill, AI photo reports, SOP certification & QC, true job costing) is specified and built per docs/competitive-edge.md.
+Tarmo app. Status: **built** (owner said "sending complete"). See README for the feature summary. Phase 2 (competitive edge: FAA autofill, AI photo reports, SOP certification & QC, true job costing) is specified and built per docs/competitive-edge.md.
 
 ## Plans & pricing
 | Plan | Price | Notes |
@@ -15,7 +15,7 @@ Billing: monthly or yearly (≈2 months free): Solo $399.99/yr · Team $899.99/y
 Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month; extra text packs as in-app purchase.
 
 ## Sign-in & demo
-- Sign-in screen: "Flight Ready CRM — Aircraft care. Business ready.", Explore demo workspace, Create account, Forgot password, Explore plans/privacy/support, Join your company (invite).
+- Sign-in screen: "Tarmo CRM — Aircraft care. Business ready.", Explore demo workspace, Create account, Forgot password, Explore plans/privacy/support, Join your company (invite).
 - Passwords 10–128 characters.
 - **Demo mode**: temporary sample company (expires), banner "Fleet preview · Temporary demo access" + Exit demo; real emails/texts/payments blocked. Also serves as Apple App Review access.
 
@@ -59,7 +59,7 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Business type card.
 - Google review link; tax %; auto-send invoices on completion.
 - Payments: "Arranged directly (no Stripe)" vs Stripe; Square "coming later".
-- About Flight Ready CRM, website/plans/privacy/support.
+- About Tarmo CRM, website/plans/privacy/support.
 
 ## Reviews
 - Google review link on every invoice + payment page, and automatic message ~1 day after payment to **every** customer (no gating).
@@ -218,7 +218,7 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 ## Built-in aircraft catalog & price guide (platform defaults)
 - Built-in aircraft model catalog (manufacturer, model, size class, length, wingspan) covering all major makers: Gulfstream (G280–G800), Dassault Falcon (10–10X), Bombardier (Learjet, Challenger, Global), Cessna Citation (M2–Longitude), Embraer (Phenom, Praetor, Legacy, Lineage), Hawker/Beechcraft (King Air, Premier, Hawker), Pilatus, Honda, Cirrus Vision, Daher TBM, Piper, Cirrus, Diamond, Mooney, Boeing BBJ / Airbus ACJ and airliners, plus helicopters (Bell, Airbus, Leonardo, Sikorsky, Robinson). Search when adding an asset; custom entry still allowed. Dimensions from public specs.
 - Until the owner's pricing file arrives: 12 standard services with size-based pricing.
-- Owner will send pricing per aircraft + services → merged into the catalog as the **Flight Ready price guide** (suggested price per model per service) for every new company. Each company can edit prices and apply a regional adjustment %.
+- Owner will send pricing per aircraft + services → merged into the catalog as the **Tarmo price guide** (suggested price per model per service) for every new company. Each company can edit prices and apply a regional adjustment %.
 
 ## Service levels (owner clarification)
 - Exterior **dry wash**: Level 1 = Trip Clean, Level 2 = Full Exterior (two services, two guides).
@@ -235,7 +235,7 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 - Each company can hide a default guide, duplicate and edit it, or add its own media/guides.
 
 ## More menu (from original)
-Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Flight Ready website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
+Company profile & settings · Supply room · Equipment & maintenance · Airports, FBOs & marinas · Crew scheduling & resource reservations · Workflow setup & customer portal · Timesheet approvals · Business expenses · Profit & loss · Tarmo website & plan information · Invoices & completion reports · Quotes & customer approvals · Recurring asset care · Reminders & delivery readiness · Team roles & access · Training center · Scheduling integrations · Account & security · Company access · Launch & setup guide (PDF) · Sign out
 
 ## Still to review
 Anything else the owner sends.

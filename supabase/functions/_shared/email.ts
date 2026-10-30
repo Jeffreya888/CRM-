@@ -1,8 +1,8 @@
 // Transactional email through Resend (https://resend.com).
 //
-// Env: RESEND_API_KEY, EMAIL_FROM ("Flight Ready <notify@your-domain.com>" or a
+// Env: RESEND_API_KEY, EMAIL_FROM ("Tarmo <notify@your-domain.com>" or a
 // bare address). Emails sent for a company go out as
-// "Company via Flight Ready <address>" with Reply-To set to the company email,
+// "Company via Tarmo <address>" with Reply-To set to the company email,
 // so customer replies reach the company, not the platform.
 import type { SupabaseClient } from "./deps.ts";
 import { env } from "./http.ts";
@@ -17,7 +17,7 @@ export type EmailInput = {
   replyTo?: string | null;
   cc?: string | string[] | null;
   attachments?: EmailAttachment[];
-  /** Company name shown as "<name> via Flight Ready". Omit for platform emails. */
+  /** Company name shown as "<name> via Tarmo". Omit for platform emails. */
   fromName?: string | null;
   /** Counts against the company's daily email limit (anti-abuse). Omit for platform emails. */
   quota?: { db: SupabaseClient; orgId: string };
@@ -47,12 +47,12 @@ function fromAddress(): string {
   return (m ? m[1] : raw).trim();
 }
 
-/** "Skyline Detailing via Flight Ready <notify@…>" (quotes/brackets stripped from the name). */
+/** "Skyline Detailing via Tarmo <notify@…>" (quotes/brackets stripped from the name). */
 export function fromHeader(companyName?: string | null): string {
   if (!companyName) return env("EMAIL_FROM");
   const clean = companyName.replace(/["<>\r\n]/g, "").trim().slice(0, 60);
   if (!clean) return env("EMAIL_FROM");
-  return `"${clean} via Flight Ready" <${fromAddress()}>`;
+  return `"${clean} via Tarmo" <${fromAddress()}>`;
 }
 
 /** Sends one email. Returns the Resend message id; throws with the provider's message on failure. */
@@ -109,7 +109,7 @@ export function emailLayout(opts: {
   footerHtml?: string | null;
 }): string {
   const b = opts.brand ?? {};
-  const name = b.name || "Flight Ready";
+  const name = b.name || "Tarmo";
   const logo = b.logo_url && /^https:\/\//.test(b.logo_url)
     ? `<img src="${esc(b.logo_url)}" alt="${esc(name)}" style="max-height:56px;max-width:200px;display:block;margin:0 0 8px">`
     : "";
@@ -126,6 +126,6 @@ export function emailLayout(opts: {
     ${button}
     ${opts.footerHtml ?? ""}
   </div>
-  <p style="color:#64748b;font-size:12px;text-align:center;margin:14px 0 0">${contact ? `${esc(name)} · ${contact}<br>` : ""}Sent with Flight Ready</p>
+  <p style="color:#64748b;font-size:12px;text-align:center;margin:14px 0 0">${contact ? `${esc(name)} · ${contact}<br>` : ""}Sent with Tarmo</p>
 </div></body></html>`;
 }

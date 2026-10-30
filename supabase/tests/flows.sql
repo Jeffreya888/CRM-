@@ -678,7 +678,7 @@ insert into jobs (org_id, number, title, customer_id, status)
   select org_id, 'SEC-1', 'Sec job', id, 'scheduled' from customers where name = 'Sec Cust A';
 insert into locations (org_id, name) select v, 'Sec other loc' from ctx where k = 'sec_other';
 insert into ctx select 'sec_other_loc', id from locations where name = 'Sec other loc';
-insert into storage.objects (bucket_id, name) select 'org-files', v || p from ctx, (values ('/exports/flight-ready-export.zip'), ('/receipts/r.jpg'), ('/jobs/j/p.jpg')) x(p) where k = 'sec';
+insert into storage.objects (bucket_id, name) select 'org-files', v || p from ctx, (values ('/exports/tarmo-export.zip'), ('/receipts/r.jpg'), ('/jobs/j/p.jpg')) x(p) where k = 'sec';
 grant usage on schema storage to authenticated;  -- test stub only (Supabase grants this)
 grant select on storage.objects to authenticated;
 

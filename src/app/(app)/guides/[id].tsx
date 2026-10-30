@@ -62,7 +62,7 @@ export default function GuideViewer() {
   const generalMedia = media.filter((m) => m.step_index == null || m.step_index >= g.steps.length);
   const open = (m: TrainingMedia) => openMedia(m, session!.user.id).catch((e) => notify('Could not open', e.message));
 
-  const hide = () => confirmAction('Hide this SOP?', 'Your team will no longer see this Flight Ready SOP. You can show it again from the SOP library.', async () => {
+  const hide = () => confirmAction('Hide this SOP?', 'Your team will no longer see this Tarmo SOP. You can show it again from the SOP library.', async () => {
     const { error } = await supabase.from('hidden_guides').insert({ org_id: orgId, guide_id: g.id });
     if (error) return notify('Could not hide SOP', friendlyError(error.message));
     router.back();
@@ -74,7 +74,7 @@ export default function GuideViewer() {
   };
   const removeCopy = () => confirmAction(
     platform ? 'Delete your copy?' : 'Delete this SOP?',
-    platform ? 'Your edits will be removed and the Flight Ready SOP will be used again.' : 'This SOP will be removed for everyone in your company.',
+    platform ? 'Your edits will be removed and the Tarmo SOP will be used again.' : 'This SOP will be removed for everyone in your company.',
     async () => {
       const { error } = await supabase.from('service_guides').delete().eq('id', g.id);
       if (error) return notify('Could not delete', friendlyError(error.message));
@@ -100,7 +100,7 @@ export default function GuideViewer() {
         <Card>
           <Row style={{ flexWrap: 'wrap' }} gap={6}>
             <Badge label={assetTypeLabel(g.asset_type)} tone="info" raw />
-            <Badge label={isCopy ? (platform ? 'Company copy' : 'Company SOP') : 'Flight Ready SOP'} tone={isCopy ? 'purple' : 'success'} raw />
+            <Badge label={isCopy ? (platform ? 'Company copy' : 'Company SOP') : 'Tarmo SOP'} tone={isCopy ? 'purple' : 'success'} raw />
           </Row>
           <T style={{ color: colors.textMuted, lineHeight: 22, marginTop: space.md }}>{g.summary}</T>
           <View style={{ marginTop: space.sm }}>

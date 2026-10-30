@@ -22,9 +22,9 @@ export const TEMPLATE_FIELDS: { key: string; label: string; sample: string }[] =
   { key: 'due_phrase', label: 'Due phrase', sample: 'due in 3 days' },
   { key: 'deadline', label: 'Quote deadline', sample: 'Nov 12, 5:00 PM' },
   { key: 'late_fee_line', label: 'Late fee warning', sample: ' A $25.00 late fee applies after Dec 1.' },
-  { key: 'pay_link', label: 'Pay link', sample: 'https://app.flightready.example/portal/invoice/…' },
-  { key: 'quote_link', label: 'Quote link', sample: 'https://app.flightready.example/portal/quote/…' },
-  { key: 'portal_link', label: 'Customer portal link', sample: 'https://app.flightready.example/portal/c/…' },
+  { key: 'pay_link', label: 'Pay link', sample: 'https://app.tarmo.example/portal/invoice/…' },
+  { key: 'quote_link', label: 'Quote link', sample: 'https://app.tarmo.example/portal/quote/…' },
+  { key: 'portal_link', label: 'Customer portal link', sample: 'https://app.tarmo.example/portal/c/…' },
   { key: 'review_link', label: 'Google review link', sample: 'https://g.page/r/…' },
 ];
 

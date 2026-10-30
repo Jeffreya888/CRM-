@@ -14,7 +14,7 @@ const STATUS: Record<string, { label: string; tone: Tone; body: string }> = {
   not_requested: { label: 'Not requested', tone: 'neutral', body: 'Texting is off. Request a number below whenever you are ready.' },
   pending: { label: 'Pending', tone: 'warning', body: 'We are registering your business with the phone carriers. This usually takes a few business days; we will let you know when it is ready.' },
   active: { label: 'Active', tone: 'success', body: 'Your texting number is ready.' },
-  suspended: { label: 'Suspended', tone: 'danger', body: 'Texting is paused for your company. Contact Flight Ready support to turn it back on.' },
+  suspended: { label: 'Suspended', tone: 'danger', body: 'Texting is paused for your company. Contact Tarmo support to turn it back on.' },
 };
 
 export default function Texting() {
@@ -66,7 +66,7 @@ function Inner() {
           </View>
         </Row>
         <View style={{ marginTop: space.md, gap: 6 }}>
-          {['Run by Flight Ready: no Telnyx or phone-company account needed.', 'We handle carrier registration for your business.', 'Customers reply to your number and replies show in the conversation.'].map((t) => (
+          {['Run by Tarmo: no Telnyx or phone-company account needed.', 'We handle carrier registration for your business.', 'Customers reply to your number and replies show in the conversation.'].map((t) => (
             <Row key={t} gap={space.sm}><Ionicons name="checkmark-circle" size={16} color={colors.success} /><T variant="muted" style={{ flex: 1 }}>{t}</T></Row>
           ))}
         </View>

@@ -149,7 +149,7 @@ export default function ServiceDetail() {
           <Card onPress={() => router.push(`/guides/${guide.guide.key}`)}>
             <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <T style={{ fontWeight: '700', fontSize: 16, flex: 1 }}>{guide.guide.title}</T>
-              <Badge label={guide.isCopy ? 'Company copy' : 'Flight Ready'} tone={guide.isCopy ? 'purple' : 'success'} raw />
+              <Badge label={guide.isCopy ? 'Company copy' : 'Tarmo'} tone={guide.isCopy ? 'purple' : 'success'} raw />
             </Row>
             <T variant="muted" numberOfLines={3} style={{ marginTop: 4 }}>{guide.guide.summary}</T>
             <Row gap={space.lg} style={{ marginTop: space.md, flexWrap: 'wrap' }}>

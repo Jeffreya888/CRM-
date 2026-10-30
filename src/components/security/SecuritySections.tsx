@@ -36,7 +36,7 @@ export function AppLockSection() {
           <>
             <ToggleRow
               label={`Lock with ${label}`}
-              hint="Ask for Face ID, fingerprint or your phone passcode to open Flight Ready on this device."
+              hint="Ask for Face ID, fingerprint or your phone passcode to open Tarmo on this device."
               value={enabled}
               onChange={async (v) => {
                 // Confirm it works before turning it on, so nobody locks themselves out.

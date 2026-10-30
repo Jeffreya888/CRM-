@@ -41,7 +41,7 @@ function Inner() {
       <Stack.Screen options={{ title: 'Automations' }} />
       <ErrorBanner message={q.error} onRetry={q.reload} />
       <T variant="muted" style={{ marginBottom: space.md }}>
-        Messages Flight Ready sends to your customers for you.{editable ? '' : ' Only the owner or an admin can change these.'}
+        Messages Tarmo sends to your customers for you.{editable ? '' : ' Only the owner or an admin can change these.'}
       </T>
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         <ListRow icon="mail-outline" title="Message log" subtitle="Every email and text, with delivery status" onPress={() => router.push('/messages')} />

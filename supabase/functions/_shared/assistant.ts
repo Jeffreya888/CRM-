@@ -13,7 +13,7 @@ type Block = Anthropic.Beta.BetaContentBlockParam;
 type Row = Record<string, any>;
 
 const BUCKET = "org-files";
-export const APP_NAME = Deno.env.get("APP_NAME") || "Flight Ready";
+export const APP_NAME = Deno.env.get("APP_NAME") || "Tarmo";
 
 export const MAX_PHOTOS = 3;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude API per-image limit

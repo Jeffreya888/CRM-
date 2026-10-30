@@ -116,7 +116,7 @@ function PLScreen() {
     ];
     await callFunction('send-report', {
       org_id: orgId, to, subject: `${org.name} — Profit & loss ${rangeLabel(range.from, range.to)}`,
-      body: `Hi,\n\nAttached are ${org.name}'s profit & loss (${basis} basis), expenses, timesheets and inventory for ${rangeLabel(range.from, range.to)}${branchName ? ` (${branchName})` : ''}.\n\nNet operating result: ${money(pl!.net, org.currency)}\nSales tax collected (not revenue): ${money(pl!.sales_tax_collected, org.currency)}\n\nSent from Flight Ready.`,
+      body: `Hi,\n\nAttached are ${org.name}'s profit & loss (${basis} basis), expenses, timesheets and inventory for ${rangeLabel(range.from, range.to)}${branchName ? ` (${branchName})` : ''}.\n\nNet operating result: ${money(pl!.net, org.currency)}\nSales tax collected (not revenue): ${money(pl!.sales_tax_collected, org.currency)}\n\nSent from Tarmo.`,
       attachments,
     });
     notify('Sent', `The report and spreadsheets were emailed to ${to}.`);
