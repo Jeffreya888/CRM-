@@ -13,7 +13,7 @@
       "backgroundColor": "#131926"
     },
     "ios": {
-      "bundleIdentifier": "com.flightready.app",
+      "bundleIdentifier": "com.gettarmo.app",
       "buildNumber": "1",
       "supportsTablet": true,
       "config": {
@@ -28,7 +28,7 @@
       "usesAppleSignIn": true
     },
     "android": {
-      "package": "com.flightready.app",
+      "package": "com.gettarmo.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#131926",

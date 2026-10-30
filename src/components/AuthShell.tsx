@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { APP_NAME, isConfigured } from '../lib/config';
+import { APP_NAME, APP_TAGLINE, isConfigured } from '../lib/config';
 import { colors, space } from '../lib/theme';
 import { Card, ErrorBanner, Ionicons, T } from './ui';
 
@@ -16,7 +16,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
               <Ionicons name="airplane" size={38} color={colors.primary} />
             </View>
             <T variant="h1" style={{ color: colors.white, marginTop: space.md, textAlign: 'center' }}>{APP_NAME} CRM</T>
-            <T variant="muted" style={{ textAlign: 'center' }}>Aircraft care. Business ready.</T>
+            <T variant="muted" style={{ textAlign: 'center' }}>{APP_TAGLINE}</T>
           </View>
           <Card style={{ maxWidth: 440, width: '100%', alignSelf: 'center' }}>
             {!isConfigured ? (

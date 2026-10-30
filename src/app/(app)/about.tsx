@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 import { Platform, View } from 'react-native';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { Badge, Card, Ionicons, ListRow, Row, Screen, Section, T, type IconName } from '../../components/ui';
-import { APP_NAME, SUPPORT_EMAIL } from '../../lib/config';
+import { APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from '../../lib/config';
 import { PLANS, planInfo } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { colors, space, type Tone } from '../../lib/theme';
@@ -30,7 +30,7 @@ export default function About() {
       <View style={{ alignItems: 'center', marginVertical: space.lg }}>
         <Ionicons name="airplane" size={40} color={colors.primary} />
         <T variant="h2" style={{ marginTop: space.sm }}>{APP_NAME} CRM</T>
-        <T variant="muted">Aircraft care. Business ready.</T>
+        <T variant="muted">{APP_TAGLINE}</T>
         <T variant="small" style={{ marginTop: 4 }}>Version {appVersion()}</T>
       </View>
 

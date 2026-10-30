@@ -3,7 +3,7 @@
 This is for you, the Tarmo owner. Your subscribers never see it; they get the in-app **Getting started** guide. Work top to bottom. A step is done only when its check passes, not just when an account exists.
 
 ## 1. Accounts, domain and support
-- [ ] Buy the domain (e.g. tarmo.app) and create a support mailbox (e.g. support@…).
+- [ ] Buy the domain gettarmo.com (optionally gettarmo.app too, redirecting to it) and create a support mailbox (e.g. support@…).
 - [ ] Apple Developer Program ($99/yr), App Store Connect access.
 - [ ] Google Play Console ($25 once) if you launch on Android.
 - [ ] Accounts: Supabase, Stripe, Square (if offering it), RevenueCat, Resend, Telnyx, Expo (EAS), Anthropic (receipt scanning).
@@ -17,7 +17,7 @@ This is for you, the Tarmo owner. Your subscribers never see it; they get the in
   - Anonymous sign-ins **on** (demo workspace and App Review).
   - Minimum password length **10**; email confirmation **on**.
   - Multi-factor: **TOTP enabled**.
-  - Apple provider **on** with your iOS bundle id `com.flightready.app` (Sign in with Apple).
+  - Apple provider **on** with your iOS bundle id `com.gettarmo.app` (Sign in with Apple).
   - Redirect URLs: `tarmo://**` and `https://<domain>/**`.
   - Custom SMTP: point Auth emails at Resend so sign-up/reset emails come from your domain.
 - [ ] Storage: raise the upload size limit if owners will export large photo libraries.
