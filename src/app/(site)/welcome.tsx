@@ -47,9 +47,9 @@ function Hero() {
           <View style={{ flex: isDesktop ? 1.15 : undefined, alignItems: isDesktop ? 'flex-start' : 'center', maxWidth: 640 }}>
             <Pill icon="sparkles" label="Aviation · Marine · Automotive" tone="gold" />
             <View style={{ height: 24 }} />
-            <Heading level={1} center={!isDesktop}>
-              The detailing OS for{'\n'}
-              <GradientText>jets, yachts & cars.</GradientText>
+            <Heading level={1} center={!isDesktop} style={isMobile ? undefined : { fontSize: 54, lineHeight: 60 }}>
+              {isMobile ? <>The detailing OS{'\n'}for <GradientText>{'jets,\nyachts & cars.'}</GradientText></>
+                : <>The detailing OS for{'\n'}<GradientText>jets, yachts & cars.</GradientText></>}
             </Heading>
             <P size="lg" center={!isDesktop} style={{ marginTop: 22, maxWidth: 560 }}>
               Built to aviation standards. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.

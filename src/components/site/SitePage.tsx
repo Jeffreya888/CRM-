@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_NAME, APP_TAGLINE } from '../../lib/config';
+import { TarmoLogo } from '../brand/TarmoLogo';
 import { useSession } from '../../lib/session';
 import { DEMO_HREF, FOOTER_LINKS, NAV_LINKS, SIGN_UP_HREF, SITE_TAGLINE } from '../../lib/site';
 import { CTAButton, Container, Ionicons, P, SiteLink, TextLink, fontFamily, site, useBreakpoint, webStyle } from './primitives';
@@ -18,19 +19,7 @@ const Anchors = createContext<AnchorCtx>({ register: () => () => {}, scrollTo: (
 export const useAnchor = (id: string) => useContext(Anchors).register(id);
 
 export function Logo({ size = 34 }: { size?: number }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <View
-        style={[
-          { width: size, height: size, borderRadius: size * 0.3, alignItems: 'center', justifyContent: 'center', backgroundColor: site.blue, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-          webStyle({ backgroundImage: `linear-gradient(135deg, ${site.blue} 0%, #2F5F9C 60%, ${site.gold} 140%)` }),
-        ]}
-      >
-        <Ionicons name="airplane" size={size * 0.52} color="#FFFFFF" style={{ transform: [{ rotate: '-35deg' }] }} />
-      </View>
-      <Text style={{ fontFamily, color: site.text, fontSize: size * 0.56, fontWeight: '800', letterSpacing: -0.5 }}>{APP_NAME}</Text>
-    </View>
-  );
+  return <TarmoLogo height={size * 0.8} color={site.text} />;
 }
 
 function Nav({ onAnchor }: { onAnchor: (id: string) => void }) {
