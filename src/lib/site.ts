@@ -10,7 +10,7 @@ type IconName = ComponentProps<typeof Ionicons>['name'];
 export const APP_STORE_URL = process.env.EXPO_PUBLIC_APP_STORE_URL ?? 'https://apps.apple.com/app/tarmo/id0000000000';
 export const PLAY_STORE_URL = process.env.EXPO_PUBLIC_PLAY_STORE_URL ?? 'https://play.google.com/store/apps/details?id=com.gettarmo.app';
 
-export const SITE_TAGLINE = 'The operating system for professional detailing — aviation, marine and automotive';
+export const SITE_TAGLINE = 'Detailing Software for Aircraft, Boats & Cars';
 /** Short form for tight spaces (pills, footers). */
 export const SITE_TAGLINE_SHORT = 'The operating system for professional detailing';
 export const TRIAL_DAYS = 14;

@@ -19,7 +19,7 @@ export default function Welcome() {
   return (
     <SitePage
       title={APP_NAME}
-      description={`${APP_NAME} is the operating system for professional detailing — aviation, marine and automotive: FAA tail-number autofill, AI photo condition reports, SOPs with technician certification and quality checks, true job costing, scheduling, quotes, invoices and card payments. Start a ${TRIAL_DAYS}-day free trial.`}
+      description={`${APP_NAME} is detailing software for aircraft, boats and cars, built to aviation standards: FAA tail-number autofill, AI photo condition reports, SOPs with technician certification and quality checks, true job costing, scheduling, quotes, invoices and card payments. Start a ${TRIAL_DAYS}-day free trial.`}
       initialSection={typeof section === 'string' ? section : undefined}
     >
       <Hero />
@@ -48,11 +48,11 @@ function Hero() {
             <Pill icon="sparkles" label="Aviation · Marine · Automotive" tone="gold" />
             <View style={{ height: 24 }} />
             <Heading level={1} center={!isDesktop}>
-              The operating system for{'\n'}
-              <GradientText>professional detailing.</GradientText>
+              The detailing OS for{'\n'}
+              <GradientText>jets, yachts & cars.</GradientText>
             </Heading>
             <P size="lg" center={!isDesktop} style={{ marginTop: 22, maxWidth: 560 }}>
-              Aviation, marine and automotive — run on one system. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.
+              Built to aviation standards. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.
             </P>
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 32, alignSelf: isMobile ? 'stretch' : isDesktop ? 'flex-start' : 'center' }}>
               <CTAButton href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" full={isMobile} />

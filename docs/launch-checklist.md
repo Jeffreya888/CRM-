@@ -99,6 +99,8 @@ Companies can sign up and pay on the website; the iPhone/Android apps keep using
 ## 8. App build & website
 - [ ] `npx eas-cli@latest init`; set `EXPO_PUBLIC_*` env vars in EAS (Supabase URL/key, RevenueCat keys, `EXPO_PUBLIC_PORTAL_URL=https://<domain>`, support email, store URLs).
 - [ ] Web build for the website + customer portal: `npx expo export --platform web`, deploy (EAS Hosting or any static host with SPA fallback) on your domain.
+- [ ] App Store listing: name **Tarmo: Detailing OS**, subtitle **Software & CRM for Detailers**, promotional text **The detailing OS for jets, yachts & cars. Built to aviation standards.** Keywords (don't repeat words already in the name or subtitle): `aircraft,aviation,jet,boat,yacht,marine,auto,car,ceramic,quote,invoice,scheduling,SOP`.
+- [ ] Brand wording everywhere: where people read about Tarmo say "OS"; where platforms index words for search say "software" (Instagram/TikTok name **Tarmo | Detailing Software**, website title **Tarmo: Detailing Software for Aircraft, Boats & Cars**).
 - [ ] `npx eas-cli@latest build --platform ios --profile production` → `npx eas-cli@latest submit --platform ios`.
 
 ### 8b. Mobile & shop detailing

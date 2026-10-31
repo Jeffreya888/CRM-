@@ -5,7 +5,7 @@ import { router, usePathname } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { APP_NAME } from '../../lib/config';
+import { APP_NAME, APP_TAGLINE } from '../../lib/config';
 import { useSession } from '../../lib/session';
 import { DEMO_HREF, FOOTER_LINKS, NAV_LINKS, SIGN_UP_HREF, SITE_TAGLINE } from '../../lib/site';
 import { CTAButton, Container, Ionicons, P, SiteLink, TextLink, fontFamily, site, useBreakpoint, webStyle } from './primitives';
@@ -143,7 +143,7 @@ function Footer() {
         <View style={{ flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 32 }}>
           <View style={{ maxWidth: 380, gap: 14 }}>
             <Logo size={30} />
-            <P size="sm">{SITE_TAGLINE}. FAA autofill, AI condition reports, SOPs, scheduling, quotes, payments and true job costing — in one clear view.</P>
+            <P size="sm">{APP_TAGLINE} FAA autofill, AI condition reports, SOPs, scheduling, quotes, payments and true job costing — in one clear view.</P>
             <StoreBadges compact />
           </View>
           <View style={{ flexDirection: 'row', gap: 56, flexWrap: 'wrap' }}>
@@ -202,7 +202,7 @@ export function SitePage({ title, description, children, footer = true, initialS
   }, [initialSection]);
 
   const ctx = useMemo(() => ({ register, scrollTo }), [register, scrollTo]);
-  const fullTitle = title === APP_NAME ? `${APP_NAME} — ${SITE_TAGLINE}` : `${title} · ${APP_NAME}`;
+  const fullTitle = title === APP_NAME ? `${APP_NAME}: ${SITE_TAGLINE}` : `${title} · ${APP_NAME}`;
 
   return (
     <Anchors.Provider value={ctx}>
