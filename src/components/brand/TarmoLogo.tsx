@@ -14,7 +14,7 @@ function Shapes({ mono }: { mono?: string }) {
   );
 }
 
-/** The "A" runway mark. `mono` draws it in one color. */
+/** The runway mark (swept wings over a runway centerline). `mono` draws it in one color. */
 export function TarmoMark({ size = 32, mono }: { size?: number; mono?: string }) {
   return (
     <Svg width={size * 54 / 52.5} height={size} viewBox="5 6 54 52.5" accessibilityLabel="Tarmo">
