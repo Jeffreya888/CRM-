@@ -11,7 +11,7 @@ import {
 import { APP_NAME } from '../../lib/config';
 import { PLANS } from '../../lib/plans';
 import {
-  AIRCRAFT_MODELS, BOAT_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, SECURITY, SIGN_UP_HREF, TRIAL_DAYS, WORKFLOW,
+  AIRCRAFT_MODELS, BOAT_MODELS, VEHICLE_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, SECURITY, SIGN_UP_HREF, TRIAL_DAYS, WORKFLOW,
 } from '../../lib/site';
 
 export default function Welcome() {
@@ -19,7 +19,7 @@ export default function Welcome() {
   return (
     <SitePage
       title={APP_NAME}
-      description={`${APP_NAME} is detailing software for aircraft, boats and cars, built to aviation standards: FAA tail-number autofill, AI photo condition reports, SOPs with technician certification and quality checks, true job costing, scheduling, quotes, invoices and card payments. Start a ${TRIAL_DAYS}-day free trial.`}
+      description="Tarmo is detailing software for aircraft, boats & cars, built to aviation standards. AI photo quotes with built-in pricing, condition reports & SOPs."
       initialSection={typeof section === 'string' ? section : undefined}
     >
       <Hero />
@@ -170,7 +170,8 @@ function Included() {
     { name: 'King Air 350i', cls: 'Twin turboprop', w: 0.55 },
     { name: 'Citation CJ3+', cls: 'Light jet', w: 0.62 },
     { name: 'Gulfstream G280', cls: 'Super-midsize jet', w: 0.82 },
-    { name: 'Global 7500', cls: 'Ultra long range', w: 1 },
+    { name: '45 ft sport yacht', cls: 'Boat 40–65 ft', w: 0.7 },
+    { name: 'Chevrolet Tahoe', cls: 'Full-size SUV', w: 0.3 },
   ];
   return (
     <View style={{ position: 'relative', overflow: 'hidden' }}>
@@ -183,7 +184,7 @@ function Included() {
             <GradientText>{APP_NAME} includes both.</GradientText>
           </Heading>
           <P size="lg" center style={{ marginTop: 16 }}>
-            Bring a new technician up to standard with step-by-step SOPs, and quote with confidence using a price guide built for aviation — no add-ons, no extra subscriptions.
+            Bring a new technician up to standard with step-by-step SOPs, and quote with confidence using built-in pricing for aircraft, boats and cars — no add-ons, no extra subscriptions.
           </P>
         </View>
         <Grid cols={isDesktop ? 2 : 1} gap={isMobile ? 16 : 24}>
@@ -210,8 +211,8 @@ function Included() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 }}>
               <IconBadge icon="pricetags-outline" tone="blue" />
               <View style={{ flex: 1 }}>
-                <Heading level={3}>Aircraft price guide</Heading>
-                <P size="sm">{AIRCRAFT_MODELS} aircraft models, sized and ready to quote</P>
+                <Heading level={3}>Built-in pricing</Heading>
+                <P size="sm">Never guess a quote again: {AIRCRAFT_MODELS} aircraft, {BOAT_MODELS} boats and {VEHICLE_MODELS} vehicles, sized and ready to price</P>
               </View>
             </View>
             <View style={{ gap: 12 }}>
@@ -228,9 +229,9 @@ function Included() {
               ))}
             </View>
             <View style={{ marginTop: 20, gap: 10 }}>
-              <Check>Suggested prices by service and aircraft size</Check>
+              <Check>Suggested prices for every service, by size</Check>
               <Check>Adjust to your market with your own rates</Check>
-              <Check>Vehicle and boat sizes priced the same way</Check>
+              <Check>AI photo quotes price from your list, not guesses</Check>
             </View>
           </Glass>
         </Grid>

@@ -16,7 +16,8 @@ export const SITE_TAGLINE_SHORT = 'The operating system for professional detaili
 export const TRIAL_DAYS = 14;
 export const AIRCRAFT_MODELS = 545;
 export const BOAT_MODELS = 604;
-export const GUIDE_COUNT = 51;
+export const VEHICLE_MODELS = 514;
+export const GUIDE_COUNT = 52;
 
 export const SIGN_UP_HREF = '/sign-up';
 export const DEMO_HREF = '/sign-in?demo=1';
@@ -185,7 +186,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
-  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide covering ${AIRCRAFT_MODELS} aircraft models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
+  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
   { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Tarmo looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
   { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
   { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },
@@ -217,7 +218,7 @@ export const SUPPORT_FAQ: { q: string; a: string }[] = [
 
 export const GETTING_STARTED: { title: string; body: string; icon: IconName }[] = [
   { title: 'Create your company & choose business types', body: 'Sign up, name your company and pick Aircraft only, Aircraft + Vehicles, or Aircraft + Vehicles + Watercraft. You can add categories later.', icon: 'business-outline' },
-  { title: 'Set your services & prices', body: `Start from the built-in services — each comes with a step-by-step SOP — and set prices yourself or from the price guide (${AIRCRAFT_MODELS} aircraft models).`, icon: 'pricetags-outline' },
+  { title: 'Set your services & prices', body: `Start from the built-in services — each comes with a step-by-step SOP — and set prices yourself or from the built-in price guide for aircraft, boats and cars.`, icon: 'pricetags-outline' },
   { title: 'Add customers & assets', body: 'Add customers and their aircraft, vehicles or boats. Type a US tail number and the FAA registry fills in the details; sizes and facility notes make every quote and job faster.', icon: 'person-add-outline' },
   { title: 'Invite your crew', body: 'Send email invitations and choose each person’s role. Technicians see their assigned work — never your prices.', icon: 'people-outline' },
   { title: 'Connect payments', body: 'Connect Stripe to accept cards on invoices, deposits and care plans — or arrange payment directly and record it in the app.', icon: 'card-outline' },
