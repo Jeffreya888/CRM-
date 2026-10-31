@@ -1,0 +1,11 @@
+// Cloudflare hosting for the website + customer portal (gettarmo.com).
+// Cloudflare builds with `npx expo export --platform web` and serves ./dist;
+// unknown paths fall back to index.html so app routes (e.g. /portal/...) load.
+{
+  "name": "tarmo-website",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
