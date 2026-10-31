@@ -19,7 +19,7 @@ export default function Welcome() {
   return (
     <SitePage
       title={APP_NAME}
-      description="Tarmo is detailing software for aircraft, boats & cars, built to aviation standards. AI photo quotes with built-in pricing, condition reports & SOPs."
+      description="Detailing software for aircraft, boats & cars, built to aviation standards. AI photo quotes with built-in pricing & an AI assistant that knows your SOPs."
       initialSection={typeof section === 'string' ? section : undefined}
     >
       <Hero />
