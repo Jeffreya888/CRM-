@@ -19,8 +19,17 @@ export const BOAT_MODELS = 604;
 export const VEHICLE_MODELS = 514;
 export const GUIDE_COUNT = 52;
 
-export const SIGN_UP_HREF = '/sign-up';
+/**
+ * Before launch the website collects an early access list instead of sign-ups:
+ * trial buttons go to /early-access, and sign-in, demo and store links are hidden.
+ * Set EXPO_PUBLIC_PRELAUNCH=0 on launch day.
+ */
+export const PRELAUNCH = process.env.EXPO_PUBLIC_PRELAUNCH !== '0';
+export const SIGN_UP_HREF = PRELAUNCH ? '/early-access' : '/sign-up';
 export const DEMO_HREF = '/sign-in?demo=1';
+/** Main call to action: long form for heroes, short for nav and cards. */
+export const TRIAL_CTA = PRELAUNCH ? 'Get early access' : `Start your ${TRIAL_DAYS}-day free trial`;
+export const TRIAL_CTA_SHORT = PRELAUNCH ? 'Get early access' : 'Start free trial';
 
 export const NAV_LINKS = [
   { label: 'Features', href: '/welcome#features' },

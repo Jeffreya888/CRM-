@@ -9,7 +9,7 @@ import { CTAButton, Glass, Heading, Ionicons, P, fontFamily, site, useBreakpoint
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-function Input({ label, error, optional, grow, ...props }: TextInputProps & { label: string; error?: string | null; optional?: boolean; grow?: boolean }) {
+export function Input({ label, error, optional, grow, ...props }: TextInputProps & { label: string; error?: string | null; optional?: boolean; grow?: boolean }) {
   const [focus, setFocus] = useState(false);
   return (
     <View style={grow ? { gap: 7, flex: 1 } : { gap: 7 }}>

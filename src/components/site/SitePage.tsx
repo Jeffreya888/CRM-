@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { APP_NAME, APP_TAGLINE } from '../../lib/config';
 import { TarmoLogo } from '../brand/TarmoLogo';
 import { useSession } from '../../lib/session';
-import { DEMO_HREF, FOOTER_LINKS, NAV_LINKS, SIGN_UP_HREF, SITE_TAGLINE } from '../../lib/site';
+import { DEMO_HREF, FOOTER_LINKS, NAV_LINKS, PRELAUNCH, SIGN_UP_HREF, SITE_TAGLINE, TRIAL_CTA, TRIAL_CTA_SHORT } from '../../lib/site';
 import { CTAButton, Container, Ionicons, P, SiteLink, TextLink, fontFamily, site, useBreakpoint, webStyle } from './primitives';
 import { StoreBadges } from './StoreBadges';
 
@@ -56,7 +56,7 @@ function Nav({ onAnchor }: { onAnchor: (id: string) => void }) {
           </SiteLink>
           {compact ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {!isMobile ? <CTAButton href={session ? '/' : SIGN_UP_HREF} label={session ? 'Open app' : 'Start free trial'} size="sm" /> : null}
+              {!isMobile ? <CTAButton href={session ? '/' : SIGN_UP_HREF} label={session ? 'Open app' : TRIAL_CTA_SHORT} size="sm" /> : null}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={open ? 'Close menu' : 'Open menu'}
@@ -77,8 +77,8 @@ function Nav({ onAnchor }: { onAnchor: (id: string) => void }) {
                 <CTAButton href="/" label="Open app" size="sm" icon="arrow-forward" />
               ) : (
                 <>
-                  <TextLink href="/sign-in">Sign in</TextLink>
-                  <CTAButton href={SIGN_UP_HREF} label="Start free trial" size="sm" />
+                  {!PRELAUNCH ? <TextLink href="/sign-in">Sign in</TextLink> : null}
+                  <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA_SHORT} size="sm" />
                 </>
               )}
             </View>
@@ -93,7 +93,7 @@ function Nav({ onAnchor }: { onAnchor: (id: string) => void }) {
           ]}
         >
           <Container style={{ gap: 4 }}>
-            {[...links, ...(session ? [] : [{ label: 'Sign in', href: '/sign-in', active: false }]), { label: 'Explore the demo', href: DEMO_HREF, active: false }].map((l) => (
+            {[...links, ...(PRELAUNCH ? [] : [...(session ? [] : [{ label: 'Sign in', href: '/sign-in', active: false }]), { label: 'Explore the demo', href: DEMO_HREF, active: false }])].map((l) => (
               <Pressable
                 key={l.label}
                 accessibilityRole="link"
@@ -105,7 +105,7 @@ function Nav({ onAnchor }: { onAnchor: (id: string) => void }) {
               </Pressable>
             ))}
             <View style={{ paddingTop: 16, paddingBottom: 8 }}>
-              <CTAButton href={session ? '/' : SIGN_UP_HREF} label={session ? 'Open app' : 'Start your 14-day free trial'} full />
+              <CTAButton href={session ? '/' : SIGN_UP_HREF} label={session ? 'Open app' : TRIAL_CTA} full />
             </View>
           </Container>
         </View>
@@ -140,8 +140,8 @@ function Footer() {
               <Text style={{ fontFamily, color: site.faint, fontSize: 12, fontWeight: '800', letterSpacing: 1.6 }}>PRODUCT</Text>
               <TextLink href="/welcome" size={14}>Overview</TextLink>
               <TextLink href="/pricing" size={14}>Pricing</TextLink>
-              <TextLink href={DEMO_HREF} size={14}>Explore the demo</TextLink>
-              <TextLink href={SIGN_UP_HREF} size={14}>Start free trial</TextLink>
+              {!PRELAUNCH ? <TextLink href={DEMO_HREF} size={14}>Explore the demo</TextLink> : null}
+              <TextLink href={SIGN_UP_HREF} size={14}>{TRIAL_CTA_SHORT}</TextLink>
             </View>
             <View style={{ gap: 12 }}>
               <Text style={{ fontFamily, color: site.faint, fontSize: 12, fontWeight: '800', letterSpacing: 1.6 }}>COMPANY</Text>

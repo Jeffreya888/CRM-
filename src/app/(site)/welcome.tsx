@@ -11,7 +11,7 @@ import {
 import { APP_NAME } from '../../lib/config';
 import { PLANS } from '../../lib/plans';
 import {
-  AIRCRAFT_MODELS, BOAT_MODELS, VEHICLE_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, SECURITY, SIGN_UP_HREF, TRIAL_DAYS, WORKFLOW,
+  AIRCRAFT_MODELS, BOAT_MODELS, VEHICLE_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, PRELAUNCH, SECURITY, SIGN_UP_HREF, TRIAL_CTA, TRIAL_DAYS, WORKFLOW,
 } from '../../lib/site';
 
 export default function Welcome() {
@@ -55,8 +55,8 @@ function Hero() {
               Built to aviation standards. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.
             </P>
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 32, alignSelf: isMobile ? 'stretch' : isDesktop ? 'flex-start' : 'center' }}>
-              <CTAButton href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" full={isMobile} />
-              <CTAButton href={DEMO_HREF} label="Explore the demo" icon="play-circle-outline" variant="outline" size="lg" full={isMobile} />
+              <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA} icon="arrow-forward" size="lg" full={isMobile} />
+              {!PRELAUNCH ? <CTAButton href={DEMO_HREF} label="Explore the demo" icon="play-circle-outline" variant="outline" size="lg" full={isMobile} /> : null}
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 18, marginTop: 20, justifyContent: isDesktop ? 'flex-start' : 'center' }}>
               {['Every feature included', 'No card required', 'Cancel anytime'].map((x) => (
@@ -378,8 +378,8 @@ function FinalCta() {
             Start free for {TRIAL_DAYS} days with every feature unlocked. No card required — pick a plan only when it’s earning its keep.
           </P>
           <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 32, alignSelf: isMobile ? 'stretch' : 'center' }}>
-            <CTAButton href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" variant="gold" full={isMobile} />
-            <CTAButton href={DEMO_HREF} label="Explore the demo" variant="outline" size="lg" full={isMobile} />
+            <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA} icon="arrow-forward" size="lg" variant="gold" full={isMobile} />
+            {!PRELAUNCH ? <CTAButton href={DEMO_HREF} label="Explore the demo" variant="outline" size="lg" full={isMobile} /> : null}
           </View>
           <View style={{ marginTop: 28 }}>
             <StoreBadges />

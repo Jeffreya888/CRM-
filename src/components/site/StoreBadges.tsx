@@ -1,5 +1,5 @@
 import { Text, View } from 'react-native';
-import { APP_STORE_URL, PLAY_STORE_URL } from '../../lib/site';
+import { APP_STORE_URL, PLAY_STORE_URL, PRELAUNCH } from '../../lib/site';
 import { Ionicons, SiteLink, fontFamily, site, webStyle, type IconName } from './primitives';
 
 function Badge({ href, icon, small, big, compact }: { href: string; icon: IconName; small: string; big: string; compact?: boolean }) {
@@ -29,6 +29,7 @@ function Badge({ href, icon, small, big, compact }: { href: string; icon: IconNa
 }
 
 export function StoreBadges({ compact }: { compact?: boolean }) {
+  if (PRELAUNCH) return null; // the apps aren't in the stores yet
   return (
     <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
       <Badge href={APP_STORE_URL} icon="logo-apple" small="Download on the" big="App Store" compact={compact} />

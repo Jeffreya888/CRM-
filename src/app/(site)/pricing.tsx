@@ -9,7 +9,7 @@ import {
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
 import { FEATURE_LABELS, PLANS, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
-import { AIRCRAFT_MODELS, GUIDE_COUNT, PRICING_FAQ, SIGN_UP_HREF, TRIAL_DAYS } from '../../lib/site';
+import { AIRCRAFT_MODELS, GUIDE_COUNT, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
 
 type Period = 'monthly' | 'annual';
 
@@ -75,7 +75,7 @@ export default function Pricing() {
         <SectionIntro eyebrow="FAQ" title="Billing questions, answered." />
         <Faq items={PRICING_FAQ} />
         <View style={{ alignItems: 'center', marginTop: 48, gap: 14 }}>
-          <CTAButton center href={SIGN_UP_HREF} label={`Start your ${TRIAL_DAYS}-day free trial`} icon="arrow-forward" size="lg" variant="gold" />
+          <CTAButton center href={SIGN_UP_HREF} label={TRIAL_CTA} icon="arrow-forward" size="lg" variant="gold" />
           <P size="sm" center>Subscribe on the web or in the app. On the web you pay by card and manage billing in your account; in the iPhone or Android app, Apple or Google bills you.</P>
           <StoreBadges />
         </View>
@@ -129,7 +129,7 @@ function PlanCard({ plan: p, period }: { plan: PlanInfo; period: Period }) {
         {annual ? `About ${money(p.annual / 12)}/mo · save $${annualSavings(p)} a year` : `or ${money(p.annual)}/yr billed yearly`}
       </Text>
       <View style={{ marginTop: 22 }}>
-        <CTAButton href={SIGN_UP_HREF} label="Start free trial" variant={featured ? 'gold' : 'primary'} full />
+        <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA_SHORT} variant={featured ? 'gold' : 'primary'} full />
       </View>
       <View style={{ flexDirection: 'row', marginTop: 24, borderRadius: 14, borderWidth: 1, borderColor: site.line, overflow: 'hidden' }}>
         {[

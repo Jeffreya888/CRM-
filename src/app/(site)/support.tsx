@@ -7,7 +7,7 @@ import {
   fontFamily, site, useBreakpoint, webStyle, type IconName,
 } from '../../components/site/primitives';
 import { APP_NAME, SUPPORT_EMAIL } from '../../lib/config';
-import { DEMO_HREF, GETTING_STARTED, SUPPORT_FAQ, TROUBLESHOOTING } from '../../lib/site';
+import { DEMO_HREF, GETTING_STARTED, PRELAUNCH, SUPPORT_FAQ, TROUBLESHOOTING } from '../../lib/site';
 
 export default function Support() {
   const { isMobile, isDesktop } = useBreakpoint();
@@ -38,7 +38,7 @@ export default function Support() {
                 <Text style={{ fontFamily, color: site.text, fontSize: 16, fontWeight: '700' }}>{SUPPORT_EMAIL}</Text>
               </View>
             </SiteLink>
-            <CTAButton href={DEMO_HREF} label="Explore the demo" icon="play-circle-outline" variant="outline" size="lg" full={isMobile} />
+            {!PRELAUNCH ? <CTAButton href={DEMO_HREF} label="Explore the demo" icon="play-circle-outline" variant="outline" size="lg" full={isMobile} /> : null}
           </View>
         </Container>
       </View>

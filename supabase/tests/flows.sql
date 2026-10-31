@@ -606,6 +606,31 @@ select public.submit_support_message('Sam Detailer', 'sam@example.com', 'Sam Co'
 reset role;
 do $$ begin assert (select count(*) from support_messages) = 1; end $$;
 
+-- Early access list from the public website.
+set role anon;
+do $$ begin
+  assert public.join_early_access('Pat Pilot', 'Pat@Example.com ', 'Pat Air', array['aircraft','vehicle'], '2-5') = false, 'new sign-up';
+  assert public.join_early_access('Pat Pilot', 'pat@example.com', '', array['aircraft'], null) = true, 'second sign-up is an update';
+  assert (select count(*) from early_access) = 0, 'visitors cannot read the list';
+  begin
+    perform public.join_early_access('Pat', 'not-an-email', null, '{}', null);
+    raise exception 'bad email accepted';
+  exception when raise_exception then
+    if sqlerrm not like 'Please enter%' then raise; end if;
+  end;
+  begin
+    perform public.join_early_access('Pat', 'p2@example.com', null, array['spaceship'], null);
+    raise exception 'bad type accepted';
+  exception when raise_exception then
+    if sqlerrm not like 'Please check%' then raise; end if;
+  end;
+end $$;
+reset role;
+do $$ begin
+  assert (select count(*) from early_access) = 1, 'one entry per email';
+  assert (select company = 'Pat Air' and business_types = array['aircraft'] and crew_size = '2-5' from early_access), 'update keeps earlier details';
+end $$;
+
 -- ---------- Demo workspace --------------------------------------------------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000e', false);

@@ -1,3 +1,4 @@
+import * as Clipboard from 'expo-clipboard';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -21,6 +22,8 @@ type Health = {
 type PendingTexting = { id: string; name: string; email: string | null; phone: string | null; sms_status: string; sms_number: string | null };
 type PendingIntegration = { id: string; provider: string; management_company: string; contact_name: string | null; contact_email: string | null; status: string; created_at: string; company: string };
 type Pending = { texting: PendingTexting[]; integrations: PendingIntegration[] };
+type EarlyAccess = { id: string; name: string; email: string; company: string | null; business_types: string[]; crew_size: string | null; created_at: string };
+const TYPE_LABEL: Record<string, string> = { aircraft: 'Aircraft', watercraft: 'Boats', vehicle: 'Cars' };
 type SupportMessage = { id: string; name: string; email: string; company: string | null; topic: string | null; message: string; handled: boolean; created_at: string };
 
 const CHECKLIST: [string, string][] = [
@@ -60,7 +63,7 @@ export default function PlatformAdmin() {
 }
 
 function AdminBody() {
-  const [tab, setTab] = useState<'metrics' | 'health' | 'support' | 'actions' | 'launch'>('metrics');
+  const [tab, setTab] = useState<'metrics' | 'health' | 'support' | 'early' | 'actions' | 'launch'>('metrics');
   const [showHandled, setShowHandled] = useState(false);
 
   const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
@@ -70,6 +73,11 @@ function AdminBody() {
     return (await must(q)) as SupportMessage[];
   }, [showHandled]);
 
+  const early = useQuery(async () => (await must(supabase.from('early_access').select('*').order('created_at', { ascending: false }).limit(1000))) as EarlyAccess[], []);
+  const copyEmails = async () => {
+    await Clipboard.setStringAsync((early.data ?? []).map((e) => e.email).join(', '));
+    notify('Copied', `${early.data?.length ?? 0} emails copied.`);
+  };
   const pending = useQuery(async () => (await must(supabase.rpc('platform_pending'))) as Pending, []);
   const metrics = usePlatformMetrics();
   const h = health.data;
@@ -86,12 +94,13 @@ function AdminBody() {
   };
 
   return (
-    <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); }}>
+    <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); early.refresh(); }}>
       <Stack.Screen options={{ title: 'Platform admin' }} />
       <Segmented value={tab} onChange={setTab} options={[
         { value: 'metrics', label: 'Metrics' },
         { value: 'health', label: 'Health' },
         { value: 'support', label: 'Support', count: h?.support_open },
+        { value: 'early', label: 'Early access', count: early.data?.length },
         { value: 'actions', label: 'Texting & integrations', count: h?.texting_pending },
         { value: 'launch', label: 'Launch checklist' },
       ]} />
@@ -143,6 +152,29 @@ function AdminBody() {
               })}
             </Card>
           </Section>
+        </>
+      ) : null}
+
+      {tab === 'early' ? (
+        <>
+          <ErrorBanner message={early.error} onRetry={early.refresh} />
+          {early.data?.length ? (
+            <Row style={{ justifyContent: 'space-between', marginBottom: space.md }}>
+              <T variant="muted">{early.data.length} on the list</T>
+              <Button small kind="secondary" icon="copy-outline" title="Copy all emails" onPress={copyEmails} />
+            </Row>
+          ) : null}
+          {!early.loading && (early.data ?? []).length === 0 ? <EmptyState icon="people-outline" title="No sign-ups yet" body="People who join the early access list on the website show up here." /> : null}
+          {(early.data ?? []).map((e) => (
+            <Card key={e.id}>
+              <T style={{ fontWeight: '700' }}>{e.name}{e.company ? ` · ${e.company}` : ''}</T>
+              <T variant="small">{e.email} · {relative(e.created_at)}</T>
+              <Row gap={6} style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
+                {e.business_types.map((t) => <Badge key={t} raw label={TYPE_LABEL[t] ?? t} tone="info" />)}
+                {e.crew_size ? <Badge raw label={`Crew ${e.crew_size}`} tone="neutral" /> : null}
+              </Row>
+            </Card>
+          ))}
         </>
       ) : null}
 
