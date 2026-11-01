@@ -8,14 +8,14 @@ import {
   fontFamily, site, useBreakpoint, webStyle,
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
-import { FEATURE_LABELS, FOUNDING, PLANS, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
+import { FEATURE_LABELS, FOUNDING, PLANS, feePercent, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
 import { AIRCRAFT_MODELS, GUIDE_COUNT, PRELAUNCH, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
 
 type Period = 'monthly' | 'annual';
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const seatsLabel = (p: PlanInfo) => (p.seats === Infinity ? 'Unlimited' : p.seats === 1 ? '1 user' : `Up to ${p.seats}`);
-const feeLabel = (p: PlanInfo) => `${p.feeBps / 100}%`;
+const feeLabel = (p: PlanInfo) => feePercent(p.feeBps);
 
 export default function Pricing() {
   const [period, setPeriod] = useState<Period>('monthly');

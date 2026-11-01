@@ -135,7 +135,7 @@ Texting allowance per plan: Solo 250 / Team 1,000 / Fleet 3,000 texts per month;
 7. Sales tax collected shown separately (not revenue).
 
 ## Public website (new, not a copy of the old one)
-- Premium, modern marketing site: hero, workflow story, features by area, business types (aircraft / vehicles / watercraft), pricing (Solo $69.99 · Team $119.99 · Fleet $219.99, platform fee 1.5% / 1% / 0.5%), 14-day free trial, FAQ, App Store / Google Play badges.
+- Premium, modern marketing site: hero, workflow story, features by area, business types (aircraft / vehicles / watercraft), pricing (Solo $69.99 · Team $119.99 · Fleet $219.99, platform fee 1% / 0.75% / 0.5%), 14-day free trial, FAQ, App Store / Google Play badges.
 - Real privacy policy + terms of service (owner fills legal name, address, state; lawyer review recommended). No "draft"/"preview"/builder notes anywhere.
 - Support page: contact email (placeholder until domain exists) + contact form, Getting started guide (first 7 steps), FAQ (incl. billing, cancel, data export), troubleshooting tips.
 - Hosted on the same web build as the customer portal.

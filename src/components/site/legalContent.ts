@@ -184,7 +184,7 @@ export const TERMS: LegalSection[] = [
     title: 'Payments and the platform fee',
     body: [
       'Companies can accept card payments from their customers (for example, invoices, quote deposits and care plans) through Stripe Connect. To do so you must create a Stripe account and accept Stripe’s terms, including the Stripe Connected Account Agreement. Stripe, not Tarmo, processes and settles those payments.',
-      'For each payment processed through the Service, we charge a platform fee based on your plan at the time of the payment: 1.5% on Solo, 1% on Team and 0.5% on Fleet. The platform fee is deducted automatically from the payment and is separate from, and in addition to, Stripe’s processing fees. Payments you record yourself (such as cash, checks or transfers made outside the Service) do not incur a platform fee. We may change the platform fee with at least 30 days’ notice.',
+      'For each payment processed through the Service, we charge a platform fee based on your plan at the time of the payment: 1% on Solo, 0.75% on Team and 0.5% on Fleet. The platform fee is deducted automatically from the payment and is separate from, and in addition to, Stripe’s processing fees. Payments you record yourself (such as cash, checks or transfers made outside the Service) do not incur a platform fee. We may change the platform fee with at least 30 days’ notice.',
       'You are responsible for your own taxes, refunds, chargebacks and disputes with your customers, and for the accuracy of the amounts you charge.',
     ],
   },

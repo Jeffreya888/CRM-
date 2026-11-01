@@ -4,7 +4,7 @@ import { Platform, View } from 'react-native';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { Badge, Card, Ionicons, ListRow, Row, Screen, Section, T, type IconName } from '../../components/ui';
 import { APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from '../../lib/config';
-import { PLANS, planInfo } from '../../lib/plans';
+import { feePercent, PLANS, planInfo } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { colors, space, type Tone } from '../../lib/theme';
 
@@ -50,7 +50,7 @@ export default function About() {
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {PLANS.map((p) => (
             <ListRow key={p.id} icon="ribbon-outline" tone={p.id === plan ? 'success' : 'neutral'} title={`${p.name} · $${p.monthly.toFixed(2)}/mo`}
-              subtitle={`or $${p.annual.toFixed(2)}/yr · ${(p.feeBps / 100).toFixed(1)}% card fee`}
+              subtitle={`or $${p.annual.toFixed(2)}/yr · ${feePercent(p.feeBps)} card fee`}
               meta={p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? 'Just you' : `Up to ${p.seats} team members`}
               right={p.id === plan ? <Badge raw label="Current" tone="success" /> : undefined} />
           ))}

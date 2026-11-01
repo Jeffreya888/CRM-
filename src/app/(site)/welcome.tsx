@@ -9,7 +9,7 @@ import {
   fontFamily, site, useBreakpoint, webStyle,
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
-import { PLANS } from '../../lib/plans';
+import { feePercent, PLANS } from '../../lib/plans';
 import {
   AIRCRAFT_MODELS, BOAT_MODELS, VEHICLE_MODELS, BUSINESS_TYPES, DEMO_HREF, EDGE, FEATURES, GUIDE_COUNT, GUIDE_EXAMPLES, HOME_FAQ, PRELAUNCH, SECURITY, SIGN_UP_HREF, TRIAL_CTA, TRIAL_DAYS, WORKFLOW,
 } from '../../lib/site';
@@ -345,7 +345,7 @@ function PlansTeaser() {
               <View style={{ gap: 9 }}>
                 <Check>{p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? '1 user' : `Up to ${p.seats} team members`}</Check>
                 <Check>{p.texts.toLocaleString('en-US')} customer texts / month</Check>
-                <Check>{p.feeBps / 100}% platform fee on card payments</Check>
+                <Check>{feePercent(p.feeBps)} platform fee on card payments</Check>
               </View>
             </Glass>
           );

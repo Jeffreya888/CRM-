@@ -24,9 +24,9 @@ export function stripe(): Stripe {
 
 /** Platform fee (basis points) per plan: the processing-fee revenue stream. */
 export function platformFeeBps(plan: string): number {
-  const fallback: Record<string, number> = { solo: 150, trial: 150, team: 100, fleet: 50 };
+  const fallback: Record<string, number> = { solo: 100, trial: 100, team: 75, fleet: 50 };
   const fromEnv = Deno.env.get(`PLATFORM_FEE_BPS_${plan.toUpperCase()}`);
-  return fromEnv ? Number(fromEnv) : (fallback[plan] ?? 150);
+  return fromEnv ? Number(fromEnv) : (fallback[plan] ?? 100);
 }
 
 /** Returns the caller's user id and role in the org, or null. */

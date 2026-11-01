@@ -42,13 +42,13 @@ const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'exp
 
 export const PLANS: PlanInfo[] = [
   {
-    id: 'solo', name: 'Solo', monthly: 69.99, annual: 699.99, seats: 1, customerLimit: null, feeBps: 150, texts: 250, aiChecks: 25, aiQuestions: 300,
+    id: 'solo', name: 'Solo', monthly: 69.99, annual: 699.99, seats: 1, customerLimit: null, feeBps: 100, texts: 250, aiChecks: 25, aiQuestions: 300,
     features: CORE,
     blurb: 'For an independent detailer running the whole business from one phone.',
     highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal & card payments', '25 AI photo checks / month', askLine(300), '250 customer texts / month'],
   },
   {
-    id: 'team', name: 'Team', monthly: 119.99, annual: 1199.99, seats: 10, customerLimit: null, feeBps: 100, texts: 1000, aiChecks: 150, aiQuestions: 2000,
+    id: 'team', name: 'Team', monthly: 119.99, annual: 1199.99, seats: 10, customerLimit: null, feeBps: 75, texts: 1000, aiChecks: 150, aiQuestions: 2000,
     features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS],
     blurb: 'For a company coordinating a detailing crew.',
     highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification & quality checks', 'Job costing: profit by class, model & type', 'Customer photo quotes in the portal', '150 AI photo checks / month', askLine(2000), '1,000 customer texts / month'],
@@ -90,6 +90,9 @@ export const planInfo = (plan: Plan) => PLANS.find((p) => p.id === plan) ?? null
  * Billed through Stripe promo codes (see docs/launch-checklist.md).
  */
 export const FOUNDING = { months: 12, windowDays: 30, monthly: { solo: 49.99, team: 89.99, fleet: 159.99 } as Record<PlanInfo['id'], number> };
+
+/** Platform fee as shown to people: "1%", "0.75%", "0.5%". */
+export const feePercent = (bps: number) => `${Number((bps / 100).toFixed(2))}%`;
 
 export const priceLabel = (p: PlanInfo, period: 'monthly' | 'annual') =>
   period === 'annual' ? `$${p.annual.toFixed(2)}/yr` : `$${p.monthly.toFixed(2)}/mo`;

@@ -90,8 +90,8 @@ Flight Schedule Pro).
 
 | Plan | Monthly | Yearly | Seats | Texts / month | Card platform fee |
 |---|---|---|---|---|---|
-| Solo | $69.99 | $699.99 | 1 | 250 | 1.5% |
-| Team | $119.99 | $1,199.99 | 10 | 1,000 | 1.0% |
+| Solo | $69.99 | $699.99 | 1 | 250 | 1.0% |
+| Team | $119.99 | $1,199.99 | 10 | 1,000 | 0.75% |
 | Fleet | $219.99 | $2,199.99 | Unlimited | 3,000 | 0.5% |
 
 - 14-day free trial with every feature (10 seats). After it ends, data stays readable and
