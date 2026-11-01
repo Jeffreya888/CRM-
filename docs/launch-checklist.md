@@ -113,6 +113,11 @@ Companies can sign up and pay on the website; the iPhone/Android apps keep using
 - [ ] Nothing to set up: VIN lookup uses NHTSA's free vPIC database (no key). Starter prices and the 514-model vehicle catalog come with the migrations.
 - **Check:** Add a vehicle, type a real VIN and tap **Look up**: year, make, model and size class fill in. Pick a size class and quote a Full Detail (a full-size SUV shows $325). Add a 45 ft boat and quote a Maintenance Wash (Level 1): $6/ft.
 
+## 8d. Capacity (before launch)
+- [ ] Supabase Pro, and raise compute above Nano (Project Settings → Compute) before real users.
+- [ ] Request a higher Anthropic usage tier so photo quotes and Ask don't hit per-minute limits; Resend Pro removes the 100/day cap.
+- [ ] Load test after the service keys are in: simulate hundreds of companies using the app at once, check slow queries (Supabase → Reports / Query performance) and add missing indexes.
+
 ## 9. Pilot company (before real customers)
 Run the full day with a test company: sign up → services & prices → customer + aircraft (catalog) → quote with packages → customer accepts online → job → before photos → start → crew time & supplies → after photos → complete → invoice → payment → review request → recurring visit → timesheet approval → P&L. Also: invite a technician and confirm they see no prices.
 
