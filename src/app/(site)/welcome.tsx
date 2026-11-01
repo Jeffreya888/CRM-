@@ -114,28 +114,31 @@ function ProofBand() {
 
 function Edge() {
   const { isMobile, isTablet } = useBreakpoint();
+  const onLayout = useAnchor('features');
   return (
-    <Section>
-      <SectionIntro eyebrow="What sets it apart" title="Built for the work only professionals do."
-        body="Four things you will not find in a generic field-service app — each works the day you sign up, with sensible defaults and one tap to apply." />
-      <Grid cols={isMobile ? 1 : isTablet ? 2 : 4} gap={isMobile ? 16 : 20}>
-        {EDGE.map((e) => (
-          <Glass key={e.title} hover style={{ flex: 1 }} padding={24}>
-            <IconBadge icon={e.icon} tone={e.tone} />
-            <Heading level={3} style={{ marginTop: 18, fontSize: 19 }}>{e.title}</Heading>
-            <P size="sm" style={{ marginTop: 8, marginBottom: 18 }}>{e.body}</P>
-            <View style={{ marginTop: 'auto', borderRadius: 14, borderWidth: 1, borderColor: site.line, backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 6, paddingHorizontal: 12 }}>
-              {e.sample.map((x, i) => (
-                <View key={x.label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10, paddingVertical: 7, borderTopWidth: i ? 1 : 0, borderTopColor: site.line }}>
-                  <Text style={{ fontFamily, color: site.faint, fontSize: 12.5, fontWeight: '700' }}>{x.label}</Text>
-                  <Text style={{ fontFamily, color: e.tone === 'gold' ? site.goldText : e.tone === 'green' ? '#7FDDB0' : site.blueText, fontSize: 13, fontWeight: '700', textAlign: 'right', flexShrink: 1 }}>{x.value}</Text>
-                </View>
-              ))}
-            </View>
-          </Glass>
-        ))}
-      </Grid>
-    </Section>
+    <View onLayout={onLayout}>
+      <Section>
+        <SectionIntro eyebrow="What sets it apart" title="Built for the work only professionals do."
+          body="Four things you will not find in a generic field-service app — each works the day you sign up, with sensible defaults and one tap to apply." />
+        <Grid cols={isMobile ? 1 : isTablet ? 2 : 4} gap={isMobile ? 16 : 20}>
+          {EDGE.map((e) => (
+            <Glass key={e.title} hover style={{ flex: 1 }} padding={24}>
+              <IconBadge icon={e.icon} tone={e.tone} />
+              <Heading level={3} style={{ marginTop: 18, fontSize: 19 }}>{e.title}</Heading>
+              <P size="sm" style={{ marginTop: 8, marginBottom: 18 }}>{e.body}</P>
+              <View style={{ marginTop: 'auto', borderRadius: 14, borderWidth: 1, borderColor: site.line, backgroundColor: 'rgba(255,255,255,0.03)', paddingVertical: 6, paddingHorizontal: 12 }}>
+                {e.sample.map((x, i) => (
+                  <View key={x.label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10, paddingVertical: 7, borderTopWidth: i ? 1 : 0, borderTopColor: site.line }}>
+                    <Text style={{ fontFamily, color: site.faint, fontSize: 12.5, fontWeight: '700' }}>{x.label}</Text>
+                    <Text style={{ fontFamily, color: e.tone === 'gold' ? site.goldText : e.tone === 'green' ? '#7FDDB0' : site.blueText, fontSize: 13, fontWeight: '700', textAlign: 'right', flexShrink: 1 }}>{x.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </Glass>
+          ))}
+        </Grid>
+      </Section>
+    </View>
   );
 }
 
@@ -242,9 +245,8 @@ function Included() {
 
 function Features() {
   const { isMobile, isTablet } = useBreakpoint();
-  const onLayout = useAnchor('features');
   return (
-    <View onLayout={onLayout}>
+    <View>
       <Section>
         <SectionIntro eyebrow="Everything in one place" title="Every part of the business, finally in one app." body="Replace the calendar app, the spreadsheet, the invoicing tool and the group text. Each piece knows about the others — from the tail number to the true profit." />
         <Grid cols={isMobile ? 1 : isTablet ? 2 : 3} gap={isMobile ? 16 : 20}>
