@@ -441,6 +441,9 @@ verify_jwt = false
 [functions.resend-webhook]
 verify_jwt = false
 
+[functions.early-access]
+verify_jwt = false   # Public website form and one-click unsubscribe
+
 [functions.telnyx-webhook]
 verify_jwt = false
 

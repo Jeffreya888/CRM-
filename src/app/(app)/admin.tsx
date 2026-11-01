@@ -22,7 +22,7 @@ type Health = {
 type PendingTexting = { id: string; name: string; email: string | null; phone: string | null; sms_status: string; sms_number: string | null };
 type PendingIntegration = { id: string; provider: string; management_company: string; contact_name: string | null; contact_email: string | null; status: string; created_at: string; company: string };
 type Pending = { texting: PendingTexting[]; integrations: PendingIntegration[] };
-type EarlyAccess = { id: string; name: string; email: string; company: string | null; business_types: string[]; crew_size: string | null; created_at: string };
+type EarlyAccess = { id: string; name: string; email: string; company: string | null; business_types: string[]; crew_size: string | null; created_at: string; unsubscribed_at: string | null };
 const TYPE_LABEL: Record<string, string> = { aircraft: 'Aircraft', watercraft: 'Boats', vehicle: 'Cars' };
 type SupportMessage = { id: string; name: string; email: string; company: string | null; topic: string | null; message: string; handled: boolean; created_at: string };
 
@@ -75,8 +75,9 @@ function AdminBody() {
 
   const early = useQuery(async () => (await must(supabase.from('early_access').select('*').order('created_at', { ascending: false }).limit(1000))) as EarlyAccess[], []);
   const copyEmails = async () => {
-    await Clipboard.setStringAsync((early.data ?? []).map((e) => e.email).join(', '));
-    notify('Copied', `${early.data?.length ?? 0} emails copied.`);
+    const emails = (early.data ?? []).filter((e) => !e.unsubscribed_at).map((e) => e.email);
+    await Clipboard.setStringAsync(emails.join(', '));
+    notify('Copied', `${emails.length} emails copied (unsubscribed people left out).`);
   };
   const pending = useQuery(async () => (await must(supabase.rpc('platform_pending'))) as Pending, []);
   const metrics = usePlatformMetrics();
@@ -172,6 +173,7 @@ function AdminBody() {
               <Row gap={6} style={{ marginTop: space.sm, flexWrap: 'wrap' }}>
                 {e.business_types.map((t) => <Badge key={t} raw label={TYPE_LABEL[t] ?? t} tone="info" />)}
                 {e.crew_size ? <Badge raw label={`Crew ${e.crew_size}`} tone="neutral" /> : null}
+                {e.unsubscribed_at ? <Badge raw label="Unsubscribed" tone="warning" /> : null}
               </Row>
             </Card>
           ))}

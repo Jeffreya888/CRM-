@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SUPPORT_EMAIL } from '../../lib/config';
-import { friendlyError, supabase } from '../../lib/supabase';
+import { callFunction, friendlyError } from '../../lib/supabase';
 import { colors } from '../../lib/theme';
 import { CTAButton, Glass, Heading, Ionicons, P, fontFamily, site, useBreakpoint, webStyle } from './primitives';
 import { Input } from './SupportForm';
@@ -66,16 +66,17 @@ export function EarlyAccessForm() {
     setFailure(null);
     if (Object.keys(e).length) return;
     setBusy(true);
-    const { data, error } = await supabase.rpc('join_early_access', {
-      p_name: name.trim(), p_email: email.trim(), p_company: company.trim(), p_business_types: types, p_crew_size: crew,
-    });
-    setBusy(false);
-    if (error) {
-      const msg = /fetch|network/i.test(error.message) ? 'We couldn’t reach the server. Check your connection and try again.' : friendlyError(error.message);
+    try {
+      const res = await callFunction<{ existing: boolean }>('early-access', {
+        name: name.trim(), email: email.trim(), company: company.trim(), business_types: types, crew_size: crew,
+      });
+      setDone(res.existing ? 'updated' : 'new');
+    } catch (e: any) {
+      const msg = /fetch|network/i.test(e.message ?? '') ? 'We couldn’t reach the server. Check your connection and try again.' : friendlyError(e.message);
       setFailure(/[.!?]$/.test(msg) ? msg : `${msg}.`);
-      return;
+    } finally {
+      setBusy(false);
     }
-    setDone(data ? 'updated' : 'new');
   };
 
   if (done) {
@@ -87,7 +88,9 @@ export function EarlyAccessForm() {
           </View>
           <Heading level={3} center style={{ marginTop: 18 }}>{done === 'new' ? 'You’re on the list' : 'You’re already on the list'}</Heading>
           <P center style={{ marginTop: 6, maxWidth: 440 }}>
-            Thanks, {name.trim().split(' ')[0]}. We’ll email {email.trim().toLowerCase()} with your founding member offer as soon as Tarmo opens{done === 'updated' ? ', and we’ve updated your details' : ''}.
+            Thanks, {name.trim().split(' ')[0]}. {done === 'new'
+              ? `We’ve sent a welcome email to ${email.trim().toLowerCase()} with your founding member offer. Check your inbox (and spam, just in case).`
+              : 'We’ve updated your details. We’ll email you the day Tarmo opens.'}
           </P>
         </View>
       </Glass>

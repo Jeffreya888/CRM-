@@ -42,7 +42,7 @@ export async function readJson<T = Record<string, unknown>>(req: Request): Promi
 
 /** Base URL for customer-facing links (no trailing slash). */
 export function portalUrl(): string {
-  return (Deno.env.get("PORTAL_URL") ?? "https://example.com").replace(/\/+$/, "");
+  return (Deno.env.get("PORTAL_URL") ?? "https://gettarmo.com").replace(/\/+$/, "");
 }
 
 /** Preflight response for browser callers. */

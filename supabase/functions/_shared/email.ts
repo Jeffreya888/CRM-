@@ -17,6 +17,8 @@ export type EmailInput = {
   replyTo?: string | null;
   cc?: string | string[] | null;
   attachments?: EmailAttachment[];
+  /** Extra headers, e.g. List-Unsubscribe on platform marketing emails. */
+  headers?: Record<string, string>;
   /** Company name shown as "<name> via Tarmo". Omit for platform emails. */
   fromName?: string | null;
   /** Counts against the company's daily email limit (anti-abuse). Omit for platform emails. */
@@ -61,7 +63,7 @@ export async function sendEmail(input: EmailInput): Promise<string> {
   if (!to.length || !to.every(isEmail)) throw new Error("Invalid email address");
   const cc = input.cc ? (Array.isArray(input.cc) ? input.cc : [input.cc]).filter(isEmail) : [];
   if (input.quota) await claimEmailQuota(input.quota.db, input.quota.orgId, to.length + cc.length);
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await fetch(`${Deno.env.get("RESEND_API_URL") ?? "https://api.resend.com"}/emails`, {
     method: "POST",
     headers: { Authorization: `Bearer ${env("RESEND_API_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -73,6 +75,7 @@ export async function sendEmail(input: EmailInput): Promise<string> {
       html: input.html,
       text: input.text,
       attachments: input.attachments?.length ? input.attachments : undefined,
+      headers: input.headers,
     }),
   });
   const body = await res.text();
