@@ -87,7 +87,7 @@ export function EarlyAccessForm() {
           </View>
           <Heading level={3} center style={{ marginTop: 18 }}>{done === 'new' ? 'You’re on the list' : 'You’re already on the list'}</Heading>
           <P center style={{ marginTop: 6, maxWidth: 440 }}>
-            Thanks, {name.trim().split(' ')[0]}. We’ll email {email.trim().toLowerCase()} as soon as Tarmo opens{done === 'updated' ? ', and we’ve updated your details' : ''}.
+            Thanks, {name.trim().split(' ')[0]}. We’ll email {email.trim().toLowerCase()} with your founding member offer as soon as Tarmo opens{done === 'updated' ? ', and we’ve updated your details' : ''}.
           </P>
         </View>
       </Glass>

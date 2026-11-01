@@ -8,8 +8,8 @@ import {
   fontFamily, site, useBreakpoint, webStyle,
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
-import { FEATURE_LABELS, PLANS, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
-import { AIRCRAFT_MODELS, GUIDE_COUNT, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
+import { FEATURE_LABELS, FOUNDING, PLANS, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
+import { AIRCRAFT_MODELS, GUIDE_COUNT, PRELAUNCH, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
 
 type Period = 'monthly' | 'annual';
 
@@ -23,7 +23,7 @@ export default function Pricing() {
   return (
     <SitePage
       title="Pricing"
-      description={`${APP_NAME} plans: Solo $39.99/mo, Team $89.99/mo, Fleet $189.99/mo — or save with yearly billing. ${TRIAL_DAYS}-day free trial with every feature, no card required.`}
+      description={`${APP_NAME} plans: Solo $69.99/mo, Team $119.99/mo, Fleet $219.99/mo — or save with yearly billing. ${TRIAL_DAYS}-day free trial with every feature, no card required.`}
     >
       <View style={{ position: 'relative', overflow: 'hidden' }}>
         <Glow variant="hero" />
@@ -33,7 +33,7 @@ export default function Pricing() {
             One price. <GradientText>Everything you need to run the job.</GradientText>
           </Heading>
           <P size="lg" center style={{ marginTop: 18, maxWidth: 640 }}>
-            Every plan includes the SOPs, the aircraft price guide, the customer portal and card payments. Start with a {TRIAL_DAYS}-day free trial of every feature — no card required to start.
+            Every plan includes the SOPs, built-in pricing for aircraft, boats and cars, the customer portal and card payments. Start with a {TRIAL_DAYS}-day free trial of every feature — no card required to start.
           </P>
           <PeriodToggle value={period} onChange={setPeriod} />
         </Container>
@@ -128,6 +128,13 @@ function PlanCard({ plan: p, period }: { plan: PlanInfo; period: Period }) {
       <Text style={{ fontFamily, color: annual ? site.goldText : site.faint, fontSize: 13.5, fontWeight: '600', minHeight: 20 }}>
         {annual ? `About ${money(p.annual / 12)}/mo · save $${annualSavings(p)} a year` : `or ${money(p.annual)}/yr billed yearly`}
       </Text>
+      {PRELAUNCH && !annual ? (
+        <View style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: 'rgba(211,153,67,0.14)', borderWidth: 1, borderColor: 'rgba(211,153,67,0.35)' }}>
+          <Text style={{ fontFamily, color: site.goldText, fontSize: 13.5, fontWeight: '700' }}>
+            Founding members: {money(FOUNDING.monthly[p.id])}/mo for your first year
+          </Text>
+        </View>
+      ) : null}
       <View style={{ marginTop: 22 }}>
         <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA_SHORT} variant={featured ? 'gold' : 'primary'} full />
       </View>
