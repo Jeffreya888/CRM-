@@ -86,7 +86,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'sops', title: 'SOPs, certification & quality checks', icon: 'ribbon-outline', tone: 'green',
     body: 'Every technician, every step, the same standard.',
-    bullets: ['Standard operating procedures with time and products per step', 'Technician certification per SOP, with sign-off requests', 'Scheduling warns before booking an uncertified tech', 'Quality check sign-off before a job is completed'],
+    bullets: ['Standard operating procedures with time and products per step', 'Write your own SOPs, or copy and edit the built-in ones', 'Attach your training videos and documents to the hard steps', 'Technician certification per SOP, with sign-off requests', 'Scheduling warns before booking an uncertified tech', 'Quality check sign-off before a job is completed'],
   },
   {
     id: 'schedule', title: 'Scheduling & dispatch', icon: 'calendar-number-outline', tone: 'blue',
@@ -158,7 +158,7 @@ export const EDGE: { title: string; body: string; icon: IconName; tone: 'blue' |
   },
   {
     title: 'SOPs, certification & quality checks', icon: 'ribbon-outline', tone: 'green',
-    body: 'Standard operating procedures with time per step, certified technicians, and a quality check before handover.',
+    body: 'Built-in or your own SOPs with time per step and your training videos on the hard steps, certified technicians, and a quality check before handover.',
     sample: [{ label: 'Steps', value: '3h 10m (est. 2h 45m)' }, { label: 'Tech', value: 'Certified' }, { label: 'QC', value: 'Passed' }],
   },
   {
@@ -195,7 +195,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
-  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
+  { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. You can also write your own SOPs, or copy and edit ours, and attach your own training videos and documents to any step. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
   { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Tarmo looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
   { q: 'How accurate are the AI photo condition reports?', a: 'They are a fast first look: add up to six photos and get a condition level, findings and suggested services, ready to turn into a quote. Every report is labelled as an estimate, and a person always confirms on site before anything changes.' },
   { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },

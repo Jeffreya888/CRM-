@@ -207,7 +207,7 @@ function Included() {
                   <Ionicons name="chevron-forward" size={15} color={site.faint} />
                 </View>
               ))}
-              <P size="sm" style={{ marginTop: 6 }}>…and more, each with supplies, timed steps, safety notes and quality checks — plus technician certification per SOP.</P>
+              <P size="sm" style={{ marginTop: 6 }}>…and more, each with supplies, timed steps, safety notes and quality checks — plus technician certification per SOP. Add your own SOPs and attach your training videos to the hard steps.</P>
             </View>
           </Glass>
           <Glass style={{ flex: 1 }} padding={isMobile ? 22 : 32}>
