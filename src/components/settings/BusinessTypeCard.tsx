@@ -7,7 +7,7 @@ import type { AssetType } from '../../lib/types';
 import { colors, space } from '../../lib/theme';
 
 const ADD_INFO: Record<AssetType, string> = {
-  aircraft: '',
+  aircraft: 'private, charter and corporate aircraft',
   vehicle: 'cars, trucks, vans, RVs and motorcycles',
   watercraft: 'boats and yachts',
 };
@@ -45,7 +45,7 @@ export function BusinessTypeCard({ orgId, types, editable, onChanged }: { orgId:
             <IconTile icon={a.icon} tone={on ? 'success' : 'neutral'} size={36} />
             <View style={{ flex: 1 }}>
               <T style={{ fontWeight: '600' }}>{a.plural}</T>
-              <T variant="small">{a.value === 'aircraft' ? 'Always included' : on ? 'Included' : `Add ${ADD_INFO[a.value]}`}</T>
+              <T variant="small">{on ? 'Included' : `Add ${ADD_INFO[a.value]}`}</T>
             </View>
             {on ? <Ionicons name="checkmark-circle" size={22} color={colors.success} />
               : editable ? <Button small kind="secondary" icon="add" title="Add" onPress={() => add(a.value)} /> : <T variant="small">Off</T>}

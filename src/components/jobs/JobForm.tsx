@@ -48,7 +48,7 @@ export function JobForm({ jobId, params }: { jobId?: string; params: { customer_
   const admin = canAdmin(role);
 
   const [loaded, setLoaded] = useState(!jobId);
-  const [assetType, setAssetType] = useState<AssetType>('aircraft');
+  const [assetType, setAssetType] = useState<AssetType>(businessTypes[0] ?? 'aircraft');
   const [customerId, setCustomerId] = useState<string | null>(params.customer_id || null);
   const [aircraftId, setAircraftId] = useState<string | null>(params.aircraft_id || null);
   const [locationId, setLocationId] = useState<string | null>(null);

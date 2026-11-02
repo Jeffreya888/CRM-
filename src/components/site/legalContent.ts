@@ -177,7 +177,7 @@ export const TERMS: LegalSection[] = [
   {
     title: 'Free trial',
     body: [
-      'New companies receive a 14-day free trial with access to every feature. No payment details are required to start the trial. When the trial ends, you need an active subscription to continue adding and changing records; your existing data remains available to view and export.',
+      'New companies receive a 30-day free trial with access to every feature. No payment details are required to start the trial. When the trial ends, you need an active subscription to continue adding and changing records; your existing data remains available to view and export.',
     ],
   },
   {

@@ -27,7 +27,7 @@ export default function AssetList() {
     .filter((a) => !s || [a.tail_number, a.manufacturer, a.model, assetModelName(a), a.plate, a.vin, a.hull_id, a.customer?.name].some((x) => x?.toLowerCase().includes(s)));
   const types = (['aircraft', 'vehicle', 'watercraft'] as AssetType[]).filter((t) => businessTypes.includes(t) || rows0.some((a) => a.asset_type === t));
   const inactiveCount = (q.data ?? []).filter((a) => !a.active).length;
-  const title = types.length > 1 ? 'Assets' : 'Aircraft';
+  const title = types.length > 1 ? 'Assets' : assetTypeInfo(types[0] ?? 'aircraft').plural;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>

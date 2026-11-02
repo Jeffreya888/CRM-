@@ -333,7 +333,7 @@ export default function Paywall() {
       <Card style={{ backgroundColor: colors.infoSoft, borderColor: 'transparent' }}>
         <Row gap={space.sm} style={{ alignItems: 'flex-start' }}>
           <Ionicons name="gift-outline" size={20} color={colors.primaryText} />
-          <T style={{ flex: 1 }}>New companies get a 14-day free trial with every feature. One subscription covers everyone at {org?.name ?? 'your company'}.</T>
+          <T style={{ flex: 1 }}>New companies get a 30-day free trial with every feature. One subscription covers everyone at {org?.name ?? 'your company'}.</T>
         </Row>
       </Card>
 

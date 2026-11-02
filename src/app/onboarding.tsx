@@ -97,7 +97,7 @@ function CreateOrJoin() {
         options={[{ value: 'mobile', label: 'Mobile' }, { value: 'shop', label: 'Shop' }, { value: 'both', label: 'Both' }]} />
       <ToggleRow label="Load starter price book" hint="Common detailing services with size-based pricing for the types you picked. Edit anytime." value={seed} onChange={setSeed} />
       <Button title="Create company & start free trial" onPress={create} disabled={name.trim().length < 2} />
-      <T variant="small" style={{ marginTop: space.sm, textAlign: 'center' }}>14 days free with every feature. No card required.</T>
+      <T variant="small" style={{ marginTop: space.sm, textAlign: 'center' }}>30 days free with every feature. No card required.</T>
 
       <Divider />
       <T variant="overline" style={{ marginTop: space.md, marginBottom: space.sm }}>Joining your company?</T>

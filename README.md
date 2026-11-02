@@ -94,7 +94,7 @@ Flight Schedule Pro).
 | Team | $119.99 | $1,199.99 | 10 | 1,000 | 0.75% |
 | Fleet | $219.99 | $2,199.99 | Unlimited | 3,000 | 0.5% |
 
-- 14-day free trial with every feature (10 seats). After it ends, data stays readable and
+- 30-day free trial with every feature (10 seats). After it ends, data stays readable and
   exportable, but new records are blocked **in the database** until a plan is active.
 - Subscriptions belong to the company (RevenueCat app user id = organization id) and are sold
   through Apple/Google In-App Purchase (guideline 3.1.1). Customer payments for physical detailing

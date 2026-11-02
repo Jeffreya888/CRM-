@@ -22,7 +22,7 @@ grant all on ctx to authenticated, anon;
 do $$ begin
   assert (select count(*) from aircraft_models) > 400, 'aircraft catalog loaded';
   assert exists (select 1 from aircraft_models where manufacturer = 'Gulfstream' and model = 'G650ER'), 'G650ER in catalog';
-  assert (select count(*) from service_guides where org_id is null) = 52, 'platform guides loaded (16 aviation + 17 auto + 19 marine)';
+  assert (select count(*) from service_guides where org_id is null) = 54, 'platform guides loaded (18 aviation + 17 auto + 19 marine)';
 end $$;
 
 -- ---------- Alice creates an org with aircraft + vehicles ------------------
@@ -30,7 +30,9 @@ set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 insert into ctx select 'alpha', public.create_organization('Alpha Aero Detailing', true, array['aircraft','vehicle']);
 do $$ begin
-  assert (select count(*) from services where asset_type = 'aircraft') = 14, 'aircraft services seeded';
+  assert (select count(*) from services where asset_type = 'aircraft') = 16, 'aircraft services seeded (14 + 2 window)';
+  assert (select pricing_method || ' ' || base_price from services where guide_key = 'window_restoration') = 'flat 195.00', 'window restoration priced per window';
+  assert (select trial_ends_at::date - created_at::date from organizations) = 30, '30-day trial';
   assert (select count(*) from services where asset_type = 'vehicle') = 17, 'vehicle services seeded (6 + 11 new)';
   assert (select count(*) from services where asset_type = 'watercraft') = 0, 'no watercraft yet';
   assert (select plan from organizations) = 'trial', 'starts on trial';
@@ -56,6 +58,21 @@ do $$ declare i uuid; begin
   delete from inventory_items where id = i;
 end $$;
 set role authenticated;
+
+-- A boat-only company gets no aircraft; adding aircraft later seeds its services.
+reset role;
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values ('00000000-0000-0000-0000-0000000000c3', 'boats@example.com', '{"full_name":"Bo"}', now());
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000c3', false);
+insert into ctx select 'boats', public.create_organization('Boats Only Co', true, array['watercraft']);
+do $$ begin
+  assert (select business_types from organizations where id = (select v from ctx where k='boats')) = array['watercraft'], 'boat-only business';
+  assert (select count(*) from services where org_id = (select v from ctx where k='boats') and asset_type = 'aircraft') = 0, 'no aircraft services';
+  assert (select count(*) from services where org_id = (select v from ctx where k='boats') and asset_type = 'watercraft') = 19, 'boat services seeded';
+  update organizations set business_types = array['watercraft','aircraft'] where id = (select v from ctx where k='boats');
+  assert (select count(*) from services where org_id = (select v from ctx where k='boats') and asset_type = 'aircraft') = 16, 'adding aircraft seeds aircraft services';
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 
 -- Business types can be added (seeding services) but not removed.
 update organizations set business_types = array['aircraft','vehicle','watercraft'];
@@ -311,7 +328,7 @@ do $$ begin
   assert (select count(*) from quotes) = 0, 'tech cannot see quotes';
   assert (select count(*) from job_items) = 0, 'tech cannot see priced job lines';
   assert (select count(*) from services) = 0, 'tech cannot read service prices';
-  assert (select count(*) from service_menu) = 50, 'tech reads the service menu without prices';
+  assert (select count(*) from service_menu) = 52, 'tech reads the service menu without prices';
   assert (select count(*) from member_pay) = 0, 'tech cannot see pay rates';
   assert (select count(*) from location_secrets) = 0, 'tech cannot see gate codes';
   assert (select count(*) from crew_hours where user_id = auth.uid()) = 5, 'new member gets default hours';
@@ -362,7 +379,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000d
 select public.accept_invitation((select inv->>'code' from invites where who = 'mgr'));
 do $$ begin
   assert (select count(*) from invoices) = 1, 'manager sees invoices';
-  assert (select count(*) from services) = 50, 'manager sees prices';
+  assert (select count(*) from services) = 52, 'manager sees prices';
   assert (select count(*) from member_pay) = 0, 'manager cannot see pay rates';
   assert (select count(*) from location_secrets) = 1, 'manager sees gate codes';
   begin
@@ -553,7 +570,7 @@ do $$ begin
   assert (select count(*) from training_media) = 0, 'isolation: training';
   assert (select count(*) from messages) = 0, 'isolation: messages';
   assert (select count(*) from audit_log) = 0, 'isolation: audit log';
-  assert (select count(*) from service_guides) = 52, 'platform guides visible to all';
+  assert (select count(*) from service_guides) = 54, 'platform guides visible to all';
   begin
     insert into aircraft (org_id, customer_id, tail_number) values
       ((select v from ctx where k='bravo'), (select v from ctx where k='cust'), 'N999ZZ');

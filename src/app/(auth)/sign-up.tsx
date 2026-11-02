@@ -66,7 +66,7 @@ export default function SignUp() {
       <AuthShell title="What do you detail?" subtitle="We’ll set up the right forms, sizes and starter prices.">
         <ErrorBanner message={error} />
         <BusinessTypePicker value={types} onChange={setTypes} />
-        <Button title="Start 14-day free trial" onPress={create} />
+        <Button title="Start 30-day free trial" onPress={create} />
         <Button style={{ marginTop: space.sm }} kind="ghost" title="Back" onPress={() => setStep('account')} />
         <T variant="small" style={{ marginTop: space.md, textAlign: 'center' }}>By continuing you agree to the</T>
         <Row style={{ justifyContent: 'center' }}>
@@ -78,7 +78,7 @@ export default function SignUp() {
   }
 
   return (
-    <AuthShell title={invite ? 'Create your account to join' : 'Create your account'} subtitle={invite ? 'Use the email address your invitation was sent to.' : '14 days free with every feature. No card required.'}>
+    <AuthShell title={invite ? 'Create your account to join' : 'Create your account'} subtitle={invite ? 'Use the email address your invitation was sent to.' : '30 days free with every feature. No card required.'}>
       <ErrorBanner message={error} />
       <Field label="Your name" value={name} onChangeText={setName} autoComplete="name" textContentType="name" icon="person-outline" />
       <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" icon="mail-outline" />

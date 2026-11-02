@@ -46,12 +46,6 @@ export const ASSET_TYPES: { value: AssetType; label: string; plural: string; idL
   { value: 'watercraft', label: 'Watercraft', plural: 'Watercraft', idLabel: 'Vessel name', icon: 'boat-outline' },
 ];
 
-export const BUSINESS_TYPE_CHOICES: { value: AssetType[]; label: string; hint: string }[] = [
-  { value: ['aircraft'], label: 'Aircraft only', hint: 'Private, charter and corporate aircraft' },
-  { value: ['aircraft', 'vehicle'], label: 'Aircraft + Vehicles', hint: 'Add cars, trucks, vans and RVs' },
-  { value: ['aircraft', 'vehicle', 'watercraft'], label: 'Aircraft + Vehicles + Watercraft', hint: 'Everything, including boats and yachts' },
-];
-
 export const categoriesFor = (t: AssetType | null | undefined) =>
   t === 'vehicle' ? VEHICLE_CATEGORIES : t === 'watercraft' ? WATERCRAFT_CATEGORIES : AIRCRAFT_CATEGORIES;
 

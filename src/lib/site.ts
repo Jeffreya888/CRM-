@@ -13,7 +13,7 @@ export const PLAY_STORE_URL = process.env.EXPO_PUBLIC_PLAY_STORE_URL ?? 'https:/
 export const SITE_TAGLINE = 'Detailing Software for Aircraft, Boats & Cars';
 /** Short form for tight spaces (pills, footers). */
 export const SITE_TAGLINE_SHORT = 'The operating system for professional detailing';
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 30;
 export const AIRCRAFT_MODELS = 545;
 export const BOAT_MODELS = 604;
 export const VEHICLE_MODELS = 514;
