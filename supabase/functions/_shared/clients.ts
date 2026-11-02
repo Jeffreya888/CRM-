@@ -22,9 +22,9 @@ export function stripe(): Stripe {
   });
 }
 
-/** Platform fee (basis points) per plan: the processing-fee revenue stream. */
+/** Platform fee (basis points) per plan: the processing-fee revenue stream. Trials pay 4% until they subscribe. */
 export function platformFeeBps(plan: string): number {
-  const fallback: Record<string, number> = { solo: 100, trial: 100, team: 75, fleet: 50 };
+  const fallback: Record<string, number> = { solo: 100, trial: 400, team: 75, fleet: 50 };
   const fromEnv = Deno.env.get(`PLATFORM_FEE_BPS_${plan.toUpperCase()}`);
   return fromEnv ? Number(fromEnv) : (fallback[plan] ?? 100);
 }

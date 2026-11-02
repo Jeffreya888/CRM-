@@ -5,7 +5,7 @@ import { annualFeeBps, feePercent } from './plans';
 test('yearly paid plans have no platform fee', () => {
   assert.equal(annualFeeBps('team', 'annual', 75), 0);
   assert.equal(annualFeeBps('team', 'monthly', 75), 75);
-  assert.equal(annualFeeBps('trial', 'annual', 100), 100, 'trials pay the Solo rate');
+  assert.equal(annualFeeBps('trial', 'annual', 400), 400, 'trials keep the trial fee');
   assert.equal(feePercent(75), '0.75%');
   assert.equal(feePercent(100), '1%');
 });

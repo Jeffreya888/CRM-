@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { confirmAction, notify } from '../FormSheet';
 import { Badge, Button, Card, IconTile, Ionicons, Row, T } from '../ui';
-import { annualFeeBps, feePercent, planInfo } from '../../lib/plans';
+import { annualFeeBps, feePercent, planInfo, TRIAL_FEE_BPS } from '../../lib/plans';
 import { callFunction, friendlyError, supabase } from '../../lib/supabase';
 import type { Organization, Plan } from '../../lib/types';
 import { colors, radius, space } from '../../lib/theme';
@@ -28,7 +28,8 @@ function Choice({ title, body, selected, disabled, onPress, badge }: { title: st
 
 /** How customers pay: arranged directly, or online through Stripe Connect or Square. */
 export function PaymentsCard({ org, plan, editable, isDemo, onChanged }: { org: Organization; plan: Plan; editable: boolean; isDemo: boolean; onChanged: () => Promise<void> }) {
-  const fee = feePercent(annualFeeBps(plan, org.billing_period, planInfo(plan)?.feeBps ?? 100)).replace('%', '');
+  const fee = feePercent(plan === 'trial' ? TRIAL_FEE_BPS : annualFeeBps(plan, org.billing_period, planInfo(plan)?.feeBps ?? 100)).replace('%', '');
+  const trialNote = plan === 'trial' ? ' during your free trial (it drops to 1% or less when you subscribe, and 0% on yearly plans)' : '';
   const { square: squareReturn } = useLocalSearchParams<{ square?: string }>();
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
 
@@ -116,9 +117,9 @@ export function PaymentsCard({ org, plan, editable, isDemo, onChanged }: { org: 
     <Card>
       <Choice title="Arranged directly" body="Customers pay you by check, cash, wire or your own card reader. You record payments on the invoice."
         selected={mode === 'direct'} onPress={editable ? () => setMode('direct') : undefined} />
-      <Choice title="Online payments with Stripe" body={`Customers pay invoices, deposits and care plans by card or bank transfer. Money goes to your bank. ${fee}% platform fee plus Stripe's processing fee.`}
+      <Choice title="Online payments with Stripe" body={`Customers pay invoices, deposits and care plans by card or bank transfer. Money goes to your bank. ${fee}% platform fee${trialNote} plus Stripe's processing fee.`}
         selected={mode === 'stripe'} onPress={editable ? () => setMode('stripe') : undefined} />
-      <Choice title="Online and in-person payments with Square" body={`Use your Square account: customers pay invoices, deposits and care plans online, and your team takes Tap to Pay or Square reader payments. ${fee}% platform fee plus Square's processing fee.`}
+      <Choice title="Online and in-person payments with Square" body={`Use your Square account: customers pay invoices, deposits and care plans online, and your team takes Tap to Pay or Square reader payments. ${fee}% platform fee${trialNote} plus Square's processing fee.`}
         selected={mode === 'square'} onPress={editable ? () => setMode('square') : undefined} />
 
       {mode === 'stripe' ? (

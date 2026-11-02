@@ -86,10 +86,14 @@ export const FEATURE_LABELS: Record<Feature, string> = {
 export const planInfo = (plan: Plan) => PLANS.find((p) => p.id === plan) ?? null;
 /**
  * Founding-member offer for the early access list: these monthly prices for the
- * first 12 months, for anyone on the list who subscribes within 30 days of launch.
+ * first 12 months, for anyone on the list who subscribes within 45 days of launch (so a launch-day
+ * sign-up can finish the 30-day trial first).
  * Billed through Stripe promo codes (see docs/launch-checklist.md).
  */
-export const FOUNDING = { months: 12, windowDays: 30, monthly: { solo: 49.99, team: 89.99, fleet: 159.99 } as Record<PlanInfo['id'], number> };
+export const FOUNDING = { months: 12, windowDays: 45, monthly: { solo: 49.99, team: 89.99, fleet: 159.99 } as Record<PlanInfo['id'], number> };
+
+/** Platform fee during the free trial (basis points): 4%, until the business subscribes. */
+export const TRIAL_FEE_BPS = 400;
 
 /** Yearly paid plans have no platform fee on card payments. */
 export const annualFeeBps = (plan: Plan, period: 'monthly' | 'annual' | null | undefined, monthlyBps: number) =>

@@ -39,7 +39,7 @@ export function welcomeHtml(w: Welcome): string {
     <div style="background:#fbf6ee;border:1px solid #ecd9b8;border-radius:10px;padding:16px 18px;margin:6px 0 18px">
       <div style="font-size:12px;font-weight:800;letter-spacing:1.2px;color:#9a6b1f;margin:0 0 8px">YOUR FOUNDING MEMBER OFFER</div>
       <table role="presentation" style="width:100%;border-collapse:collapse;font-size:15px">${rows}</table>
-      <p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:#475569">Your first 12 months at the founding price when you subscribe within 30 days of launch. Then regular pricing. Cancel anytime.</p>
+      <p style="margin:10px 0 0;font-size:13px;line-height:1.5;color:#475569">Your first 12 months at the founding price when you subscribe within 45 days of launch. Then regular pricing. Cancel anytime.</p>
     </div>
     <div style="font-weight:700;margin:0 0 8px">What Tarmo will do for you</div>
     <ul style="margin:0 0 18px;padding-left:20px;line-height:1.5">${li}</ul>
@@ -63,7 +63,7 @@ export function welcomeText(w: Welcome): string {
     "",
     "YOUR FOUNDING MEMBER OFFER",
     ...FOUNDING.map((f) => `${f.plan}: ${f.price}/mo (regular ${f.regular})`),
-    "Your first 12 months at the founding price when you subscribe within 30 days of launch. Then regular pricing. Cancel anytime.",
+    "Your first 12 months at the founding price when you subscribe within 45 days of launch. Then regular pricing. Cancel anytime.",
     "",
     "WHAT TARMO WILL DO FOR YOU",
     ...highlights(w.types).map((h) => `- ${h}`),
