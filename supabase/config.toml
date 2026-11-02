@@ -444,6 +444,9 @@ verify_jwt = false
 [functions.early-access]
 verify_jwt = false   # Public website form and one-click unsubscribe
 
+[functions.enterprise-inquiry]
+verify_jwt = false   # Public website enterprise form
+
 [functions.telnyx-webhook]
 verify_jwt = false
 

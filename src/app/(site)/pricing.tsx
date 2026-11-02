@@ -9,7 +9,7 @@ import {
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
 import { FEATURE_LABELS, FOUNDING, PLANS, feePercent, annualSavings, type Feature, type PlanInfo } from '../../lib/plans';
-import { AIRCRAFT_MODELS, GUIDE_COUNT, PRELAUNCH, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
+import { AIRCRAFT_MODELS, ENTERPRISE_HREF, ENTERPRISE_POINTS, GUIDE_COUNT, PRELAUNCH, PRICING_FAQ, SIGN_UP_HREF, TRIAL_CTA, TRIAL_CTA_SHORT, TRIAL_DAYS } from '../../lib/site';
 
 type Period = 'monthly' | 'annual';
 
@@ -43,6 +43,7 @@ export default function Pricing() {
         <Grid cols={isDesktop ? 3 : 1} gap={isMobile ? 16 : 22}>
           {PLANS.map((p) => <PlanCard key={p.id} plan={p} period={period} />)}
         </Grid>
+        <EnterpriseBand />
         <View style={{ marginTop: 24, flexDirection: isMobile ? 'column' : 'row', justifyContent: 'center', gap: isMobile ? 8 : 28, alignItems: 'center' }}>
           {[`${TRIAL_DAYS}-day free trial with every feature`, 'No card required to start', 'Subscribe on the web or in the app', 'Cancel anytime'].map((x) => (
             <View key={x} style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
@@ -81,6 +82,27 @@ export default function Pricing() {
         </View>
       </Section>
     </SitePage>
+  );
+}
+
+function EnterpriseBand() {
+  const { isMobile, isDesktop } = useBreakpoint();
+  return (
+    <Glass padding={isMobile ? 24 : 36} style={{ marginTop: isMobile ? 16 : 22 }}>
+      <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: isDesktop ? 48 : 22, alignItems: isDesktop ? 'center' : 'stretch' }}>
+        <View style={{ flex: isDesktop ? 1 : undefined, gap: 8 }}>
+          <Text style={{ fontFamily, color: site.goldText, fontSize: 13, fontWeight: '800', letterSpacing: 1.6 }}>ENTERPRISE</Text>
+          <Heading level={2} style={{ fontSize: isMobile ? 26 : 32, lineHeight: isMobile ? 32 : 38 }}>Custom pricing for national networks</Heading>
+          <P size="sm">For detailing networks, franchise systems and FBO chains running many locations.</P>
+        </View>
+        <View style={{ flex: isDesktop ? 1.3 : undefined, gap: 10 }}>
+          {ENTERPRISE_POINTS.slice(1, 5).map((p) => <Check key={p}>{p}</Check>)}
+        </View>
+        <View style={{ alignSelf: isDesktop ? 'center' : 'stretch' }}>
+          <CTAButton href={ENTERPRISE_HREF} label="Talk to us" icon="arrow-forward" variant="outline" full={!isDesktop} />
+        </View>
+      </View>
+    </Glass>
   );
 }
 

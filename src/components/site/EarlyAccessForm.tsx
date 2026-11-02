@@ -15,7 +15,7 @@ const TYPES = [
 ];
 const CREW = ['Just me', '2-5', '6-15', '16+'];
 
-function Chip({ label, on, onPress, role }: { label: string; on: boolean; onPress: () => void; role: 'checkbox' | 'radio' }) {
+export function Chip({ label, on, onPress, role }: { label: string; on: boolean; onPress: () => void; role: 'checkbox' | 'radio' }) {
   return (
     <Pressable
       accessibilityRole={role}
@@ -31,7 +31,7 @@ function Chip({ label, on, onPress, role }: { label: string; on: boolean; onPres
   );
 }
 
-function Group({ id, label, children, error }: { id: string; label: string; children: React.ReactNode; error?: string }) {
+export function Group({ id, label, children, error }: { id: string; label: string; children: React.ReactNode; error?: string }) {
   return (
     <View style={{ gap: 9 }}>
       <Text nativeID={id} style={{ fontFamily, color: site.text, fontSize: 14, fontWeight: '700' }}>{label}</Text>

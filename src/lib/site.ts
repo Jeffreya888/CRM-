@@ -25,6 +25,17 @@ export const GUIDE_COUNT = 52;
  * Set EXPO_PUBLIC_PRELAUNCH=0 on launch day.
  */
 export const PRELAUNCH = process.env.EXPO_PUBLIC_PRELAUNCH !== '0';
+/** What Enterprise adds for national networks, franchise systems and FBO chains. Only things Tarmo does today. */
+export const ENTERPRISE_POINTS = [
+  'Every Fleet feature, with unlimited team members',
+  'Unlimited locations, each with its own crew, stock and schedule',
+  'One company-wide SOP library and price list',
+  'Volume pricing per location and lower payment fees',
+  'Help moving your data, plus onboarding and training for your crews',
+  'Priority support and yearly invoiced billing',
+];
+export const ENTERPRISE_HREF = '/enterprise';
+
 export const SIGN_UP_HREF = PRELAUNCH ? '/early-access' : '/sign-up';
 export const DEMO_HREF = '/sign-in?demo=1';
 /** Main call to action: long form for heroes, short for nav and cards. */
@@ -39,6 +50,7 @@ export const NAV_LINKS = [
 
 export const FOOTER_LINKS = [
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Enterprise', href: '/enterprise' },
   { label: 'Support', href: '/support' },
   { label: 'Privacy', href: '/privacy' },
   { label: 'Terms', href: '/terms' },
@@ -205,6 +217,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
 ];
 
 export const PRICING_FAQ: { q: string; a: string }[] = [
+  { q: 'Do you offer enterprise pricing?', a: 'Yes. National detailing networks, franchise systems and FBO chains get custom pricing per location, lower payment fees, a company-wide SOP library, onboarding for every crew and priority support. Tell us about your operation on the Enterprise page and we will put a plan together.' },
   { q: 'How does billing work?', a: `Subscribe on the web or in the app. On the web you pay by card (billed securely by Stripe); in the iPhone or Android app the subscription is billed by Apple (App Store) or Google (Google Play). Your plan renews automatically each month or year until you cancel.` },
   { q: 'Can I cancel anytime?', a: 'Yes. If you subscribed on the web, cancel anytime from Settings → Manage billing. If you subscribed in the app, cancel from your App Store or Google Play subscription settings at least 24 hours before renewal. You keep access until the end of the paid period, and your data stays available to export.' },
   { q: 'What is the platform fee?', a: 'When your customers pay you by card through Tarmo (invoices, deposits, care plans), a small platform fee applies: 1% on Solo, 0.75% on Team and 0.5% on Fleet. It is separate from Stripe’s own processing fee. Payments you record yourself — cash, check, ACH outside the app — carry no platform fee.' },
