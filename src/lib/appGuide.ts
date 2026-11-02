@@ -46,8 +46,8 @@ export const APP_GUIDE: GuideEntry[] = [
   },
   {
     path: '/assistant', title: 'Ask Tarmo', icon: 'sparkles-outline',
-    tip: 'Ask anything about your SOPs or a customer’s aircraft documents. Answers come from your own material.',
-    body: 'The AI assistant answers questions from your SOPs and the documents you upload, such as an aircraft’s maintenance manual, so your crew gets the right answer on the ramp.',
+    tip: 'Ask anything about detailing, aircraft care or safety. Tap the ✨ button at the top of any screen; on a job, aircraft or SOP it already knows which one you mean.',
+    body: 'Tap the ✨ Ask Tarmo button at the top of any screen. The AI assistant answers general detailing and aircraft care questions, and uses your SOPs and the documents you upload (such as an aircraft’s maintenance manual). On a job, aircraft or SOP, it already knows which one you’re asking about.',
   },
   {
     path: '/more', title: 'More', icon: 'menu-outline',

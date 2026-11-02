@@ -13,6 +13,7 @@ import { JOB_STATUS_LABEL, statusTone } from '../../../lib/jobs';
 import { useIsDesktop } from '../../../lib/layout';
 import { canAdmin, isManager } from '../../../lib/plans';
 import { useLookups } from '../../../lib/lookups';
+import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
 import { colors, radius, space } from '../../../lib/theme';
@@ -112,10 +113,12 @@ export default function Jobs() {
                   <Button small kind="secondary" icon="calendar-outline" title="Schedule" onPress={() => router.push('/schedule')} />
                   {manager ? <Button small kind="secondary" icon="grid-outline" title="Dispatch board" onPress={() => router.push('/dispatch')} /> : null}
                   {manager ? <Button small icon="add" title="New job" onPress={() => router.push('/jobs/new')} /> : null}
+                  <AskTarmoButton />
                 </Row>
               ) : <Row gap={0}>
                 <IconButton icon="calendar-outline" label="Schedule" onPress={() => router.push('/schedule')} />
                 {manager ? <IconButton icon="grid-outline" label="Dispatch board" onPress={() => router.push('/dispatch')} /> : null}
+                <AskTarmoButton />
               </Row>} />
             {/* On desktop the company location is picked in the sidebar. */}
             {!desktop && can('branches') && lk.branches.length ? (

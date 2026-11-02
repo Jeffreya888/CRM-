@@ -11,6 +11,7 @@ import { duration, money, time, titleCase } from '../../../lib/format';
 import { useColumns, useIsDesktop } from '../../../lib/layout';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { canAdmin, canSeeMoney } from '../../../lib/plans';
+import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
 import type { AssetType, Branch } from '../../../lib/types';
@@ -263,7 +264,7 @@ export default function Dashboard() {
   );
 
   return (
-    <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name}
+    <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name} right={<AskTarmoButton />}
       subtitle={`${name} · ${titleCase(role)} · ${format(new Date(), 'EEEE, MMMM d')}`}>
       <ErrorBanner message={q.error} onRetry={q.refresh} />
 

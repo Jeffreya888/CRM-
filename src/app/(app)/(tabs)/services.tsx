@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, ErrorBanner, Fab, Ionicons, PageTitle, Row, 
 import { assetTypeLabel, durationLabel, guideForService, loadGuideLibrary, recurLabel } from '../../../lib/guides';
 import { assetTypeInfo, headlinePrice } from '../../../lib/pricing';
 import { canSeeMoney } from '../../../lib/plans';
+import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { supabase } from '../../../lib/supabase';
 import { colors, radius, space } from '../../../lib/theme';
@@ -58,7 +59,7 @@ export default function Services() {
         ListHeaderComponent={
           <View>
             <PageTitle title="Services" subtitle={`${all.length} service${all.length === 1 ? '' : 's'}${money ? '' : ' · times and steps'}`}
-              right={<Button small kind="secondary" icon="book-outline" title="SOPs" onPress={() => router.push('/training')} />} />
+              right={<Row gap={space.sm}><Button small kind="secondary" icon="book-outline" title="SOPs" onPress={() => router.push('/training')} /><AskTarmoButton /></Row>} />
             {multi ? (
               <Segmented value={type} onChange={(v) => { setType(v); setCat('all'); }} options={[
                 { value: 'all', label: 'All', count: all.length },

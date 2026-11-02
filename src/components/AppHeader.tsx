@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 import type { NativeStackHeaderProps } from 'expo-router/build/react-navigation/native-stack/types';
-import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, space } from '../lib/theme';
+import { AskTarmoButton, askContext } from './ai/AskTarmoButton';
 import { BackButton, Row, T, useContentStyle } from './ui';
 
 /** Header used by every pushed screen: round back button, large title, optional right item. */
@@ -17,7 +17,10 @@ export function AppHeader({ options, back, navigation, route }: NativeStackHeade
           <BackButton onPress={() => (back || navigation.canGoBack() ? navigation.goBack() : router.replace('/'))} />
           <T variant="h2" numberOfLines={1} style={{ flexShrink: 1 }}>{title}</T>
         </Row>
-        <View>{options.headerRight?.({ tintColor: colors.text, canGoBack: navigation.canGoBack() })}</View>
+        <Row gap={space.sm}>
+          {options.headerRight?.({ tintColor: colors.text, canGoBack: navigation.canGoBack() })}
+          {route.name.startsWith('assistant') || route.name === 'paywall' ? null : <AskTarmoButton context={askContext(route.name, route.params as Record<string, string> | undefined)} />}
+        </Row>
       </Row>
     </SafeAreaView>
   );

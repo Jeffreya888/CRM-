@@ -7,6 +7,7 @@ import { Avatar, Badge, Button, Card, IconTile, Ionicons, ListRow, Row, Screen, 
 import { APP_NAME } from '../../../lib/config';
 import { initials, titleCase } from '../../../lib/format';
 import { canAdmin } from '../../../lib/plans';
+import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { SOCIALS, socialDisplay, socialUrl } from '../../../lib/social';
 import { colors, radius, space } from '../../../lib/theme';
@@ -49,7 +50,7 @@ export default function More() {
   const help = group('help');
 
   return (
-    <Screen title="More" subtitle="Settings and business tools" refreshing={q.refreshing} onRefresh={q.refresh}>
+    <Screen title="More" subtitle="Settings and business tools" right={<AskTarmoButton />} refreshing={q.refreshing} onRefresh={q.refresh}>
       <Card onPress={() => router.push('/settings')}>
         <Row gap={space.md}>
           <Avatar label={initials(profile?.full_name ?? org.name)} size={56} />

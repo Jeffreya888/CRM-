@@ -9,6 +9,7 @@ import { initials } from '../../../lib/format';
 import { useIsDesktop } from '../../../lib/layout';
 import { isManager } from '../../../lib/plans';
 import { categoryLabel } from '../../../lib/pricing';
+import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { must, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
@@ -98,7 +99,7 @@ export default function Customers() {
             <PageTitle
               title="Customers"
               subtitle={q.data ? `${all.length} customer${all.length === 1 ? '' : 's'}, ${assetCount} asset${assetCount === 1 ? '' : 's'}` : ' '}
-              right={desktop && perm('edit_customers') ? <Button small icon="add" title="New customer" onPress={() => router.push('/customers/new')} /> : undefined}
+              right={<Row gap={space.sm}>{desktop && perm('edit_customers') ? <Button small icon="add" title="New customer" onPress={() => router.push('/customers/new')} /> : null}<AskTarmoButton /></Row>}
             />
             <Row style={{ flexWrap: 'wrap', marginBottom: space.md }}>
               <Button small kind="secondary" icon="airplane-outline" title="All assets" onPress={() => router.push('/aircraft')} />
