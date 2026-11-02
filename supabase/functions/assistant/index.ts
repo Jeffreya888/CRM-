@@ -13,7 +13,7 @@
 // Imported here (not in _shared/deps.ts) so other functions do not load the SDK.
 // deno-lint-ignore no-import-prefix
 import Anthropic from "npm:@anthropic-ai/sdk@0.130.0";
-import { adminClient, callerRole } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole } from "../_shared/clients.ts";
 import { env, error, json, preflight, readJson } from "../_shared/http.ts";
 import {
   ANSWER_SCHEMA,
@@ -32,6 +32,7 @@ import {
   MAX_FULL_SOPS,
   MAX_PHOTOS,
   wantsDocuments,
+  priceListText,
   sopCatalog,
   SYSTEM_PROMPT,
 } from "../_shared/assistant.ts";
@@ -101,6 +102,8 @@ Deno.serve(async (req) => {
     if (!caller) return error("You're not a member of this company", 403);
     if (caller.role === "viewer") return error("View-only members can't use Ask. Ask an owner for a crew role.", 403);
     const userId = caller.userId;
+    // Pricing answers only for people whose role can see prices (same rule as the app).
+    const canPrice = await callerCanMoney(req, orgId);
     const prefix = `${orgId}/assistant/${userId}/`;
     if (photoPaths.some((p) => !p.startsWith(prefix) || p.includes(".."))) return error("That photo does not belong to you", 403);
 
@@ -232,6 +235,8 @@ Deno.serve(async (req) => {
     }
 
     const now: string[] = [];
+    now.push(`Pricing access: this person ${canPrice ? "can see prices" : "cannot see prices"}.`);
+    if (canPrice && /pric|charge|cost|rate|quote|\$|per foot|margin|profit|money|bid|estimate/i.test(message)) now.push(await priceListText(db, orgId));
     if (job) now.push(jobText(job.row));
     if (focus) {
       const t = catalog.get(focus.key)?.title;

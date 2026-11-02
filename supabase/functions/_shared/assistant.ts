@@ -72,7 +72,9 @@ Sources
 - Never invent aircraft manual references (chapter, task, page or part numbers, specifications, approved-product lists). If a manual would settle the question and it isn't uploaded, say which manual or section to check (for example the cleaning and servicing chapter of the maintenance manual, or the operator's approved-products list) and suggest a manager upload it.
 - Products: never call a specific brand or product "approved" or "not approved" for an aircraft on your own. Approval comes from the aircraft's manual or the operator's approved-products list (which may be among the uploaded documents); when unsure, tell them to check it. You can describe what kind of product to use, and suggest items the company stocks when they fit.
 - FAA registry details in the asset information can be out of date or matched to the wrong model. Treat them as a hint, not a fact; when it matters, suggest confirming with the owner or operator.
-- Never mention prices, costs, quotes, invoices, profit or P&L, and never send someone to look at them. For anything about pricing or money, tell them to ask their supervisor.
+- Prices and money depend on the "Pricing access" line given with each question.
+  - "can see prices": answer pricing, quoting, market-rate and business-money questions fully, like the best pricing expert in that market. Explain how the market prices the work (by aircraft size class, per foot of boat length, by vehicle size, hourly or packaged), what moves the price up or down (condition, size, access, turn time, location, travel, coatings), how to present a price to the customer, and how their own price list in ${APP_NAME} compares. Give price ranges only as general market guidance that varies by region and market, never as exact or published figures, and never invent sources for them.
+  - "cannot see prices": never mention prices, costs, rates, quotes, invoices, profit or P&L, and never send them to look at them. If the question is about pricing or money, reply only: "That's a pricing question, so please ask your manager." Then help with any non-pricing part of the question.
 
 Other rules
 - Questions about the detailing business, customers, scheduling, training and professional conduct are part of your job; answer them fully. If a question has nothing to do with detailing or the work, help briefly if it's harmless and quick, or steer back to the work.
@@ -292,6 +294,32 @@ export async function companyContext(db: SupabaseClient, orgId: string, orgName:
     `## Equipment the company has`,
     eq.length ? eq.join("; ") : "(none listed)",
   ].join("\n");
+}
+
+/** The company's service price list, only for people who can see prices. */
+export async function priceListText(db: SupabaseClient, orgId: string): Promise<string> {
+  const { data } = await db.from("services")
+    .select("name, asset_type, category, pricing_method, base_price, price_per_foot, hourly_rate, category_prices, foot_rates, price_per_sqft, pricing_tiers")
+    .eq("org_id", orgId).eq("active", true).order("asset_type").order("sort_order").limit(80);
+  const num = (v: unknown) => Number(v ?? 0);
+  const map = (m: unknown) => {
+    const e = Object.entries((m ?? {}) as Record<string, unknown>).filter(([, v]) => num(v) > 0);
+    return e.length ? e.map(([k, v]) => `${k} ${num(v)}`).join(", ") : "";
+  };
+  const lines = ((data ?? []) as Row[]).map((r) => {
+    const parts = [
+      num(r.base_price) > 0 ? `base ${num(r.base_price)}` : "",
+      num(r.price_per_foot) > 0 ? `per foot ${num(r.price_per_foot)}` : "",
+      num(r.hourly_rate) > 0 ? `hourly ${num(r.hourly_rate)}` : "",
+      num(r.price_per_sqft) > 0 ? `per sq ft ${num(r.price_per_sqft)}` : "",
+      map(r.category_prices) ? `by size class: ${map(r.category_prices)}` : "",
+      map(r.foot_rates) ? `per foot by size class: ${map(r.foot_rates)}` : "",
+      Array.isArray(r.pricing_tiers) && r.pricing_tiers.length
+        ? `tiers: ${(r.pricing_tiers as Row[]).map((t) => `${oneLine(t.name, 30)} ${num(t.price)}`).join(", ")}` : "",
+    ].filter(Boolean).join("; ");
+    return `- ${oneLine(r.name, 80)} [${r.asset_type}, ${oneLine(r.category, 30)}, ${r.pricing_method}]${parts ? `: ${parts}` : ""}`;
+  });
+  return `## The company's price list (${APP_NAME} services, in the company's currency)\n${lines.join("\n") || "(no services priced yet)"}`;
 }
 
 // ---------------------------------------------------------------------------
