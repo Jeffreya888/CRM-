@@ -49,6 +49,8 @@ export const NAV_LINKS = [
 ];
 
 export const FOOTER_LINKS = [
+  { label: 'Aviation', href: '/aviation' },
+  { label: 'Marine', href: '/marine' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Enterprise', href: '/enterprise' },
   { label: 'Support', href: '/support' },
@@ -180,11 +182,12 @@ export const EDGE: { title: string; body: string; icon: IconName; tone: 'blue' |
   },
 ];
 
-export const BUSINESS_TYPES: { title: string; icon: IconName; body: string; examples: string[] }[] = [
+export const BUSINESS_TYPES: { title: string; icon: IconName; body: string; examples: string[]; href?: string; link?: string }[] = [
   {
     title: 'Aircraft', icon: 'airplane-outline',
     body: 'Built first for aviation: FAA tail-number autofill, makes and models, facilities and FBOs, hangar bookings and airport badges.',
     examples: ['FAA registry lookup by tail number', `${AIRCRAFT_MODELS} aircraft models in the price guide`, 'Pistons, turboprops, light to heavy jets', 'Facility and FBO access notes'],
+    href: '/aviation', link: 'Tarmo for aircraft detailers',
   },
   {
     title: 'Vehicles', icon: 'car-sport-outline',
@@ -194,9 +197,58 @@ export const BUSINESS_TYPES: { title: string; icon: IconName; body: string; exam
   {
     title: 'Watercraft', icon: 'boat-outline',
     body: 'Boats and yachts with lengths, marinas and slip details right on the asset.',
-    examples: [`${BOAT_MODELS} boat models in the catalog`, 'Length, beam and square-foot pricing', 'Profit by boat size'],
+    examples: [`${BOAT_MODELS} boat models in the catalog`, 'Per-foot pricing by boat size', 'Profit by boat size'],
+    href: '/marine', link: 'Tarmo for boat and yacht detailers',
   },
 ];
+
+/** Aviation-only landing page (/aviation). Only things Tarmo does today. */
+export const AVIATION_PAGE = {
+  title: 'Aircraft detailing software',
+  description: `${APP_NAME} for aircraft detailers: FAA tail-number lookup, built-in pricing for ${AIRCRAFT_MODELS} aircraft models, aviation SOPs, AI photo quotes, scheduling, invoices and payments. Built to aviation standards.`,
+  eyebrow: 'For aircraft detailers',
+  headline: 'Detailing software built',
+  highlight: 'for aviation.',
+  intro: 'Tail number in, quote out. Tarmo knows aircraft, so your crew works to one standard on every ramp and you see the true profit of every job.',
+  proof: ['FAA registry, updated weekly', `${AIRCRAFT_MODELS} aircraft models priced by size`, 'Aviation SOPs included'],
+  features: [
+    { icon: 'airplane-outline', title: 'FAA tail-number lookup', body: 'Type the N-number and the make, model, serial and size class fill in from FAA data.' },
+    { icon: 'pricetags-outline', title: 'Aircraft pricing built in', body: `Suggested prices for every service across ${AIRCRAFT_MODELS} models, from pistons to heavy jets. Adjust to your market.` },
+    { icon: 'school-outline', title: 'Aviation SOPs and training', body: 'Wet and dry washes, brightwork, belly and gear, ceramic, interiors. Certify techs, add your own SOPs and attach training videos.' },
+    { icon: 'sparkles-outline', title: 'AI photo quotes', body: 'A few ramp photos become a condition report and a quote built from your price list.' },
+    { icon: 'chatbubbles-outline', title: 'Ask Tarmo for your crew', body: 'Techs ask how to do a step or what’s safe on a surface, and get answers from your SOPs and the aircraft’s own documents.' },
+    { icon: 'business-outline', title: 'Airports, FBOs and access', body: 'Ramp, hangar and badge notes per facility, mobile routes, and arrival texts for customers.' },
+    { icon: 'card-outline', title: 'Get paid, every way', body: 'Invoices, deposits, Tap to Pay on the ramp and auto-charged care plans, with Stripe or Square.' },
+    { icon: 'stats-chart-outline', title: 'True job profit', body: 'Labor, products and travel tied to every job: profit by aircraft class, model and service.' },
+    { icon: 'cube-outline', title: 'Supply room', body: 'Supplies deduct as jobs finish and reorder automatically when they hit par.' },
+  ] as { icon: IconName; title: string; body: string }[],
+  onlyTitle: 'Only detail aircraft? You’ll only see aircraft.',
+  onlyBody: 'Pick aircraft when you sign up and Tarmo shows only aviation tools: tail numbers, aircraft pricing and aviation SOPs. No car or boat screens. If you ever expand to yachts or cars, add them in settings.',
+};
+
+/** Marine-only landing page (/marine). Only things Tarmo does today. */
+export const MARINE_PAGE = {
+  title: 'Boat and yacht detailing software',
+  description: `${APP_NAME} for boat and yacht detailers: per-foot pricing by size, ${BOAT_MODELS} boat models, marine SOPs, AI photo quotes, scheduling, invoices and payments. Built to aviation standards.`,
+  eyebrow: 'For boat and yacht detailers',
+  headline: 'Detailing software built',
+  highlight: 'for boats and yachts.',
+  intro: 'Quote by the foot in seconds, keep every crew on one standard from the slip to the yard, and get paid at the dock.',
+  proof: ['Per-foot pricing by boat size', `${BOAT_MODELS} boat models in the catalog`, 'Marine SOPs included'],
+  features: [
+    { icon: 'resize-outline', title: 'Per-foot pricing', body: 'Rates per foot by size class, from under 25 ft to superyachts, with minimums. Adjust to your market.' },
+    { icon: 'boat-outline', title: 'Boats on file', body: `Pick from ${BOAT_MODELS} models or enter length and beam. Marina, slip and access notes live on the boat.` },
+    { icon: 'school-outline', title: 'Marine SOPs and training', body: 'Washes, compound and wax, ceramic, non-skid, isinglass, teak and bilge. Certify techs and add your own SOPs and videos.' },
+    { icon: 'sparkles-outline', title: 'AI photo quotes', body: 'Photos of oxidation or stains become a condition report and a quote from your price list.' },
+    { icon: 'chatbubbles-outline', title: 'Ask Tarmo for your crew', body: 'Techs ask what’s safe on gelcoat, vinyl or teak and get answers from your SOPs.' },
+    { icon: 'repeat-outline', title: 'Maintenance plans', body: 'Recurring washes on a schedule, with care plans charged automatically every month.' },
+    { icon: 'card-outline', title: 'Get paid at the dock', body: 'Invoices, deposits and Tap to Pay on your phone, with Stripe or Square.' },
+    { icon: 'stats-chart-outline', title: 'True job profit', body: 'Labor, products and travel tied to every job: profit by boat size and service.' },
+    { icon: 'cube-outline', title: 'Supply room', body: 'Supplies deduct as jobs finish and reorder automatically when they hit par.' },
+  ] as { icon: IconName; title: string; body: string }[],
+  onlyTitle: 'Only detail boats? You’ll only see boats.',
+  onlyBody: 'Pick boats and yachts when you sign up and Tarmo shows only marine tools: per-foot pricing, marine SOPs and marinas. No aircraft or car screens. Add them later in settings if you expand.',
+};
 
 export const SECURITY: { title: string; body: string; icon: IconName }[] = [
   { title: 'Company data isolation', body: 'Every company’s records are separated at the database level. Nobody outside your company can read your customers, jobs or prices.', icon: 'shield-checkmark-outline' },
@@ -205,6 +257,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 ];
 
 export const HOME_FAQ: { q: string; a: string }[] = [
+  { q: 'I only detail aircraft (or only boats). Will I see car features?', a: 'No. You pick what you detail when you sign up, and Tarmo shows only those tools: an aircraft-only business sees tail numbers, aircraft pricing and aviation SOPs, and never a car or boat screen. If you expand later, add boats or cars in settings.' },
   { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
   { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. You can also write your own SOPs, or copy and edit ours, and attach your own training videos and documents to any step. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },

@@ -5,7 +5,7 @@ import { FloatCard, PhoneMockup } from '../../components/site/PhoneMockup';
 import { SitePage, useAnchor } from '../../components/site/SitePage';
 import { StoreBadges } from '../../components/site/StoreBadges';
 import {
-  CTAButton, Check, Container, Eyebrow, Glass, Glow, GradientText, Grid, Heading, IconBadge, Ionicons, P, Pill, Section, SectionIntro,
+  CTAButton, Check, Container, Eyebrow, Glass, Glow, GradientText, Grid, Heading, IconBadge, Ionicons, P, Pill, Section, SectionIntro, TextLink,
   fontFamily, site, useBreakpoint, webStyle,
 } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
@@ -54,6 +54,13 @@ function Hero() {
             <P size="lg" center={!isDesktop} style={{ marginTop: 22, maxWidth: 560 }}>
               Built to aviation standards. Fill in aircraft from the FAA registry, price from AI photo condition reports, hold every tech to your SOPs, and see the true profit of every job.
             </P>
+            <P size="sm" center={!isDesktop} style={{ marginTop: 14, maxWidth: 560 }}>
+              Only detail aircraft or boats? Pick what you detail at sign-up and you’ll only see those tools.
+            </P>
+            <View style={{ flexDirection: 'row', gap: 18, marginTop: 8, alignSelf: isDesktop ? 'flex-start' : 'center' }}>
+              <TextLink href="/aviation" color={site.goldText} size={14}>For aircraft detailers →</TextLink>
+              <TextLink href="/marine" color={site.blueText} size={14}>For boat detailers →</TextLink>
+            </View>
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12, marginTop: 32, alignSelf: isMobile ? 'stretch' : isDesktop ? 'flex-start' : 'center' }}>
               <CTAButton href={SIGN_UP_HREF} label={TRIAL_CTA} icon="arrow-forward" size="lg" full={isMobile} />
               {!PRELAUNCH ? <CTAButton href={DEMO_HREF} label="Explore the demo" icon="play-circle-outline" variant="outline" size="lg" full={isMobile} /> : null}
@@ -275,7 +282,7 @@ function BusinessTypes() {
   const { isMobile, isDesktop } = useBreakpoint();
   return (
     <Section tint>
-      <SectionIntro eyebrow="Built for what you detail" title="Aircraft first. Vehicles and watercraft when you’re ready." body="Choose your business types when you sign up and add more anytime. Forms, sizes and pricing adapt to what you actually service." />
+      <SectionIntro eyebrow="Built for what you detail" title="Aircraft first. Vehicles and watercraft when you’re ready." body="Pick what you detail when you sign up and Tarmo shows only those tools. An aircraft-only business never sees a car or boat screen. Add more anytime." />
       <Grid cols={isDesktop ? 3 : 1} gap={isMobile ? 16 : 22}>
         {BUSINESS_TYPES.map((b, i) => (
           <Glass key={b.title} hover style={{ flex: 1 }}>
@@ -287,6 +294,7 @@ function BusinessTypes() {
             <View style={{ gap: 9 }}>
               {b.examples.map((e) => <Check key={e} tone={i === 0 ? 'gold' : 'blue'}>{e}</Check>)}
             </View>
+            {b.href && b.link ? <View style={{ marginTop: 18 }}><TextLink href={b.href} color={i === 0 ? site.goldText : site.blueText} size={15}>{`${b.link} →`}</TextLink></View> : null}
           </Glass>
         ))}
       </Grid>
