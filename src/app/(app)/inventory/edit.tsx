@@ -18,7 +18,7 @@ export default function SupplyEdit() {
   const showMoney = perm('see_prices');
   const manager = isManager(role);
   const [values, setValues] = useState<FormValues | null>(id ? null : {
-    unit: 'each', quantity: '0', par_level: '0', reorder_qty: '0', unit_cost: '0', active: true, barcode: barcode ?? '',
+    unit: 'each', quantity: '0', par_level: '0', reorder_qty: '0', unit_cost: '0', active: true, order_online: false, barcode: barcode ?? '',
   });
   const [sdsPath, setSdsPath] = useState<string | null>(null);
   const [sdsName, setSdsName] = useState<string | null>(null);
@@ -60,8 +60,9 @@ export default function SupplyEdit() {
   ];
   const vendorFields: FieldDef[] = [
     { key: 'vendor', label: 'Vendor', type: 'text' },
-    { key: 'vendor_url', label: 'Vendor link (reorder page)', type: 'text', placeholder: 'https://…' },
-    { key: 'vendor_email', label: 'Vendor email', type: 'email', placeholder: 'orders@vendor.com' },
+    { key: 'order_online', label: 'Order from a web store', type: 'toggle', hint: 'On: when it runs low you get a link that opens the store’s cart already filled (Shopify and Amazon), then you review and pay. Off: the vendor gets an order email.' },
+    { key: 'vendor_url', label: 'Product link', type: 'text', placeholder: 'https://…', hint: 'The product’s page on the store. For Shopify stores, pick the size or option first so the link includes it.' },
+    { key: 'vendor_email', label: 'Vendor email', type: 'email', placeholder: 'orders@vendor.com', hint: 'Used when the item isn’t ordered from a web store.' },
   ];
   const safetyFields: FieldDef[] = [
     { key: 'approved_for', label: 'OEM approvals', type: 'multiline', placeholder: 'Boeing D6-17487, Gulfstream AMM approved, Airbus AIMM' },
@@ -91,6 +92,7 @@ export default function SupplyEdit() {
       if (row[k] != null && (row[k] < 0 || !hasMax3Decimals(row[k]))) return setError('Quantities are zero or more, with at most 3 decimals');
     }
     if (row.vendor_email && !/^\S+@\S+\.\S+$/.test(row.vendor_email)) return setError('That vendor email looks wrong');
+    if (row.order_online && !row.vendor_url) return setError('Add the product link to order from a web store');
     const payload: Record<string, any> = {
       ...row,
       barcode: row.barcode ? String(row.barcode).trim() : null,

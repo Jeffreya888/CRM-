@@ -133,7 +133,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'supply', title: 'Supply room & equipment', icon: 'cube-outline', tone: 'blue',
     body: 'Know what you have and what you used, and never run out mid-job.',
-    bullets: ['Supplies deduct from stock as jobs are completed', 'Par levels with automatic vendor reorders', 'Supplies used per job feed true job cost', 'Barcode and QR scanning', 'Equipment maintenance reminders'],
+    bullets: ['Supplies deduct from stock as jobs are completed', 'Automatic reorders: vendor emails or a filled online cart', 'Supplies used per job feed true job cost', 'Barcode and QR scanning', 'Equipment maintenance reminders'],
   },
   {
     id: 'crew', title: 'Crew, timesheets & payroll exports', icon: 'people-outline', tone: 'green',

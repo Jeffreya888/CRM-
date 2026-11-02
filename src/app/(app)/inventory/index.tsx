@@ -1,3 +1,4 @@
+import * as Linking from 'expo-linking';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, View } from 'react-native';
@@ -8,6 +9,7 @@ import { Badge, Button, Card, EmptyState, ErrorBanner, IconTile, Loading, Row, S
 import { money } from '../../../lib/format';
 import { fmtQty as fmtNum } from '../../../components/inventory/qty';
 import { expiryBadge, isLow, type InventoryItem, type StockLocation } from '../../../lib/inventory';
+import { buildCarts } from '../../../lib/orderLinks';
 import { canAdmin, canEdit, isManager } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { callFunction, friendlyError, must, supabase } from '../../../lib/supabase';
@@ -63,9 +65,25 @@ function SupplyList() {
   const rows = base.filter((i) => !s || [i.name, i.sku, i.barcode, i.vendor, i.category].some((x) => x?.toLowerCase().includes(s)));
   const stockValue = active.reduce((sum, i) => sum + Math.max(0, Number(i.quantity)) * Number(i.unit_cost || 0), 0);
 
+  const orderQty = (i: InventoryItem) => (Number(i.reorder_qty) > 0 ? Number(i.reorder_qty) : Math.max(1, Math.ceil(Number(i.par_level) * 2 - Number(i.quantity))));
+  const onlineLow = low.filter((i) => i.order_online && i.vendor_url);
+  const carts = buildCarts(onlineLow.map((i) => ({ name: i.id, url: i.vendor_url!, qty: orderQty(i) })));
+  const openCart = async (c: (typeof carts)[number]) => {
+    const target = c.cartUrl ?? c.items[0]?.url;
+    if (!target) return;
+    try {
+      await Linking.openURL(target);
+      await supabase.from('inventory_items').update({ reorder_sent_at: new Date().toISOString() }).in('id', c.items.map((x) => x.name));
+      if (!c.cartUrl && c.items.length > 1) notify('Opened the first product', 'This store doesn’t support filled carts. Open each item from the list to add the rest.');
+      await q.reload();
+    } catch {
+      notify('Could not open', c.store);
+    }
+  };
+
   const emailAll = () => {
-    const withEmail = low.filter((i) => i.vendor_email);
-    const missing = low.length - withEmail.length;
+    const withEmail = low.filter((i) => i.vendor_email && !i.order_online);
+    const missing = low.filter((i) => !i.order_online).length - withEmail.length;
     if (!withEmail.length) {
       notify('No vendor emails yet', 'Add a vendor email to your low items (open the item → Edit) and we can email the order for you.');
       return;
@@ -132,8 +150,17 @@ function SupplyList() {
                     <T variant="muted">When an item drops to its par level, owners and managers get a push alert. Everything at or below par shows here.</T>
                   </View>
                 </Row>
-                {manager && low.length ? (
+                {manager && low.some((i) => !i.order_online) ? (
                   <Button style={{ marginTop: space.md }} icon="mail-outline" title="Email order of all low items" loading={sending} onPress={emailAll} />
+                ) : null}
+                {manager && carts.length ? (
+                  <View style={{ marginTop: space.md, gap: space.sm }}>
+                    <T style={{ fontWeight: '700' }}>Order online</T>
+                    {carts.map((c) => (
+                      <Button key={c.store} kind="secondary" icon="cart-outline"
+                        title={`${c.cartUrl ? 'Open filled cart' : 'Open store'}: ${c.store} (${c.items.length})`} onPress={() => openCart(c)} />
+                    ))}
+                  </View>
                 ) : null}
               </Card>
             ) : null}
@@ -141,7 +168,7 @@ function SupplyList() {
               <Card>
                 {canAdmin(role) ? (
                   <ToggleRow label="Reorder automatically" value={auto.data} onChange={setAutoReorder}
-                    hint="When an item drops to its par level, its vendor gets an order email by itself, using the item's reorder quantity. Each item is ordered once until it's restocked. Items need a vendor email." />
+                    hint="When an item drops to its par level, its vendor gets an order email by itself, using the item's reorder quantity. Web-store items send you a filled-cart link instead, to review and pay. Each item is ordered once until it's restocked." />
                 ) : (
                   <T variant="muted">{auto.data ? 'Automatic reordering is on: vendors are emailed when items drop to par.' : 'Automatic reordering is off. An owner or admin can turn it on.'}</T>
                 )}

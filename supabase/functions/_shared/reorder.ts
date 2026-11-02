@@ -3,13 +3,14 @@
 // its items; the items emailed get reorder_sent_at so they aren't ordered twice
 // before they're restocked (a trigger clears it once stock is back above par).
 import type { SupabaseClient } from "./deps.ts";
-import { type Org, queueMessage } from "./automation.ts";
+import { type Org, outbox, queueMessage } from "./automation.ts";
+import { buildCarts } from "./orderLinks.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "./email.ts";
 
-export const REORDER_COLS = "id, name, sku, unit, quantity, par_level, reorder_qty, vendor, vendor_email, vendor_url";
+export const REORDER_COLS = "id, name, sku, unit, quantity, par_level, reorder_qty, vendor, vendor_email, vendor_url, order_online";
 export type ReorderItem = {
   id: string; name: string; sku: string | null; unit: string | null; quantity: number; par_level: number;
-  reorder_qty: number; vendor: string | null; vendor_email: string | null;
+  reorder_qty: number; vendor: string | null; vendor_email: string | null; vendor_url?: string | null; order_online?: boolean;
 };
 
 const qty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, "").replace(/\.$/, ""));
@@ -66,4 +67,44 @@ export async function emailVendorOrders(
     await db.from("inventory_items").update({ reorder_sent_at: new Date().toISOString() }).in("id", sentIds);
   }
   return { emailed, skipped, failures, sentIds };
+}
+
+/**
+ * Web-store supplies: one "ready to reorder" email to the business (and a push
+ * to managers) with a pre-filled cart link per store where possible. The owner
+ * reviews and pays on the store's site. Items are marked ordered so they aren't
+ * flagged again until restocked.
+ */
+export async function notifyOnlineOrders(db: SupabaseClient, org: Org, items: ReorderItem[]) {
+  const online = items.filter((i) => i.vendor_url);
+  if (!online.length) return 0;
+  const carts = buildCarts(online.map((i) => ({ name: i.name, url: String(i.vendor_url), qty: orderQty(i) })));
+  if (!carts.length) return 0;
+  const n = carts.reduce((s, c) => s + c.items.length, 0);
+  const title = `${n} item${n === 1 ? "" : "s"} ready to reorder online`;
+  const btn = (url: string, label: string) =>
+    `<a href="${esc(url)}" style="display:inline-block;background:#0B3D91;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">${esc(label)}</a>`;
+  const blocks = carts.map((c) => `
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin:0 0 12px">
+      <div style="font-weight:700;margin:0 0 6px">${esc(c.store)}</div>
+      <ul style="margin:0 0 10px;padding-left:18px">${c.items.map((i) => `<li><a href="${esc(i.url)}" style="color:#0B3D91">${esc(i.name)}</a> × ${i.qty}</li>`).join("")}</ul>
+      ${c.cartUrl ? btn(c.cartUrl, "Open filled cart") : `<span style="color:#64748b;font-size:13px">Open each product link to order.</span>`}
+    </div>`).join("");
+  const html = emailLayout({
+    brand: org,
+    heading: "Ready to reorder",
+    bodyHtml: `<p style="line-height:1.5">These supplies dropped to their par level. Review the cart and pay on the store's site:</p>${blocks}
+      <p style="line-height:1.5;color:#64748b;font-size:13px">They're marked as ordered in Supply room until they're restocked.</p>`,
+  });
+  const text = `These supplies dropped to their par level:\n\n${carts.map((c) => `${c.store}\n${c.items.map((i) => `- ${i.name} x ${i.qty}: ${i.url}`).join("\n")}${c.cartUrl ? `\nFilled cart: ${c.cartUrl}` : ""}`).join("\n\n")}`;
+  if (org.email && isEmail(org.email)) {
+    try {
+      await sendEmail({ to: org.email, subject: title, html, text, quota: { db, orgId: org.id } });
+    } catch (err) {
+      console.error("online reorder email failed", org.id, err);
+    }
+  }
+  await outbox(db, { org_id: org.id, audience: "managers", kind: "reorder_ready", title, body: carts.map((c) => c.store).join(", "), url: "/inventory" });
+  await db.from("inventory_items").update({ reorder_sent_at: new Date().toISOString() }).in("id", online.map((i) => i.id));
+  return n;
 }

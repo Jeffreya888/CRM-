@@ -16,6 +16,8 @@ export interface InventoryItem {
   approved_for: string | null; expires_on: string | null; active: boolean; created_at: string;
   /** When the vendor was last emailed an order; cleared once stock is back above par. */
   reorder_sent_at: string | null;
+  /** Bought from a web store (vendor_url is the product link) instead of emailing the vendor. */
+  order_online: boolean;
 }
 
 export type MovementReason = 'purchase' | 'job_use' | 'adjustment' | 'waste' | 'count' | 'transfer';

@@ -24,7 +24,7 @@ import {
   addDays, daysBetween, deliverMessage, fmtDate, fmtDateTime, fmtTime, fmtYmd, invoiceEmailText, links, localDate, money,
   type Org, ORG_COLS, outbox, queueMessage, type Row, textingActive, ymdAsDate,
 } from "../_shared/automation.ts";
-import { emailVendorOrders, REORDER_COLS, type ReorderItem } from "../_shared/reorder.ts";
+import { emailVendorOrders, notifyOnlineOrders, REORDER_COLS, type ReorderItem } from "../_shared/reorder.ts";
 
 type Details = Record<string, unknown>;
 
@@ -604,20 +604,25 @@ async function customersWithWorkBooked(db: SupabaseClient, customerIds: string[]
   return booked;
 }
 
-/** Automatic reordering: items at or below par get one vendor email until they're restocked. */
+/** Automatic reordering: low items get one vendor email, or one "ready to reorder" cart link for web stores, until restocked. */
 export async function autoReorder(db: SupabaseClient) {
   const autos = await enabledAutomations(db, "auto_reorder");
   let n = 0;
   for (const [orgId, { org }] of autos) {
     const { data, error } = await db.from("inventory_items").select(REORDER_COLS)
-      .eq("org_id", orgId).eq("active", true).gt("par_level", 0).is("reorder_sent_at", null).not("vendor_email", "is", null);
+      .eq("org_id", orgId).eq("active", true).gt("par_level", 0).is("reorder_sent_at", null);
     if (error) throw error;
     const low = ((data ?? []) as ReorderItem[]).filter((i) => Number(i.quantity) <= Number(i.par_level));
-    if (!low.length) continue;
+    const online = low.filter((i) => i.order_online && i.vendor_url);
+    const byEmail = low.filter((i) => !i.order_online && i.vendor_email);
+    if (!online.length && !byEmail.length) continue;
     try {
-      const r = await emailVendorOrders(db, org, low);
-      n += r.emailed;
-      if (r.failures.length) console.error("auto reorder failures", orgId, r.failures);
+      if (byEmail.length) {
+        const r = await emailVendorOrders(db, org, byEmail);
+        n += r.emailed;
+        if (r.failures.length) console.error("auto reorder failures", orgId, r.failures);
+      }
+      if (online.length) n += await notifyOnlineOrders(db, org, online);
     } catch (e) {
       console.error("auto reorder failed", orgId, e);
     }

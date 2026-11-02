@@ -11,6 +11,7 @@ import {
   expiryBadge, isLow, normalizeUrl, openStorageFile, REASON_LABELS, reorderMailto,
   type InventoryItem, type Movement, type StockByLocation, type StockLocation,
 } from '../../../lib/inventory';
+import { buildCarts } from '../../../lib/orderLinks';
 import { useLookups } from '../../../lib/lookups';
 import { canEdit, isManager } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
@@ -83,6 +84,13 @@ export default function SupplyDetail() {
 
   const reorder = async () => {
     try {
+      if (i.order_online && i.vendor_url) {
+        const qty = Number(i.reorder_qty) > 0 ? Number(i.reorder_qty) : Math.max(1, Math.ceil(Number(i.par_level) * 2 - total));
+        const [cart] = buildCarts([{ name: i.name, url: i.vendor_url, qty }]);
+        await Linking.openURL(cart?.cartUrl ?? normalizeUrl(i.vendor_url));
+        if (low) await supabase.from('inventory_items').update({ reorder_sent_at: new Date().toISOString() }).eq('id', i.id);
+        return;
+      }
       if (i.vendor_url) await Linking.openURL(normalizeUrl(i.vendor_url));
       else if (mailto) await Linking.openURL(mailto);
       else notify('No vendor link or email', 'Edit this supply and add the vendor’s reorder link or email to reorder in one tap.');
@@ -132,8 +140,8 @@ export default function SupplyDetail() {
         <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
           <Button small icon="swap-vertical-outline" title="Adjust stock" onPress={() => setSheet('adjust')} />
           {manager ? <Button small kind="secondary" icon="cube-outline" title="Mark received" onPress={() => setSheet('receive')} /> : null}
-          {manager ? <Button small kind="secondary" icon="cart-outline" title="Reorder" onPress={reorder} /> : null}
-          {manager && i.vendor_email ? <Button small kind="secondary" icon="mail-outline" title="Email order" onPress={emailVendor} /> : null}
+          {manager ? <Button small kind="secondary" icon="cart-outline" title={i.order_online ? 'Order online' : 'Reorder'} onPress={reorder} /> : null}
+          {manager && i.vendor_email && !i.order_online ? <Button small kind="secondary" icon="mail-outline" title="Email order" onPress={emailVendor} /> : null}
           {useLocations ? <Button small kind="secondary" icon="swap-horizontal-outline" title="Transfer" onPress={() => setSheet('transfer')} /> : null}
         </Row>
       ) : null}
