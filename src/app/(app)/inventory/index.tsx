@@ -4,11 +4,11 @@ import { FlatList, View } from 'react-native';
 import { confirmAction, notify } from '../../../components/FormSheet';
 import { Gate } from '../../../components/Gate';
 import { StockSheet } from '../../../components/inventory/StockSheet';
-import { Badge, Button, Card, EmptyState, ErrorBanner, IconTile, Loading, Row, SearchBar, Segmented, StatTile, T } from '../../../components/ui';
+import { Badge, Button, Card, EmptyState, ErrorBanner, IconTile, Loading, Row, SearchBar, Segmented, StatTile, T, ToggleRow } from '../../../components/ui';
 import { money } from '../../../lib/format';
 import { fmtQty as fmtNum } from '../../../components/inventory/qty';
 import { expiryBadge, isLow, type InventoryItem, type StockLocation } from '../../../lib/inventory';
-import { canEdit, isManager } from '../../../lib/plans';
+import { canAdmin, canEdit, isManager } from '../../../lib/plans';
 import { useOrg } from '../../../lib/session';
 import { callFunction, friendlyError, must, supabase } from '../../../lib/supabase';
 import { colors, space } from '../../../lib/theme';
@@ -42,6 +42,16 @@ function SupplyList() {
     ]);
     return { items: (items ?? []) as InventoryItem[], locations: (locs ?? []) as StockLocation[] };
   }, [orgId, fleet]);
+  const auto = useQuery(async () => {
+    if (!manager) return null;
+    const row = await must(supabase.from('automations').select('enabled').eq('org_id', orgId).eq('key', 'auto_reorder').maybeSingle());
+    return (row as { enabled: boolean } | null)?.enabled ?? false;
+  }, [orgId, manager]);
+  const setAutoReorder = async (on: boolean) => {
+    const { error } = await supabase.from('automations').update({ enabled: on, updated_at: new Date().toISOString() }).eq('org_id', orgId).eq('key', 'auto_reorder');
+    if (error) return notify('Could not update', friendlyError(error.message));
+    await auto.reload();
+  };
 
   const all = q.data?.items ?? [];
   const active = all.filter((i) => i.active !== false);
@@ -127,6 +137,16 @@ function SupplyList() {
                 ) : null}
               </Card>
             ) : null}
+            {filter === 'reorder' && manager && auto.data != null ? (
+              <Card>
+                {canAdmin(role) ? (
+                  <ToggleRow label="Reorder automatically" value={auto.data} onChange={setAutoReorder}
+                    hint="When an item drops to its par level, its vendor gets an order email by itself, using the item's reorder quantity. Each item is ordered once until it's restocked. Items need a vendor email." />
+                ) : (
+                  <T variant="muted">{auto.data ? 'Automatic reordering is on: vendors are emailed when items drop to par.' : 'Automatic reordering is off. An owner or admin can turn it on.'}</T>
+                )}
+              </Card>
+            ) : null}
           </View>
         }
         ListEmptyComponent={
@@ -158,6 +178,7 @@ function SupplyList() {
                   {lowNow || exp ? (
                     <Row gap={4} style={{ marginTop: 4, flexWrap: 'wrap' }}>
                       {lowNow ? <Badge label="Low" tone="danger" /> : null}
+                      {lowNow && i.reorder_sent_at ? <Badge label="Ordered" tone="info" /> : null}
                       {exp ? <Badge label={exp.label} tone={exp.tone} raw /> : null}
                     </Row>
                   ) : null}

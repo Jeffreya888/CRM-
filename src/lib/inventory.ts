@@ -14,6 +14,8 @@ export interface InventoryItem {
   unit: string; quantity: number; par_level: number; reorder_qty: number; unit_cost: number;
   vendor: string | null; vendor_url: string | null; vendor_email: string | null; sds_path: string | null;
   approved_for: string | null; expires_on: string | null; active: boolean; created_at: string;
+  /** When the vendor was last emailed an order; cleared once stock is back above par. */
+  reorder_sent_at: string | null;
 }
 
 export type MovementReason = 'purchase' | 'job_use' | 'adjustment' | 'waste' | 'count' | 'transfer';

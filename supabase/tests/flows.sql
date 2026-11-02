@@ -37,11 +37,25 @@ do $$ begin
   assert (select cardinality(checklist) from services where guide_key = 'exterior_wash')
        = (select jsonb_array_length(steps) from service_guides where key = 'exterior_wash' and org_id is null), 'checklist from guide steps';
   assert (select recur_every || ' ' || recur_unit from services where guide_key = 'ceramic_coating') = '12 month', 'recurring in months';
-  assert (select count(*) from automations) = 13, 'automations seeded';
+  assert (select count(*) from automations) = 14, 'automations seeded';
+  assert not (select enabled from automations where key = 'auto_reorder'), 'automatic reordering starts off';
   assert (select count(*) from automations where enabled and key in ('job_reminder','invoice_reminders')) = 2, 'smart defaults on';
   assert (select count(*) from crew_hours) = 5, 'default crew hours';
   assert (public.dashboard_stats((select v from ctx where k='alpha')) ? 'revenue_week'), 'weekly revenue stat';
 end $$;
+
+-- Automatic reordering: an item is ordered once until it's restocked above par.
+reset role;
+do $$ declare i uuid; begin
+  insert into inventory_items (org_id, name, unit, quantity, par_level) values ((select v from ctx where k='alpha'), 'Test soap', 'gal', 1, 2) returning id into i;
+  update inventory_items set reorder_sent_at = now() where id = i;
+  update inventory_items set quantity = 1.5 where id = i;
+  assert (select reorder_sent_at is not null from inventory_items where id = i), 'still low: stays ordered';
+  update inventory_items set quantity = 5 where id = i;
+  assert (select reorder_sent_at is null from inventory_items where id = i), 'restocked: can be ordered again';
+  delete from inventory_items where id = i;
+end $$;
+set role authenticated;
 
 -- Business types can be added (seeding services) but not removed.
 update organizations set business_types = array['aircraft','vehicle','watercraft'];

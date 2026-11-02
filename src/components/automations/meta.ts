@@ -18,6 +18,7 @@ export const AUTOMATION_META: Record<AutomationKey, { title: string; icon: IconN
   quote_win_back: { title: 'Win back lost quotes', icon: 'refresh-circle-outline', description: 'One friendly message after a quote expires or is declined, inviting the customer to get an updated quote.' },
   customer_win_back: { title: 'Win back quiet customers', icon: 'person-add-outline', description: 'Reaches customers who have not booked in a while, with a link to pick a time.' },
   service_due: { title: 'Service due', icon: 'calendar-number-outline', description: 'Tells the customer when a recurring service (coating maintenance, brightwork, washes) is due, with a link to book.' },
+  auto_reorder: { title: 'Automatic reordering', icon: 'cart-outline', description: 'Emails each vendor the items at or below par, once until they are restocked. Turned on in Supply room.' },
   job_rebook: { title: 'Rebook canceled jobs', icon: 'calendar-outline', description: 'A few days after a job is canceled, invites the customer to pick a new date.' },
 };
 
