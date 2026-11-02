@@ -29,7 +29,7 @@ function Choice({ title, body, selected, disabled, onPress, badge }: { title: st
 /** How customers pay: arranged directly, or online through Stripe Connect or Square. */
 export function PaymentsCard({ org, plan, editable, isDemo, onChanged }: { org: Organization; plan: Plan; editable: boolean; isDemo: boolean; onChanged: () => Promise<void> }) {
   const fee = feePercent(plan === 'trial' ? TRIAL_FEE_BPS : annualFeeBps(plan, org.billing_period, planInfo(plan)?.feeBps ?? 100)).replace('%', '');
-  const trialNote = plan === 'trial' ? ' during your free trial, max $120 per payment (it drops to 1% or less when you subscribe, and 0% on yearly plans)' : '';
+  const trialNote = plan === 'trial' ? ' during your free trial (0% when you subscribe to a yearly plan)' : '';
   const { square: squareReturn } = useLocalSearchParams<{ square?: string }>();
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
 

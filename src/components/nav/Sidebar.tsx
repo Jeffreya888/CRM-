@@ -17,7 +17,7 @@ import { useMenu, visibleItems, type MenuGroup, type MenuItem } from './menu';
 
 const ALL_LOCATIONS = '__all__';
 
-type NavItem = { label: string; icon: IconName; href: string; badge?: string };
+type NavItem = { label: string; icon: IconName; href: string; badge?: string; onPress?: () => void };
 
 const isActive = (pathname: string, href: string) =>
   href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(href + '/');
@@ -27,7 +27,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
     <Pressable
       accessibilityRole="link"
       accessibilityState={{ selected: active }}
-      onPress={() => router.navigate(item.href as never)}
+      onPress={item.onPress ?? (() => router.navigate(item.href as never))}
       style={(state) => {
         const hovered = (state as PressableStateCallbackType & { hovered?: boolean }).hovered;
         return [styles.link, active ? styles.linkActive : hovered || state.pressed ? styles.linkHover : null];
@@ -40,12 +40,12 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-const toNav = (i: MenuItem): NavItem => ({ label: i.short ?? i.label, icon: i.icon, href: i.href, badge: i.badge });
+const toNav = (i: MenuItem): NavItem => ({ label: i.short ?? i.label, icon: i.icon, href: i.href, badge: i.badge, onPress: i.onPress });
 
 export function Sidebar() {
   const pathname = usePathname();
   const { org, orgId, role, plan, profile, session, memberships, switchOrg, signOut, can, branchId, setBranchId } = useOrg();
-  const { groups } = useMenu();
+  const { groups, simple } = useMenu();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ help: true });
   const branchesAllowed = can('branches');
 
@@ -107,7 +107,7 @@ export function Sidebar() {
         {primary.map((i) => <NavLink key={i.href} item={i} active={isActive(pathname, i.href)} />)}
 
         {rest.map((g) => {
-          const open = !collapsed[g.key] || g.items.some((i) => isActive(pathname, i.href));
+          const open = !(collapsed[g.key] && !(simple && g.key === 'help')) || g.items.some((i) => isActive(pathname, i.href));
           return (
             <View key={g.key} style={{ marginTop: space.lg }}>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setCollapsed((c) => ({ ...c, [g.key]: open }))} style={styles.groupHead}>

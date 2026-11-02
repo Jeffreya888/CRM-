@@ -8,7 +8,7 @@ import { invoiceTone } from '../../../components/status';
 import { Badge, Button, Card, Divider, EmptyState, ErrorBanner, IconButton, Ionicons, KeyValue, ListRow, Loading, Row, Screen, Section, T } from '../../../components/ui';
 import { date, dateTime, money, titleCase } from '../../../lib/format';
 import { onlinePaymentsLive } from '../../../lib/payments';
-import { canAdmin, effectivePlan, TRIAL_FEE_CAP, trialFeeFor } from '../../../lib/plans';
+import { canAdmin } from '../../../lib/plans';
 import { inPersonSupported, openReaderSettings, takeInPersonPayment } from '../../../lib/squareReader';
 import { useOrg } from '../../../lib/session';
 import { callFunction, friendlyError, supabase } from '../../../lib/supabase';
@@ -43,9 +43,6 @@ export default function InvoiceDetail() {
   const direct = org.payment_mode === 'direct';
   const shown = orgForDocument(org, d.org_snapshot);
   const reviewUrl: string | null = d.org_snapshot?.google_review_url ?? org.google_review_url ?? null;
-  // Trial: show what the card fee on this invoice costs now versus on a paid plan.
-  const cardOnline = can('online_payments') && !direct && !d.covered_by_plan && onlinePaymentsLive(org) && !org.is_demo;
-  const trialFee = cardOnline && effectivePlan(org) === 'trial' ? trialFeeFor(Number(d.balance)) : null;
   const isLateFee = (desc: string) => /late fee/i.test(desc ?? '');
   const isDeposit = (p: any) => /^deposit/i.test(p.reference ?? '');
 
@@ -126,14 +123,6 @@ export default function InvoiceDetail() {
             {can('online_payments') && !direct && !d.covered_by_plan ? <Button style={{ flex: 1 }} kind={inPerson ? 'secondary' : 'primary'} icon="card-outline" title={inPerson ? 'Pay link' : 'Take card payment'} onPress={collectCard} /> : null}
             <Button style={{ flex: 1 }} kind="secondary" icon="cash-outline" title="Record payment" onPress={() => setPaySheet(true)} />
           </Row>
-          {trialFee !== null && trialFee > 0 ? (
-            <Card style={{ marginTop: space.sm, backgroundColor: colors.cardRaised }}>
-              <T variant="small">
-                Trial card fee on this {money(d.balance, cur)} invoice: {money(trialFee, cur)} (4%, max {money(TRIAL_FEE_CAP, cur)}). Subscribe and pay {money(Number(d.balance) / 100, cur)} or less (1% or less), or {money(0, cur)} on a yearly plan.
-              </T>
-              {canAdmin(role) ? <Button small kind="secondary" icon="rocket-outline" title="See plans" onPress={() => router.push('/paywall')} style={{ marginTop: space.xs, alignSelf: 'flex-start' }} /> : null}
-            </Card>
-          ) : null}
           {inPerson ? <Button small kind="ghost" icon="bluetooth-outline" title="Pair a Square card reader" onPress={readers} style={{ marginTop: space.xs, alignSelf: 'flex-start' }} /> : null}
           {direct ? <T variant="small" style={{ marginTop: space.sm }}>Your company takes payment directly (no card checkout). The customer&apos;s payment page shows how to reach you. Record payments here when they arrive.</T> : null}
         </Section>

@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { View } from 'react-native';
 import { AppHeader } from '../../components/AppHeader';
 import { Sidebar } from '../../components/nav/Sidebar';
+import { FirstVisitTip } from '../../components/onboarding/FirstVisitTip';
 import { useIsDesktop } from '../../lib/layout';
 import { colors } from '../../lib/theme';
 
@@ -21,6 +22,7 @@ export default function AppLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="paywall" options={{ presentation: 'modal', title: 'Plans' }} />
         </Stack>
+        <FirstVisitTip />
       </View>
     </View>
   );

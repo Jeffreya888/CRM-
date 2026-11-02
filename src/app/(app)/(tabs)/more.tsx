@@ -21,7 +21,7 @@ function Menu({ items }: { items: Item[] }) {
       {visible.map((i) => (
         <ListRow key={i.label} icon={i.icon} tone={i.tone} title={i.label} subtitle={i.subtitle}
           right={i.badge ? <Row gap={6}><Badge raw label={i.badge} tone="primary" /><Ionicons name="chevron-forward" size={18} color={colors.textMuted} /></Row> : undefined}
-          onPress={() => router.push(i.href)} />
+          onPress={i.onPress ?? (() => router.push(i.href))} />
       ))}
     </Card>
   );

@@ -22,9 +22,9 @@ export function stripe(): Stripe {
   });
 }
 
-/** Platform fee (basis points) per plan: the processing-fee revenue stream. Trials pay 4% until they subscribe. */
+/** Platform fee (basis points) per plan: the processing-fee revenue stream. Trials pay the Solo rate. */
 export function platformFeeBps(plan: string): number {
-  const fallback: Record<string, number> = { solo: 100, trial: 400, team: 75, fleet: 50 };
+  const fallback: Record<string, number> = { solo: 100, trial: 100, team: 75, fleet: 50 };
   const fromEnv = Deno.env.get(`PLATFORM_FEE_BPS_${plan.toUpperCase()}`);
   return fromEnv ? Number(fromEnv) : (fallback[plan] ?? 100);
 }
@@ -72,27 +72,9 @@ export async function orgFeeBps(db: SupabaseClient, orgId: string): Promise<numb
   return platformFeeBps(plan);
 }
 
-/** Most the trial fee can take from one payment, in cents ($120 by default). */
-export function trialFeeCapCents(): number {
-  const fromEnv = Deno.env.get("TRIAL_FEE_CAP_CENTS");
-  return fromEnv ? Number(fromEnv) : 12000;
-}
-
-/** Platform fee in cents for a one-time payment: the org's rate, capped per payment during the trial. */
+/** Platform fee in cents for a payment at the org's current rate. */
 export async function platformFeeCents(db: SupabaseClient, orgId: string, amountCents: number): Promise<number> {
-  const plan = await effectivePlan(db, orgId);
-  const bps = await orgFeeBps(db, orgId);
-  const fee = Math.round((amountCents * bps) / 10000);
-  return plan === "trial" ? Math.min(fee, trialFeeCapCents()) : fee;
-}
-
-/**
- * Fee rate for recurring care plans. A Stripe subscription keeps its rate after the trial ends,
- * so trials get the Solo rate here instead of the trial rate.
- */
-export async function recurringFeeBps(db: SupabaseClient, orgId: string): Promise<number> {
-  const plan = await effectivePlan(db, orgId);
-  return plan === "trial" ? platformFeeBps("solo") : orgFeeBps(db, orgId);
+  return Math.round((amountCents * (await orgFeeBps(db, orgId))) / 10000);
 }
 
 /** Queues a push for the org's managers (sent by the automation worker). */

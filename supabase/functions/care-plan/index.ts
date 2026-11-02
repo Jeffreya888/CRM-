@@ -14,7 +14,7 @@
 // Stripe subscription events arrive on the Connect webhook (see stripe-webhook).
 import { Stripe } from "../_shared/deps.ts";
 import { disableCard, sellerFor } from "../_shared/square.ts";
-import { adminClient, callerCanMoney, callerRole, MANAGER_ROLES, recurringFeeBps, stripe } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole, MANAGER_ROLES, orgFeeBps, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
       metadata: { schedule_id: s.id, org_id: s.org_id },
     }, { stripeAccount: acct });
 
-    const bps = await recurringFeeBps(db, s.org_id);
+    const bps = await orgFeeBps(db, s.org_id);
     const meta = { kind: "care_plan", schedule_id: s.id, org_id: s.org_id };
     const back = `${portalUrl()}/portal/c/${org.public_slug}`;
     const session = await s_.checkout.sessions.create({

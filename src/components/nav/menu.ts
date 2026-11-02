@@ -19,14 +19,19 @@ export type MenuItem = {
   href: string;
   show?: boolean;
   badge?: string;
+  /** Runs instead of opening href (used by the simple view switch). */
+  onPress?: () => void;
 };
 export type MenuGroup = { key: 'company' | 'operations' | 'sales' | 'workflow' | 'finance' | 'help'; title: string; items: MenuItem[] };
+
+/** Tools a one-person business sees in the simple view. Everything else is one tap away with "Show all tools". */
+export const SIMPLE_VIEW_HREFS = ['/settings', '/team', '/account', '/assistant', '/schedule', '/route', '/aircraft', '/quotes', '/invoices', '/training', '/getting-started', '/about', '/paywall', '/admin'];
 
 export const visibleItems = (items: MenuItem[]) => items.filter((i) => i.show !== false);
 
 /** Menu groups with the same visibility rules as the More screen. */
 export function useMenu() {
-  const { org, orgId, role, plan, session, perm, can, businessTypes } = useOrg();
+  const { org, orgId, role, plan, session, perm, can, businessTypes, refresh } = useOrg();
   const admin = canAdmin(role);
   const manager = canSeeMoney(role);
   const money = perm('see_prices');
@@ -95,7 +100,7 @@ export function useMenu() {
     {
       key: 'help', title: 'Help & plan', items: [
         { label: 'Training center', short: 'Training & SOPs', subtitle: 'SOPs (standard operating procedures) and videos', icon: 'school-outline', tone: 'success', href: '/training' },
-        { label: 'Getting started', subtitle: 'Your first 7 steps', icon: 'rocket-outline', tone: 'primary', href: '/getting-started', show: admin },
+        { label: 'Getting started', subtitle: 'Setup steps and how Tarmo works', icon: 'rocket-outline', tone: 'primary', href: '/getting-started', show: admin },
         { label: 'Tarmo website & plan information', short: 'About Tarmo', subtitle: 'Plans, privacy, terms and support', icon: 'globe-outline', tone: 'info', href: '/about' },
         { label: 'Plans & billing', subtitle: plan === 'trial' ? 'Free trial' : titleCase(plan), icon: 'card-outline', tone: 'warning', href: '/paywall', show: admin },
         { label: 'Platform admin', subtitle: 'Tarmo platform health', icon: 'speedometer-outline', tone: 'danger', href: '/admin', show: !!q.data?.platformAdmin },
@@ -103,6 +108,22 @@ export function useMenu() {
     },
   ];
 
+  // One-person businesses start in the simple view (while the team count loads, the Solo plan decides).
+  const onePerson = team != null ? team <= 1 : plan === 'solo';
+  const simple = onePerson && !org.show_all_tools;
+  const setShowAll = async (value: boolean) => {
+    const { error } = await supabase.from('organizations').update({ show_all_tools: value }).eq('id', orgId);
+    if (!error) await refresh();
+  };
+  if (onePerson && admin) {
+    groups.find((g) => g.key === 'help')!.items.push(simple
+      ? { label: 'Show all tools', subtitle: 'Inventory, automations, care plans, reports and more', icon: 'apps-outline', tone: 'neutral', href: '/more#all-tools', onPress: () => { void setShowAll(true); } }
+      : { label: 'Simple view', subtitle: 'Show only the core tools', icon: 'contract-outline', tone: 'neutral', href: '/more#simple-view', onPress: () => { void setShowAll(false); } });
+  }
+  if (simple) {
+    for (const g of groups) for (const i of g.items) if (!i.onPress && !SIMPLE_VIEW_HREFS.includes(i.href)) i.show = false;
+  }
+
   const group = (key: MenuGroup['key']) => groups.find((g) => g.key === key)!.items;
-  return { groups, group, query: q };
+  return { groups, group, query: q, simple };
 }

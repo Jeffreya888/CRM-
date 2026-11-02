@@ -2,7 +2,7 @@
 // the automation worker: record a completed payment against whatever it paid
 // for, and charge monthly care plans to the card on file.
 import type { SupabaseClient } from "./deps.ts";
-import { effectivePlan, money, notifyManagers, recurringFeeBps } from "./clients.ts";
+import { effectivePlan, money, notifyManagers, orgFeeBps } from "./clients.ts";
 import { CARE_PLAN_COLS, type CarePlanSchedule, recordCarePlanCharge, recordDeposit, recordInvoicePayment } from "./payments.ts";
 import { createPayment, type Seller, sellerFor, SquareError, squareRef, type SquarePayment } from "./square.ts";
 
@@ -76,7 +76,7 @@ export async function chargeCarePlan(db: SupabaseClient, scheduleId: string, opt
   if (amountCents < 100) return { ok: false, message: "The monthly amount is not set", declined: false };
   const dueAt = s.care_plan_next_charge_at ? new Date(s.care_plan_next_charge_at) : new Date();
   const currency = (org?.currency ?? "USD").toUpperCase();
-  const fee = Math.round((amountCents * (await recurringFeeBps(db, s.org_id))) / 10000);
+  const fee = Math.round((amountCents * (await orgFeeBps(db, s.org_id))) / 10000);
   try {
     const payment = await createPayment(seller, {
       sourceId: s.square_card_id,
