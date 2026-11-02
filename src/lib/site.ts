@@ -17,7 +17,7 @@ export const TRIAL_DAYS = 30;
 export const AIRCRAFT_MODELS = 545;
 export const BOAT_MODELS = 604;
 export const VEHICLE_MODELS = 514;
-export const GUIDE_COUNT = 52;
+export const GUIDE_COUNT = 54;
 
 /**
  * Before launch the website collects an early access list instead of sign-ups:
