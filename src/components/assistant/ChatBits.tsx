@@ -159,7 +159,7 @@ const SAFETY: Record<AssistantSafety, { title: string; body: string; icon: IconN
   },
   aircraft_systems: {
     title: 'Crew authorization needed',
-    body: 'Don’t operate aircraft systems unless the crew authorizes it.',
+    body: 'Don’t operate aircraft or boat systems unless the owner, crew or captain authorizes it.',
     icon: 'hand-left-outline', fg: colors.warning, bg: colors.warningSoft,
   },
 };
