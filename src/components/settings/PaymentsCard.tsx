@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, View } from 'react-native';
 import { confirmAction, notify } from '../FormSheet';
 import { Badge, Button, Card, IconTile, Ionicons, Row, T } from '../ui';
-import { feePercent, planInfo } from '../../lib/plans';
+import { annualFeeBps, feePercent, planInfo } from '../../lib/plans';
 import { callFunction, friendlyError, supabase } from '../../lib/supabase';
 import type { Organization, Plan } from '../../lib/types';
 import { colors, radius, space } from '../../lib/theme';
@@ -28,7 +28,7 @@ function Choice({ title, body, selected, disabled, onPress, badge }: { title: st
 
 /** How customers pay: arranged directly, or online through Stripe Connect or Square. */
 export function PaymentsCard({ org, plan, editable, isDemo, onChanged }: { org: Organization; plan: Plan; editable: boolean; isDemo: boolean; onChanged: () => Promise<void> }) {
-  const fee = feePercent(planInfo(plan)?.feeBps ?? 100).replace('%', '');
+  const fee = feePercent(annualFeeBps(plan, org.billing_period, planInfo(plan)?.feeBps ?? 100)).replace('%', '');
   const { square: squareReturn } = useLocalSearchParams<{ square?: string }>();
   const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
 

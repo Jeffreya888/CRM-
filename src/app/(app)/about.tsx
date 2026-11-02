@@ -50,7 +50,7 @@ export default function About() {
         <Card style={{ padding: 0, overflow: 'hidden' }}>
           {PLANS.map((p) => (
             <ListRow key={p.id} icon="ribbon-outline" tone={p.id === plan ? 'success' : 'neutral'} title={`${p.name} · $${p.monthly.toFixed(2)}/mo`}
-              subtitle={`or $${p.annual.toFixed(2)}/yr · ${feePercent(p.feeBps)} card fee`}
+              subtitle={`${feePercent(p.feeBps)} card fee · or $${p.annual.toFixed(2)}/yr with no card fee`}
               meta={p.seats === Infinity ? 'Unlimited team members' : p.seats === 1 ? 'Just you' : `Up to ${p.seats} team members`}
               right={p.id === plan ? <Badge raw label="Current" tone="success" /> : undefined} />
           ))}

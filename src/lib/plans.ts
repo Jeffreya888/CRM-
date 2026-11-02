@@ -91,6 +91,10 @@ export const planInfo = (plan: Plan) => PLANS.find((p) => p.id === plan) ?? null
  */
 export const FOUNDING = { months: 12, windowDays: 30, monthly: { solo: 49.99, team: 89.99, fleet: 159.99 } as Record<PlanInfo['id'], number> };
 
+/** Yearly paid plans have no platform fee on card payments. */
+export const annualFeeBps = (plan: Plan, period: 'monthly' | 'annual' | null | undefined, monthlyBps: number) =>
+  period === 'annual' && (plan === 'solo' || plan === 'team' || plan === 'fleet') ? 0 : monthlyBps;
+
 /** Platform fee as shown to people: "1%", "0.75%", "0.5%". */
 export const feePercent = (bps: number) => `${Number((bps / 100).toFixed(2))}%`;
 

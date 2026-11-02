@@ -55,13 +55,14 @@ export default function Pricing() {
       </Container>
 
       <Section>
-        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Tarmo — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from Stripe’s standard processing fee and drops as your plan grows. Cash, checks and payments you record yourself carry no platform fee." />
+        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Tarmo — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from the card processor’s standard fee, drops as your plan grows, and is 0% on every yearly plan. Cash, checks and payments you record yourself carry no platform fee." />
         <Grid cols={isMobile ? 1 : 3} gap={16}>
           {PLANS.map((p) => (
             <Glass key={p.id} padding={24} style={{ flex: 1, alignItems: 'center' }}>
               <Text style={{ fontFamily, color: site.muted, fontSize: 14, fontWeight: '700' }}>{p.name}</Text>
               <Text style={{ fontFamily, color: site.text, fontSize: 44, fontWeight: '800', letterSpacing: -1.5, marginTop: 6 }}>{feeLabel(p)}</Text>
               <Text style={{ fontFamily, color: site.faint, fontSize: 13 }}>platform fee per card payment</Text>
+              <Text style={{ fontFamily, color: site.goldText, fontSize: 13, fontWeight: '700', marginTop: 6 }}>0% on yearly billing</Text>
             </Glass>
           ))}
         </Grid>
@@ -148,7 +149,7 @@ function PlanCard({ plan: p, period }: { plan: PlanInfo; period: Period }) {
         <Text style={{ fontFamily, color: site.muted, fontSize: 16, marginBottom: 10 }}>{annual ? '/yr' : '/mo'}</Text>
       </View>
       <Text style={{ fontFamily, color: annual ? site.goldText : site.faint, fontSize: 13.5, fontWeight: '600', minHeight: 20 }}>
-        {annual ? `About ${money(p.annual / 12)}/mo · save $${annualSavings(p)} a year` : `or ${money(p.annual)}/yr billed yearly`}
+        {annual ? `About ${money(p.annual / 12)}/mo · save $${annualSavings(p)} a year · 0% card fee` : `or ${money(p.annual)}/yr billed yearly, with 0% card fee`}
       </Text>
       {PRELAUNCH && !annual ? (
         <View style={{ marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: 'rgba(211,153,67,0.14)', borderWidth: 1, borderColor: 'rgba(211,153,67,0.35)' }}>

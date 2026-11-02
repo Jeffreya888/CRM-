@@ -62,9 +62,14 @@ export async function effectivePlan(db: SupabaseClient, orgId: string): Promise<
   return typeof data === "string" ? data : "solo";
 }
 
-/** Platform fee in basis points for the org's current plan. */
+/** Platform fee in basis points for the org right now: 0 on yearly paid plans, else the plan's fee. */
 export async function orgFeeBps(db: SupabaseClient, orgId: string): Promise<number> {
-  return platformFeeBps(await effectivePlan(db, orgId));
+  const plan = await effectivePlan(db, orgId);
+  if (["solo", "team", "fleet"].includes(plan)) {
+    const { data } = await db.from("organizations").select("billing_period").eq("id", orgId).maybeSingle();
+    if (data?.billing_period === "annual") return 0;
+  }
+  return platformFeeBps(plan);
 }
 
 /** Queues a push for the org's managers (sent by the automation worker). */
