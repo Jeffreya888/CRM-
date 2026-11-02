@@ -94,6 +94,11 @@ export const FOUNDING = { months: 12, windowDays: 45, monthly: { solo: 49.99, te
 
 /** Platform fee during the free trial (basis points): 4%, until the business subscribes. */
 export const TRIAL_FEE_BPS = 400;
+/** Most the trial fee takes from one payment, in dollars (matches TRIAL_FEE_CAP_CENTS on the server). */
+export const TRIAL_FEE_CAP = 120;
+
+/** Trial platform fee on a one-time payment: 4%, capped per payment. */
+export const trialFeeFor = (amount: number) => Math.min(Math.round((amount * 100 * TRIAL_FEE_BPS) / 10000) / 100, TRIAL_FEE_CAP);
 
 /** Yearly paid plans have no platform fee on card payments. */
 export const annualFeeBps = (plan: Plan, period: 'monthly' | 'annual' | null | undefined, monthlyBps: number) =>

@@ -3,7 +3,7 @@
 // idempotent on the processor's payment id (payments.stripe_payment_intent_id
 // holds it for both processors).
 import type { SupabaseClient } from "./deps.ts";
-import { MANAGER_ROLES, money, notifyManagers, orgFeeBps } from "./clients.ts";
+import { MANAGER_ROLES, money, notifyManagers, recurringFeeBps } from "./clients.ts";
 import { sendPushes, tokensFor } from "./push.ts";
 
 export type Provider = "stripe" | "square";
@@ -124,7 +124,7 @@ export async function recordCarePlanCharge(db: SupabaseClient, sched: CarePlanSc
     month = p.periodStart.toISOString().slice(0, 7);
   }
   const assetLabel = asset?.tail_number ?? sched.title ?? "your asset";
-  const fee = Math.round((p.amountCents * (await orgFeeBps(db, sched.org_id))) / 10000) / 100;
+  const fee = Math.round((p.amountCents * (await recurringFeeBps(db, sched.org_id))) / 10000) / 100;
   const ref = `${label(p.provider)} ${p.externalId}`;
 
   // Invoice record for the company's books, already paid by the card on file.

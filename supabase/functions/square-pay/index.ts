@@ -9,7 +9,7 @@
 //   → { status: "paid" | "pending" }
 // POST { action: "care_plan_start", token, source_id, idempotency_key, cardholder_name? }
 //   → { status: "active" }   saves the card and charges the first month
-import { adminClient, notifyManagers, orgFeeBps } from "../_shared/clients.ts";
+import { adminClient, notifyManagers, platformFeeCents } from "../_shared/clients.ts";
 import { env, error, json, preflight, readJson } from "../_shared/http.ts";
 import { chargeCarePlan, recordSquarePayment } from "../_shared/squareBilling.ts";
 import {
@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     if (!seller) return error("This business hasn't finished setting up Square payments");
 
     if (action === "pay" && (kind === "invoice" || kind === "deposit")) {
-      const fee = Math.round((p.amountCents * (await orgFeeBps(db, p.orgId))) / 10000);
+      const fee = await platformFeeCents(db, p.orgId, p.amountCents);
       let payment;
       try {
         payment = await createPayment(seller, {

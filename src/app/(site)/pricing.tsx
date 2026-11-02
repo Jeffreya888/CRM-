@@ -55,7 +55,7 @@ export default function Pricing() {
       </Container>
 
       <Section>
-        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Tarmo — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from the card processor’s standard fee, drops as your plan grows, and is 0% on every yearly plan. During the free trial it’s 4% until you subscribe. Cash, checks and payments you record yourself carry no platform fee." />
+        <SectionIntro eyebrow="About the platform fee" title="Transparent on every payment." body="When customers pay you by card through Tarmo — invoices, quote deposits or care plans — a small platform fee applies. It’s separate from the card processor’s standard fee, drops as your plan grows, and is 0% on every yearly plan. During the free trial it’s 4% (max $120 per payment) until you subscribe. Cash, checks and payments you record yourself carry no platform fee." />
         <Grid cols={isMobile ? 1 : 3} gap={16}>
           {PLANS.map((p) => (
             <Glass key={p.id} padding={24} style={{ flex: 1, alignItems: 'center' }}>

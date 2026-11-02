@@ -5,7 +5,7 @@
 //
 // POST { invoice_id } | { public_token }, optional { success_url, cancel_url }
 // Card + ACH availability is configured in Stripe Dashboard → Payment methods.
-import { adminClient, callerCanMoney, callerRole, orgFeeBps, stripe } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole, platformFeeCents, stripe } from "../_shared/clients.ts";
 import { corsHeaders, error, json, portalUrl } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const amountCents = Math.round(Number(inv.balance) * 100);
     if (amountCents < 50) return error("Nothing left to pay");
 
-    const fee = Math.round((amountCents * (await orgFeeBps(db, inv.org_id))) / 10000);
+    const fee = await platformFeeCents(db, inv.org_id, amountCents);
     const portal = portalUrl();
     const docUrl = `${portal}/portal/invoice/${inv.public_token}`;
     // Only our own pages as return URLs (no open redirect through Stripe Checkout).

@@ -5,7 +5,7 @@
 // The charge settles to the detailing company's connected account (destination
 // charge, like invoice-checkout) with the platform fee for their plan. The
 // stripe-webhook marks the deposit paid (metadata.kind = "quote_deposit").
-import { adminClient, orgFeeBps, stripe } from "../_shared/clients.ts";
+import { adminClient, platformFeeCents, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
 
 Deno.serve(async (req) => {
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     if (org.payment_mode !== "stripe") return error(`${org.name} arranges payment directly. Please contact them to pay the deposit.`);
     if (!org.stripe_account_id || !org.stripe_charges_enabled) return error(`${org.name} has not turned on online payments yet`);
 
-    const fee = Math.round((amountCents * (await orgFeeBps(db, q.org_id))) / 10000);
+    const fee = await platformFeeCents(db, q.org_id, amountCents);
     const back = `${portalUrl()}/portal/quote/${q.public_token}`;
     const meta = { kind: "quote_deposit", quote_id: q.id, org_id: q.org_id, platform_fee_cents: String(fee) };
 

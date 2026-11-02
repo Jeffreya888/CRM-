@@ -8,7 +8,7 @@
 //   Confirms the payment with Square and records it (the webhook does too).
 //
 // Caller: a team member who can see prices (owners, admins, and anyone given "See prices").
-import { adminClient, callerCanMoney, callerRole, orgFeeBps } from "../_shared/clients.ts";
+import { adminClient, callerCanMoney, callerRole, platformFeeCents } from "../_shared/clients.ts";
 import { env, error, json, preflight, readJson } from "../_shared/http.ts";
 import { getPayment, sellerFor, squareEnvironment, squareRef } from "../_shared/square.ts";
 import { recordSquarePayment } from "../_shared/squareBilling.ts";
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       const amountCents = amount ? Math.round(Number(amount) * 100) : balanceCents;
       if (!Number.isFinite(amountCents) || amountCents < 100) return error("Enter an amount of at least $1.00");
       if (amountCents > balanceCents) return error("That's more than the invoice balance");
-      const fee = Math.round((amountCents * (await orgFeeBps(db, inv.org_id))) / 10000);
+      const fee = await platformFeeCents(db, inv.org_id, amountCents);
       return json({
         application_id: env("SQUARE_APPLICATION_ID"), environment: squareEnvironment(),
         access_token: seller.token, location_id: seller.locationId,
