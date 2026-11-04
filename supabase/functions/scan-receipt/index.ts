@@ -24,9 +24,9 @@ const MAX_BYTES = 5 * 1024 * 1024; // Claude API per-image limit
 const SCHEMA = {
   type: "object",
   properties: {
-    vendor: { type: ["string", "null"], description: "Business name printed on the receipt" },
-    amount: { type: ["number", "null"], description: "Grand total actually paid, including tax and tip" },
-    date: { type: ["string", "null"], description: "Purchase date as YYYY-MM-DD" },
+    vendor: { anyOf: [{ type: "string" }, { type: "null" }], description: "Business name printed on the receipt" },
+    amount: { anyOf: [{ type: "number" }, { type: "null" }], description: "Grand total actually paid, including tax and tip" },
+    date: { anyOf: [{ type: "string" }, { type: "null" }], description: "Purchase date as YYYY-MM-DD" },
     category: { type: "string", enum: [...CATEGORIES, "none"], description: "none when unsure" },
   },
   required: ["vendor", "amount", "date", "category"],
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
     const response = await client.beta.messages.create({
       // Reading a receipt is simple extraction, so it runs on the low-cost Haiku model.
       model: "claude-haiku-5-5",
-      max_tokens: 4000,
+      max_tokens: 8000,
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       system: SYSTEM,
       messages: [{

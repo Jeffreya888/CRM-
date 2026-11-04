@@ -62,7 +62,7 @@ function schemaFor(serviceIds: string[]) {
     properties: {
       is_asset: { type: "boolean", description: "True when the photos show the asset being assessed" },
       overall: { type: "string", enum: [...LEVELS, "none"], description: "none when the photos do not show the asset" },
-      score: { type: ["integer", "null"], description: "1 to 10, 10 = like new" },
+      score: { anyOf: [{ type: "integer" }, { type: "null" }], description: "1 to 10, 10 = like new" },
       summary: { type: "string" },
       findings: {
         type: "array",
@@ -72,7 +72,7 @@ function schemaFor(serviceIds: string[]) {
             area: { type: "string" },
             issue: { type: "string" },
             severity: { type: "string", enum: [...SEVERITIES] },
-            note: { type: ["string", "null"] },
+            note: { anyOf: [{ type: "string" }, { type: "null" }] },
           },
           required: ["area", "issue", "severity", "note"],
           additionalProperties: false,
@@ -208,7 +208,7 @@ export async function runAssessment(db: SupabaseClient, input: AssessInput): Pro
     const client = new Anthropic({ apiKey: env("ANTHROPIC_API_KEY"), maxRetries: 2, timeout: 90_000 });
     const response = await client.beta.messages.create({
       model: "claude-opus-5-5",
-      max_tokens: 8000,
+      max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default", // a declined request is retried server-side on Anthropic's recommended model
       output_config: { effort: "medium", format: { type: "json_schema", schema: schemaFor(services.map((s) => s.id as string)) } },

@@ -99,9 +99,9 @@ export const ANSWER_SCHEMA = {
         type: "object",
         properties: {
           type: { type: "string", enum: [...SOURCE_TYPES] },
-          key: { type: ["string", "null"], description: "SOP key for type sop" },
-          step: { type: ["integer", "null"], description: "1-based SOP step number" },
-          document_id: { type: ["string", "null"], description: "Aircraft document id for type aircraft_doc" },
+          key: { anyOf: [{ type: "string" }, { type: "null" }], description: "SOP key for type sop" },
+          step: { anyOf: [{ type: "integer" }, { type: "null" }], description: "1-based SOP step number" },
+          document_id: { anyOf: [{ type: "string" }, { type: "null" }], description: "Aircraft document id for type aircraft_doc" },
           title: { type: "string" },
         },
         required: ["type", "key", "step", "document_id", "title"],
