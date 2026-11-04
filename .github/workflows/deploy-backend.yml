@@ -38,11 +38,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned: newer major versions push to a local database unless told otherwise.
+          version: 2.120.0
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
       - name: Apply database migrations
-        run: supabase db push --include-all
+        run: supabase db push --linked --include-all
       - name: Deploy edge functions
         if: inputs.functions
         run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_ID"
