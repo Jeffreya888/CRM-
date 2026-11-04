@@ -86,10 +86,9 @@ Deno.serve(async (req) => {
 
     const client = new Anthropic({ apiKey: env("ANTHROPIC_API_KEY"), maxRetries: 2, timeout: 60_000 });
     const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
+      // Reading a receipt is simple extraction, so it runs on the low-cost Haiku model.
+      model: "claude-haiku-5-5",
       max_tokens: 4000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default", // a declined request is retried server-side on Anthropic's recommended model
       output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
       system: SYSTEM,
       messages: [{

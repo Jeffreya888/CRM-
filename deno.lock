@@ -183,6 +183,8 @@
         "npm:expo-print@~57.0.2",
         "npm:expo-router@~57.0.25",
         "npm:expo-sharing@~57.0.22",
+        "npm:expo-speech-recognition@~57.1.1",
+        "npm:expo-speech@~57.0.3",
         "npm:expo-status-bar@~57.0.1",
         "npm:expo-web-browser@~57.0.3",
         "npm:expo@~57.0.27",
