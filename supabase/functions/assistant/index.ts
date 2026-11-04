@@ -14,7 +14,8 @@
 // deno-lint-ignore no-import-prefix
 import Anthropic from "npm:@anthropic-ai/sdk@0.130.0";
 import { adminClient, callerCanMoney, callerRole } from "../_shared/clients.ts";
-import { env, error, json, preflight, readJson } from "../_shared/http.ts";
+import { partialAnswer } from "../_shared/partialAnswer.ts";
+import { corsHeaders, env, error, json, preflight, readJson } from "../_shared/http.ts";
 import {
   ANSWER_SCHEMA,
   assetText,
@@ -43,6 +44,8 @@ type Msg = Anthropic.Beta.BetaMessageParam;
 type Row = Record<string, any>;
 
 interface Body {
+  /** Stream the answer as server-sent events while it is written. */
+  stream?: boolean;
   org_id?: string;
   thread_id?: string | null;
   job_id?: string | null;
@@ -78,6 +81,7 @@ Deno.serve(async (req) => {
   let db: ReturnType<typeof adminClient> | null = null;
   let usage: number | null = null;
   let answered = false;
+  let streaming = false;
   try {
     const body = await readJson<Body>(req);
     const orgId = optId(body.org_id);
@@ -250,67 +254,108 @@ Deno.serve(async (req) => {
     messages.push({ role: "user", content: question });
 
     // --- Claude --------------------------------------------------------------
-    let reply: { content: string; sources: unknown[]; safety: string | null; status: "done" | "failed" };
-    try {
-      const client = new Anthropic({ apiKey: env("ANTHROPIC_API_KEY"), maxRetries: 1, timeout: 110_000 });
-      const response = await client.beta.messages.create({
-        model: "claude-opus-5-5",
-        max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default", // a declined request is retried server-side on Anthropic's recommended model
-        output_config: { effort: "medium", format: { type: "json_schema", schema: ANSWER_SCHEMA } },
-        system: [
-          { type: "text", text: SYSTEM_PROMPT, cache_control: CACHE },
-          { type: "text", text: companyText, cache_control: CACHE },
-        ],
-        messages,
-      });
-      const text = response.content.find((b) => b.type === "text");
-      let parsed: Row | null = null;
-      if (response.stop_reason !== "refusal" && response.stop_reason !== "max_tokens" && text && text.type === "text") {
-        try {
-          parsed = JSON.parse(text.text);
-        } catch {
-          parsed = null;
+    // Plain questions answer faster at low effort; photos and manuals get more thinking.
+    const effort = kind === "check" ? "medium" : "low";
+    type Reply = { content: string; sources: unknown[]; safety: string | null; status: "done" | "failed" };
+    const askClaude = async (onAnswer?: (text: string) => void): Promise<Reply> => {
+      try {
+        const client = new Anthropic({ apiKey: env("ANTHROPIC_API_KEY"), maxRetries: 1, timeout: 110_000 });
+        const stream = client.beta.messages.stream({
+          model: "claude-opus-5-5",
+          max_tokens: 16000,
+          betas: ["server-side-fallback-2026-07-01"],
+          fallbacks: "default", // a declined request is retried server-side on Anthropic's recommended model
+          output_config: { effort, format: { type: "json_schema", schema: ANSWER_SCHEMA } },
+          system: [
+            { type: "text", text: SYSTEM_PROMPT, cache_control: CACHE },
+            { type: "text", text: companyText, cache_control: CACHE },
+          ],
+          messages,
+        });
+        if (onAnswer) {
+          let raw = "";
+          stream.on("text", (delta) => {
+            raw += delta;
+            const answer = partialAnswer(raw);
+            if (answer) onAnswer(answer);
+          });
         }
-      }
-      const clean = parsed
-        ? cleanAnswer(parsed, { catalog, sopSteps, docs: docs?.attached ?? new Map(), jobNumber: job ? String(job.row.number) : null })
-        : null;
-      if (clean?.answer) {
-        reply = { content: clean.answer, sources: clean.sources, safety: clean.safety, status: "done" };
-      } else {
+        const response = await stream.finalMessage();
+        const text = response.content.find((b) => b.type === "text");
+        let parsed: Row | null = null;
+        if (response.stop_reason !== "refusal" && response.stop_reason !== "max_tokens" && text && text.type === "text") {
+          try {
+            parsed = JSON.parse(text.text);
+          } catch {
+            parsed = null;
+          }
+        }
+        const clean = parsed
+          ? cleanAnswer(parsed, { catalog, sopSteps, docs: docs?.attached ?? new Map(), jobNumber: job ? String(job.row.number) : null })
+          : null;
+        if (clean?.answer) return { content: clean.answer, sources: clean.sources, safety: clean.safety, status: "done" };
         if (response.stop_reason === "refusal") console.warn("assistant refusal", response.stop_details?.category ?? null);
-        reply = {
+        return {
           content: response.stop_reason === "refusal" ? FAIL.refusal : response.stop_reason === "max_tokens" ? FAIL.cutoff : FAIL.generic,
           sources: [], safety: null, status: "failed",
         };
+      } catch (e) {
+        let content = FAIL.generic;
+        if (e instanceof Anthropic.RateLimitError) content = FAIL.busy;
+        else if (e instanceof Anthropic.BadRequestError) console.error("Claude API bad request", e.status, e.message);
+        else if (e instanceof Anthropic.APIError) console.error("Claude API error", e.status, e.message);
+        else console.error("assistant failed", e);
+        return { content, sources: [], safety: null, status: "failed" };
       }
-    } catch (e) {
-      let content = FAIL.generic;
-      if (e instanceof Anthropic.RateLimitError) content = FAIL.busy;
-      else if (e instanceof Anthropic.BadRequestError) console.error("Claude API bad request", e.status, e.message);
-      else if (e instanceof Anthropic.APIError) console.error("Claude API error", e.status, e.message);
-      else console.error("assistant failed", e);
-      reply = { content, sources: [], safety: null, status: "failed" };
+    };
+
+    const save = async (reply: Reply) => {
+      const { data: botMsg, error: bErr } = await db!.from("assistant_messages").insert({
+        org_id: orgId, thread_id: threadId, role: "assistant", content: reply.content,
+        sources: reply.sources, safety: reply.safety, status: reply.status,
+      }).select("*").single();
+      if (bErr || !botMsg) throw bErr ?? new Error("message insert failed");
+      answered = reply.status === "done";
+      const { error: upErr } = await db!.from("assistant_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+      if (upErr) console.error("assistant_threads update failed", upErr);
+      return { thread_id: threadId, user_message: userMsg, assistant_message: botMsg, charged: kind };
+    };
+
+    if (body.stream === true) {
+      // Server-sent events: {type:"delta", text} with the answer so far, then {type:"done", ...} or {type:"error"}.
+      streaming = true;
+      const enc = new TextEncoder();
+      const conn = db;
+      const claimed = usage;
+      return new Response(new ReadableStream({
+        async start(ctrl) {
+          const send = (o: unknown) => ctrl.enqueue(enc.encode(`data: ${JSON.stringify(o)}\n\n`));
+          let sent = 0;
+          try {
+            const reply = await askClaude((text) => {
+              if (text.length > sent) { sent = text.length; send({ type: "delta", text }); }
+            });
+            send({ type: "done", ...(await save(reply)) });
+          } catch (e) {
+            console.error(e);
+            send({ type: "error", error: "Something went wrong. Please try again." });
+          } finally {
+            if (conn && claimed != null && !answered) {
+              const { error: relErr } = await conn.rpc("release_ai_check", { p_usage: claimed });
+              if (relErr) console.error("release_ai_check failed", relErr);
+            }
+            ctrl.close();
+          }
+        },
+      }), { headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" } });
     }
 
-    const { data: botMsg, error: bErr } = await db.from("assistant_messages").insert({
-      org_id: orgId, thread_id: threadId, role: "assistant", content: reply.content,
-      sources: reply.sources, safety: reply.safety, status: reply.status,
-    }).select("*").single();
-    if (bErr || !botMsg) throw bErr ?? new Error("message insert failed");
-    answered = reply.status === "done";
-
-    const { error: upErr } = await db.from("assistant_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
-    if (upErr) console.error("assistant_threads update failed", upErr);
-
-    return json({ thread_id: threadId, user_message: userMsg, assistant_message: botMsg, charged: kind });
+    return json(await save(await askClaude()));
   } catch (e) {
     console.error(e);
     return error("Something went wrong. Please try again.", 500);
   } finally {
-    if (db && usage != null && !answered) {
+    if (db && usage != null && !answered && !streaming) {
       const { error: relErr } = await db.rpc("release_ai_check", { p_usage: usage });
       if (relErr) console.error("release_ai_check failed", relErr);
     }

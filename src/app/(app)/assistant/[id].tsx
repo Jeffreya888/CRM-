@@ -2,14 +2,14 @@ import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { AiAllowance, AiLimitCard, useAiAllowance, type AiLimitKind } from '../../../components/ai/AiAllowance';
-import { AnswerBody, Thinking, UserBubble } from '../../../components/assistant/ChatBits';
+import { AnswerBody, StreamingAnswer, Thinking, UserBubble } from '../../../components/assistant/ChatBits';
 import { speakAnswer, stopSpeaking, useVoiceInput } from '../../../components/assistant/voice';
 import { confirmAction, notify } from '../../../components/FormSheet';
 import { chooseSource } from '../../../components/jobs/JobCards';
 import { Badge, EmptyState, ErrorBanner, IconButton, Ionicons, Loading, Row, T } from '../../../components/ui';
 import { pickAssessPhotos, type PickedPhoto } from '../../../lib/assess';
 import {
-  AiLimitError, askAssistant, ASSISTANT_SUGGESTIONS, countAircraftDocs, deleteThread, loadNewThreadContext, loadThread, MAX_ASSISTANT_PHOTOS,
+  AiLimitError, askAssistantStreaming, ASSISTANT_SUGGESTIONS, countAircraftDocs, deleteThread, loadNewThreadContext, loadThread, MAX_ASSISTANT_PHOTOS,
   REVIEW_NOTICE, uploadAssistantPhotos,
 } from '../../../lib/assistant';
 import { APP_NAME } from '../../../lib/config';
@@ -38,6 +38,8 @@ export default function AssistantChat() {
   const [threadId, setThreadId] = useState<string | null>(isNew ? null : params.id);
   const [local, setLocal] = useState<AssistantMessage[]>([]);
   const [pending, setPending] = useState<{ text: string; photos: string[] } | null>(null);
+  // The answer as it is written, shown until the saved answer arrives.
+  const [streamText, setStreamText] = useState('');
   const [text, setText] = useState(() => (isNew && typeof params.q === 'string' ? params.q : ''));
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -122,12 +124,12 @@ export default function AssistantChat() {
     setPhotos([]);
     try {
       const photoPaths = sentPhotos.length ? await uploadAssistantPhotos(orgId, uid, sentPhotos) : [];
-      const r = await askAssistant({
+      const r = await askAssistantStreaming({
         orgId, threadId, message, photoPaths,
         jobId: threadId ? undefined : jobId, aircraftId: threadId ? undefined : aircraftId,
         guideKey: threadId ? undefined : guideKey, stepIndex: threadId ? undefined : stepIndex,
         useDocuments: hasDocs ? useDocs : undefined,
-      });
+      }, setStreamText);
       setThreadId(r.thread_id);
       // Show the photos from this device (no signed URL needed).
       setLocal((l) => [...l, { ...r.user_message, photo_paths: sentPhotos.map((p) => p.uri) }, r.assistant_message]);
@@ -141,6 +143,7 @@ export default function AssistantChat() {
       else setError(friendlyError(e?.message ?? String(e)));
     } finally {
       setPending(null);
+      setStreamText('');
       setAllowanceKey((k) => k + 1);
     }
   };
@@ -238,7 +241,7 @@ export default function AssistantChat() {
           {pending ? (
             <>
               <UserBubble text={pending.text} photos={pending.photos} pending />
-              <Thinking />
+              {streamText ? <StreamingAnswer text={streamText} /> : <Thinking />}
             </>
           ) : null}
           {limit ? <AiLimitCard kind={limit} /> : null}

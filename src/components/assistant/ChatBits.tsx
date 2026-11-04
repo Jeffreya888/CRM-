@@ -232,6 +232,16 @@ export function AssistantBubble({ children, failed }: { children: ReactNode; fai
   );
 }
 
+/** The answer while it is being written (streamed). */
+export function StreamingAnswer({ text }: { text: string }) {
+  return (
+    <AssistantBubble>
+      <Markdown text={text} />
+      <ActivityIndicator color={colors.primaryText} size="small" style={{ alignSelf: 'flex-start', marginTop: space.sm }} />
+    </AssistantBubble>
+  );
+}
+
 export function Thinking() {
   return (
     <AssistantBubble>

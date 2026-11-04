@@ -8,7 +8,8 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { format } from 'date-fns';
 import type { PickedPhoto } from './assess';
-import { APP_NAME } from './config';
+import { fetch as streamingFetch } from 'expo/fetch';
+import { APP_NAME, SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
 import { removeFile, uploadFile } from './files';
 import { openStorageFile } from './inventory';
 import { friendlyError, must, supabase } from './supabase';
@@ -94,6 +95,64 @@ export async function askAssistant(input: AskInput): Promise<AskResult> {
   const r = data as AskResult & { error?: string };
   if (r?.error) throw new Error(friendlyError(r.error));
   return { ...r, user_message: normalizeMessage(r.user_message), assistant_message: normalizeMessage(r.assistant_message) };
+}
+
+/**
+ * Same as askAssistant, but streams: `onText` gets the answer written so far while Claude writes it.
+ * Resolves with the saved messages, exactly like askAssistant.
+ */
+export async function askAssistantStreaming(input: AskInput, onText: (text: string) => void): Promise<AskResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await streamingFetch(`${SUPABASE_URL}/functions/v1/assistant`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${session?.access_token ?? SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      org_id: input.orgId,
+      thread_id: input.threadId ?? undefined,
+      job_id: input.jobId ?? undefined,
+      aircraft_id: input.aircraftId ?? undefined,
+      guide_key: input.guideKey ?? undefined,
+      step_index: input.stepIndex ?? undefined,
+      message: input.message,
+      photo_paths: input.photoPaths?.length ? input.photoPaths.slice(0, MAX_ASSISTANT_PHOTOS) : undefined,
+      use_documents: input.useDocuments,
+      stream: true,
+    }),
+  });
+  const type = res.headers.get('content-type') ?? '';
+  if (!res.ok || !type.includes('text/event-stream') || !res.body) {
+    let payload: { error?: string; code?: string; kind?: string } | null = null;
+    try { payload = await res.json(); } catch { /* not JSON */ }
+    if (payload?.code === 'ai_limit' || res.status === 402 || /AI_LIMIT/.test(payload?.error ?? '')) {
+      throw new AiLimitError((payload?.error ?? 'AI_LIMIT').replace(/^AI_LIMIT:\s*/, ''), payload?.kind === 'check' ? 'check' : 'question');
+    }
+    throw new Error(friendlyError(payload?.error ?? 'The assistant is temporarily unavailable. Please try again in a moment.'));
+  }
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  let result: AskResult | null = null;
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let cut: number;
+    while ((cut = buf.indexOf('\n\n')) >= 0) {
+      const line = buf.slice(0, cut).replace(/^data: /, '');
+      buf = buf.slice(cut + 2);
+      let ev: { type: string; text?: string; error?: string } & Partial<AskResult>;
+      try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.type === 'delta' && ev.text) onText(ev.text);
+      else if (ev.type === 'error') throw new Error(friendlyError(ev.error ?? 'Something went wrong. Please try again.'));
+      else if (ev.type === 'done') result = ev as AskResult;
+    }
+  }
+  if (!result) throw new Error('The assistant is temporarily unavailable. Please try again in a moment.');
+  return { ...result, user_message: normalizeMessage(result.user_message), assistant_message: normalizeMessage(result.assistant_message) };
 }
 
 export function normalizeMessage(m: AssistantMessage): AssistantMessage {
