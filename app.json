@@ -79,7 +79,15 @@
         }
       ],
       "expo-apple-authentication",
-      "./modules/square-mobile-payments/app.plugin.js"
+      "./modules/square-mobile-payments/app.plugin.js",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Tarmo uses the microphone so you can ask Tarmo questions by voice.",
+          "speechRecognitionPermission": "Tarmo turns your spoken questions into text for Ask Tarmo.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false

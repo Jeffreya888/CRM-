@@ -1,8 +1,9 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { AiAllowance, AiLimitCard, useAiAllowance, type AiLimitKind } from '../../../components/ai/AiAllowance';
 import { AnswerBody, Thinking, UserBubble } from '../../../components/assistant/ChatBits';
+import { speakAnswer, stopSpeaking, useVoiceInput } from '../../../components/assistant/voice';
 import { confirmAction, notify } from '../../../components/FormSheet';
 import { chooseSource } from '../../../components/jobs/JobCards';
 import { Badge, EmptyState, ErrorBanner, IconButton, Ionicons, Loading, Row, T } from '../../../components/ui';
@@ -74,6 +75,11 @@ export default function AssistantChat() {
     return { ...base, docCount, guide: g ? { title: g.title, step: isNew && stepIndex != null ? g.steps[stepIndex]?.title ?? null : null } : null };
   }, [orgId, jobId, aircraftId, guideKey, stepIndex, isNew]);
 
+  // Ask by voice: the spoken question is sent, and its answer is read aloud. The mic button hands over `send`.
+  const sendRef = useRef<((text: string, spoken: boolean) => Promise<void>) | null>(null);
+  const voice = useVoiceInput((t) => { void sendRef.current?.(t, true); });
+  useEffect(() => () => stopSpeaking(), []);
+
   if (!isNew && q.loading && !q.data) return <><Stack.Screen options={{ title: `Ask ${APP_NAME}` }} /><Loading /></>;
   if (!isNew && !q.data) {
     return (
@@ -105,7 +111,7 @@ export default function AssistantChat() {
     }
   };
 
-  const send = async (override?: string) => {
+  const send = async (override?: string, spoken = false) => {
     const message = (override ?? text).trim();
     if (!message || busy) return;
     setError(null);
@@ -125,6 +131,8 @@ export default function AssistantChat() {
       setThreadId(r.thread_id);
       // Show the photos from this device (no signed URL needed).
       setLocal((l) => [...l, { ...r.user_message, photo_paths: sentPhotos.map((p) => p.uri) }, r.assistant_message]);
+      // Asked by voice: answer out loud too.
+      if (spoken && r.assistant_message.status === 'done') speakAnswer(r.assistant_message.id, r.assistant_message.content);
     } catch (e: any) {
       // Give the question back so nothing typed is lost.
       setText(message);
@@ -276,18 +284,27 @@ export default function AssistantChat() {
                   <Ionicons name="camera-outline" size={22} color={colors.primaryText} />
                 </Pressable>
                 <View style={{ flex: 1, backgroundColor: colors.input, borderRadius: 22, borderWidth: 1, borderColor: colors.borderStrong, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 11 : 4, minHeight: 44, justifyContent: 'center' }}>
-                  <TextInput value={text} onChangeText={setText} multiline placeholder={messages.length ? 'Ask a follow-up…' : 'Ask a question…'}
+                  <TextInput value={voice.listening ? voice.transcript : text} onChangeText={setText} editable={!voice.listening} multiline placeholder={voice.listening ? 'Listening…' : messages.length ? 'Ask a follow-up…' : 'Ask a question…'}
                     placeholderTextColor={colors.textFaint} maxLength={2000}
                     style={{ color: colors.text, fontSize: 16, maxHeight: 140, paddingVertical: Platform.OS === 'web' ? 8 : 0, ...(Platform.OS === 'web' ? { outlineStyle: 'none' as any } : null) }}
                     onKeyPress={Platform.OS === 'web' ? (e: any) => {
                       if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) { e.preventDefault?.(); send(); }
                     } : undefined} />
                 </View>
+                {voice.available && (voice.listening || !text.trim()) ? (
+                  <Pressable accessibilityLabel={voice.listening ? 'Stop listening' : 'Ask by voice'} disabled={busy} onPress={voice.listening ? voice.stop : () => { sendRef.current = send; void voice.start(); }}
+                    style={({ pressed }) => [{ width: 44, height: 44, borderRadius: 22, backgroundColor: voice.listening ? colors.danger : colors.primary, alignItems: 'center', justifyContent: 'center' }, (pressed || busy) && { opacity: 0.6 }]}>
+                    <Ionicons name={voice.listening ? 'stop' : 'mic'} size={22} color={colors.white} />
+                  </Pressable>
+                ) : (
                 <Pressable accessibilityLabel="Send" disabled={busy || !text.trim()} onPress={() => send()}
                   style={({ pressed }) => [{ width: 44, height: 44, borderRadius: 22, backgroundColor: text.trim() && !busy ? colors.primary : colors.cardRaised, alignItems: 'center', justifyContent: 'center' }, pressed && { opacity: 0.7 }]}>
                   <Ionicons name="arrow-up" size={22} color={text.trim() && !busy ? colors.white : colors.textFaint} />
                 </Pressable>
+                )}
               </Row>
+              {voice.error ? <T variant="small" style={{ marginTop: 6, color: colors.danger }}>{voice.error}</T> : null}
+              {voice.listening ? <T variant="small" style={{ marginTop: 6, color: colors.primaryText }}>Listening… tap stop when you’re done, or just pause.</T> : null}
               {photos.length === 0 ? (
                 <T variant="small" style={{ marginTop: 6, color: colors.textFaint }}>
                   Add up to {MAX_ASSISTANT_PHOTOS} photos · Photo questions use an AI check

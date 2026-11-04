@@ -7,6 +7,7 @@ import { colors, radius, space } from '../../lib/theme';
 import type { AssistantMessage, AssistantSafety, AssistantSource } from '../../lib/types';
 import { notify } from '../FormSheet';
 import { Button, Ionicons, Row, T, type IconName } from '../ui';
+import { speakAnswer, stopSpeaking, useSpeakingId } from './voice';
 
 // ---------------------------------------------------------------------------
 // Markdown-ish text: paragraphs, numbered / bulleted lists, headings, **bold**
@@ -242,6 +243,19 @@ export function Thinking() {
   );
 }
 
+/** Reads the answer aloud; tap again to stop. */
+function ListenButton({ id, text }: { id: string; text: string }) {
+  const playing = useSpeakingId() === id;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={playing ? 'Stop reading' : 'Read answer aloud'} hitSlop={6}
+      onPress={() => (playing ? stopSpeaking() : speakAnswer(id, text))}
+      style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: space.sm, paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.pill, backgroundColor: playing ? colors.primarySoft : colors.cardRaised }, pressed && { opacity: 0.7 }]}>
+      <Ionicons name={playing ? 'stop' : 'volume-high-outline'} size={16} color={colors.primaryText} />
+      <Text style={{ color: colors.primaryText, fontSize: 13, fontWeight: '600' }}>{playing ? 'Stop' : 'Listen'}</Text>
+    </Pressable>
+  );
+}
+
 export function AnswerBody({ m, jobId, canAddNotes, question }: { m: AssistantMessage; jobId: string | null; canAddNotes: boolean; question: string | null }) {
   const failed = m.status !== 'done';
   return (
@@ -249,6 +263,7 @@ export function AnswerBody({ m, jobId, canAddNotes, question }: { m: AssistantMe
       {m.safety ? <SafetyBanner safety={m.safety} onAddToNotes={m.safety === 'damage' && jobId && canAddNotes && !failed ? addToNotes(jobId, question, m.content) : undefined} /> : null}
       <Markdown text={m.content} color={failed ? colors.textMuted : undefined} />
       {!failed ? <SourceChips sources={m.sources} jobId={jobId} /> : null}
+      {!failed ? <ListenButton id={m.id} text={m.content} /> : null}
     </AssistantBubble>
   );
 }
