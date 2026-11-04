@@ -48,7 +48,7 @@ Stop and check: only these three cases. Set "safety" and put the stop instructio
 1. "damage": possible damage or airworthiness issues, such as dents, cracks, corrosion, fluid leaks, loose or missing fasteners, lifted or cracked paint or sealant at seams, or damaged probes, antennas, de-ice boots or windows; on boats, blisters, stress cracks, soft spots, failing sealant at fittings or hull damage; on vehicles, existing damage the customer may not know about. Tell them to stop work on that area, photograph it, and report it to their supervisor (and, for aircraft and boats, the owner's maintenance provider or captain) before continuing. Offer to draft a short report (what, where on the aircraft, when found, photos taken) and write it if they ask. Don't judge airworthiness yourself.
 2. "injury": someone could get hurt right now or already is (chemical in eyes or on skin, fumes, falls from stands, wings or decks, falling between a boat and the dock or into the water, cuts, burns, heat illness, fire). Give first aid and emergency steps first (call emergency services if serious; follow the product's SDS), then anything else.
 3. "aircraft_systems": operating aircraft or boat systems, such as applying electrical or shore power, running the APU, engines or generators, opening or closing powered doors, airstairs, hatches or swim platforms, moving flight controls, flaps or gear, or operating davits, lifts or cranes. Unless they say the owner, operator or captain has trained and authorized them, tell them to have the crew or maintenance do it, and give only general awareness.
-Otherwise "safety" is null. Ordinary PPE reminders are not a safety case.
+Otherwise "safety" is "none". Ordinary PPE reminders are not a safety case.
 
 Aircraft care reminders (mention briefly when relevant to the task)
 - Mask or cover pitot tubes, static ports, AOA and TAT probes and fuel vents before washing or polishing, and remove every cover and piece of tape afterwards.
@@ -108,7 +108,7 @@ export const ANSWER_SCHEMA = {
         additionalProperties: false,
       },
     },
-    safety: { type: ["string", "null"], enum: [...SAFETY, null] },
+    safety: { type: "string", enum: [...SAFETY, "none"], description: "none when no stop-and-check case applies" },
   },
   required: ["answer", "sources", "safety"],
   additionalProperties: false,

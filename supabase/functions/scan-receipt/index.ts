@@ -27,7 +27,7 @@ const SCHEMA = {
     vendor: { type: ["string", "null"], description: "Business name printed on the receipt" },
     amount: { type: ["number", "null"], description: "Grand total actually paid, including tax and tip" },
     date: { type: ["string", "null"], description: "Purchase date as YYYY-MM-DD" },
-    category: { type: ["string", "null"], enum: [...CATEGORIES, null] },
+    category: { type: "string", enum: [...CATEGORIES, "none"], description: "none when unsure" },
   },
   required: ["vendor", "amount", "date", "category"],
   additionalProperties: false,
@@ -36,7 +36,7 @@ const SCHEMA = {
 const SYSTEM = `You read photos of purchase receipts for an aircraft, vehicle and boat detailing business and extract bookkeeping fields.
 Return the vendor (store or business name), the grand total paid (a number, no currency symbol), the purchase date (YYYY-MM-DD), and the best expense category.
 Categories: supplies (cleaning chemicals, towels, detailing products), equipment (tools and machines bought), equipment_rental, repairs, fuel, vehicle (vehicle costs other than fuel), travel (flights, hotels, parking, tolls), meals, insurance, rent, utilities, advertising, software, fees (bank, airport/FBO, ramp and permit fees), contract_labor, wages, taxes_licenses, office, training, other.
-Use null for any field you cannot read with confidence. If the image is not a receipt, return null for every field.`;
+Use null for any field you cannot read with confidence ("none" for the category). If the image is not a receipt, return null for every field and "none" for the category.`;
 
 const nulls = { vendor: null, amount: null, date: null, category: null };
 

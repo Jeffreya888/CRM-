@@ -61,7 +61,7 @@ function schemaFor(serviceIds: string[]) {
     type: "object",
     properties: {
       is_asset: { type: "boolean", description: "True when the photos show the asset being assessed" },
-      overall: { type: ["string", "null"], enum: [...LEVELS, null] },
+      overall: { type: "string", enum: [...LEVELS, "none"], description: "none when the photos do not show the asset" },
       score: { type: ["integer", "null"], description: "1 to 10, 10 = like new" },
       summary: { type: "string" },
       findings: {
