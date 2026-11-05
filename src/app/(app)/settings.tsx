@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Image, Platform, View } from 'react-native';
 import { FormSheet, type FieldDef } from '../../components/FormSheet';
 import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
+import { AiPlaybookCard } from '../../components/settings/AiPlaybookCard';
 import { JobCostingCard } from '../../components/settings/JobCostingCard';
 import { WorkModeCard } from '../../components/settings/WorkModeCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
@@ -234,6 +235,12 @@ export default function Settings() {
       {admin ? (
         <Section title="Where you work" icon="navigate-outline">
           <WorkModeCard org={org} onChanged={refresh} />
+        </Section>
+      ) : null}
+
+      {admin ? (
+        <Section title={`Ask ${APP_NAME} playbook`} icon="sparkles-outline">
+          <AiPlaybookCard org={org} onChanged={refresh} />
         </Section>
       ) : null}
 

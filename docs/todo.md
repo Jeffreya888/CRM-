@@ -6,12 +6,13 @@ Open items agreed in planning. Launch steps live in `launch-checklist.md`.
 
 - [ ] **LLC filing**, then EIN and D-U-N-S number. Unblocks Stripe/Square live accounts, bank account, Apple and Google developer accounts, texting (Telnyx), `MAILING_ADDRESS` secret, design partner agreements and SAFEs.
 - [ ] **Aircraft pricing table.** Load prices per model; use same-class rates for missing models; fix the Paint Correction $0 (hourly with no rate); scale time estimates by size class.
-- [ ] **Aircraft SOP wording changes.** Jeffrey will send the SOPs and the new wording.
+- [ ] **Aircraft SOP wording changes.** Jeffrey will send the SOPs and the new wording. Also give Jetgleam its own copies of the SOPs with its products named (from its playbook); the shared SOPs stay as they are.
 - [ ] **Deck blanks:** launch month, early access count, design partners, years in the industry, headshot, 18-month goals.
 - [ ] **Design partner outreach** (messages and agreement in the Design Partner Program doc; lawyer review before signing).
 
 ## Product
 
+- [ ] **Natural voice (Google Chirp 3 HD).** Waiting on Jeffrey's `GOOGLE_TTS_API_KEY`; then build the voice, cache audio per answer, and let owners pick 2–3 voices.
 - [ ] **Voice quality.** The free device voice sounds robotic. Add a per-user voice and speed picker (free device voices); later consider a natural cloud voice (about 2 cents per answer) with a monthly limit or add-on pack.
 - [ ] **Captcha on demo sign-ins** (anonymous sign-ins) before launch.
 - [ ] **Jetgleam trial.** Extend it before it runs out if launch is more than 30 days after the company was created.
