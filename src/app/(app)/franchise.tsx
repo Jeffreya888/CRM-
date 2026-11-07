@@ -10,7 +10,7 @@ import { APP_NAME } from '../../lib/config';
 import { date, money, moneyShort } from '../../lib/format';
 import { shareTextFile } from '../../lib/finance';
 import {
-  createNetwork, leaveNetwork, loadDashboard, loadFranchise, loadLocationJobs, loadMembers, loadRoyalties, newInviteCode, pushStandards,
+  createDemoFranchise, createNetwork, leaveNetwork, loadDashboard, loadFranchise, loadLocationJobs, loadMembers, loadRoyalties, newInviteCode, pushStandards,
   updateMember, updateNetwork, type FranchiseMember, type FranchiseNetwork, type LocationJob,
 } from '../../lib/franchise';
 import { avgTicket, closeRate, insights, networkTotals, qcRate, royaltyCsv, type LocationStats } from '../../lib/franchiseReport';
@@ -66,7 +66,7 @@ export default function FranchiseHQ() {
           body="Your franchise HQ manages the network. See what you share with HQ in Settings → Franchise network."
           action={<Button title="Open settings" onPress={() => router.push('/settings')} />} />
       ) : !hq ? (
-        <CreateNetwork orgId={orgId} defaultName={org.name} allowed={plan === 'fleet' || plan === 'trial'} onCreated={q.reload} />
+        org.is_demo ? <DemoNetwork onCreated={q.reload} /> : <CreateNetwork orgId={orgId} defaultName={org.name} allowed={plan === 'fleet' || plan === 'trial'} onCreated={q.reload} />
       ) : (
         <>
           <Card>
@@ -91,6 +91,28 @@ export default function FranchiseHQ() {
         </>
       )}
     </Screen>
+  );
+}
+
+function DemoNetwork({ onCreated }: { onCreated: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const go = async () => {
+    setBusy(true);
+    setError(null);
+    try { await createDemoFranchise(); onCreated(); } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Section title="Franchise HQ" icon="git-network-outline">
+      <Card>
+        <T variant="muted" style={{ marginBottom: space.md }}>
+          See how a franchise brand runs on {APP_NAME}: network totals and benchmarks across locations, standards pushed to every location,
+          a brand playbook for Ask {APP_NAME}, and a monthly royalty report. This loads four sample locations with sample jobs and payments.
+        </T>
+        <ErrorBanner message={error} />
+        <Button title="Explore a sample franchise network" icon="git-network-outline" onPress={go} loading={busy} />
+      </Card>
+    </Section>
   );
 }
 

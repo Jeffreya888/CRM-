@@ -273,10 +273,10 @@ begin
     (select count(*)::int from quotes q where q.org_id = l.oid and q.status <> 'draft' and q.issue_date >= p_from::date and q.issue_date < p_to::date),
     (select count(*)::int from quotes q where q.org_id = l.oid and q.status = 'accepted' and q.issue_date >= p_from::date and q.issue_date < p_to::date),
     (select count(*)::int from customers c where c.org_id = l.oid and c.created_at >= p_from and c.created_at < p_to),
-    (select count(*)::int from jobs j where j.org_id = l.oid and j.qc_status = 'passed' and j.updated_at >= p_from and j.updated_at < p_to),
-    (select count(*)::int from jobs j where j.org_id = l.oid and j.qc_status = 'failed' and j.updated_at >= p_from and j.updated_at < p_to),
-    (select round(avg(j.rating)::numeric, 2) from jobs j where j.org_id = l.oid and j.rating is not null and j.updated_at >= p_from and j.updated_at < p_to),
-    (select count(*)::int from jobs j where j.org_id = l.oid and j.rating is not null and j.updated_at >= p_from and j.updated_at < p_to),
+    (select count(*)::int from jobs j where j.org_id = l.oid and j.qc_status = 'passed' and coalesce(j.actual_end, j.updated_at) >= p_from and coalesce(j.actual_end, j.updated_at) < p_to),
+    (select count(*)::int from jobs j where j.org_id = l.oid and j.qc_status = 'failed' and coalesce(j.actual_end, j.updated_at) >= p_from and coalesce(j.actual_end, j.updated_at) < p_to),
+    (select round(avg(j.rating)::numeric, 2) from jobs j where j.org_id = l.oid and j.rating is not null and coalesce(j.actual_end, j.updated_at) >= p_from and coalesce(j.actual_end, j.updated_at) < p_to),
+    (select count(*)::int from jobs j where j.org_id = l.oid and j.rating is not null and coalesce(j.actual_end, j.updated_at) >= p_from and coalesce(j.actual_end, j.updated_at) < p_to),
     (select count(*)::int from assistant_messages a where a.org_id = l.oid and a.role = 'user' and a.created_at >= p_from and a.created_at < p_to),
     (select count(*)::int from memberships ms where ms.org_id = l.oid and ms.active)
   from locs l join organizations o on o.id = l.oid

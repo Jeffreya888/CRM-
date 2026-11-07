@@ -70,3 +70,6 @@ export async function loadRoyalties(id: string, month: string): Promise<RoyaltyR
 }
 export const loadLocationJobs = (id: string, orgId: string, from: Date, to: Date) =>
   rpc<LocationJob[]>('franchise_location_jobs', { p_network: id, p_org: orgId, p_from: from.toISOString(), p_to: to.toISOString() });
+
+/** Demo only: makes the demo company HQ of a sample network with four sample locations. */
+export const createDemoFranchise = () => rpc<string>('create_demo_franchise', {});

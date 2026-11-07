@@ -679,6 +679,14 @@ do $$ begin
     if sqlerrm not like 'DEMO%' then raise; end if;
   end;
 end $$;
+-- The demo can load a sample franchise network (demo HQ + four sample locations).
+do $$ declare n uuid; begin
+  n := public.create_demo_franchise();
+  assert public.create_demo_franchise() = n, 'only once';
+  assert (select count(*) from public.franchise_dashboard(n, date_trunc('month', now()), now() + interval '1 day')) = 5, 'HQ + 4 sample locations';
+  assert (select sum(revenue) from public.franchise_dashboard(n, date_trunc('month', now()) - interval '1 month', now() + interval '1 day')) > 0, 'sample revenue';
+  assert (select count(*) from public.franchise_royalties(n, (date_trunc('month', now()) - interval '1 month')::date) where royalty > 0) = 4, 'sample royalties last month';
+end $$;
 insert into messages (org_id, channel, to_address, body) select v, 'email', 'x@example.com', 'Hi' from ctx where k='demo';
 do $$ begin assert (select status from messages) = 'blocked', 'demo messages are blocked'; end $$;
 reset role;
