@@ -66,6 +66,7 @@ export default function ServiceEdit() {
   const [tiers, setTiers] = useState<{ name: string; detail: string; price: string }[]>([]);
   const [equipment, setEquipment] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
   const lib = useQuery(() => loadGuideLibrary(orgId), [orgId]);
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function ServiceEdit() {
     supabase.from('services').select('*').eq('id', id).maybeSingle().then(({ data, error: e }) => {
       if (e || !data) { setError(e ? friendlyError(e.message) : 'Service not found'); return; }
       const s = data as Service;
+      if ((data as any).franchise_locked) setLocked(true);
       setForm(toForm(s));
       setCatPrices(Object.fromEntries(Object.entries(s.category_prices ?? {}).map(([k, v]) => [k, String(v)])));
       setFootRates(Object.fromEntries(Object.entries(s.foot_rates ?? {}).map(([k, v]) => [k, String(v)])));
@@ -85,6 +87,9 @@ export default function ServiceEdit() {
 
   if (!editor) return <Screen><EmptyState icon="lock-closed-outline" title="Managers only" body="Ask your manager to change services and prices." /></Screen>;
   if (!form) return error ? <Screen><ErrorBanner message={error} /></Screen> : <Loading />;
+  if (locked) {
+    return <Screen><EmptyState icon="lock-closed-outline" title="Set by your franchise HQ" body="This service and its prices are an HQ standard, so they can't be changed at this location. Ask your franchise HQ if something needs to change." action={<Button title="Back" onPress={() => router.back()} />} /></Screen>;
+  }
   const set = <K extends keyof Form>(k: K, v: Form[K]) => setForm((f) => (f ? { ...f, [k]: v } : f));
 
   const guides = (lib.data?.guides ?? []).filter((r) => r.guide.asset_type === form.asset_type);

@@ -38,6 +38,7 @@ export default function GuideEdit() {
     products: [], tools: [], prep: [], steps: [{ title: '', detail: '', caution: null }], donts: [], quality_checks: [], photos: [], based_on: null,
   });
   const [error, setError] = useState<string | null>(null);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
     const src = id ?? from;
@@ -45,12 +46,16 @@ export default function GuideEdit() {
     supabase.from('service_guides').select('*').eq('id', src).maybeSingle().then(({ data, error: e }) => {
       if (e || !data) { setError(e ? friendlyError(e.message) : 'SOP not found'); return; }
       const g = data as ServiceGuide;
+      if ((data as any).franchise_locked) setLocked(true);
       setDraft(from ? { ...fromGuide(g), based_on: g.id } : fromGuide(g));
     });
   }, [id, from]);
 
   if (!manager) return <Screen><EmptyState icon="lock-closed-outline" title="Managers only" body="Ask your manager to edit SOPs." /></Screen>;
   if (!draft) return error ? <Screen><ErrorBanner message={error} /></Screen> : <Loading />;
+  if (locked) {
+    return <Screen><EmptyState icon="lock-closed-outline" title="Set by your franchise HQ" body="This SOP is an HQ standard, so it can't be changed or copied at this location. Ask your franchise HQ if something needs to change." action={<Button title="Back" onPress={() => router.back()} />} /></Screen>;
+  }
   const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
   const setStep = (i: number, patch: Partial<GuideStep>) => set('steps', draft.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)));
 

@@ -5,6 +5,7 @@ import { Image, Platform, View } from 'react-native';
 import { FormSheet, type FieldDef } from '../../components/FormSheet';
 import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
 import { AiPlaybookCard } from '../../components/settings/AiPlaybookCard';
+import { FranchiseCard } from '../../components/settings/FranchiseCard';
 import { JobCostingCard } from '../../components/settings/JobCostingCard';
 import { WorkModeCard } from '../../components/settings/WorkModeCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
@@ -235,6 +236,12 @@ export default function Settings() {
       {admin ? (
         <Section title="Where you work" icon="navigate-outline">
           <WorkModeCard org={org} onChanged={refresh} />
+        </Section>
+      ) : null}
+
+      {admin && !isDemo ? (
+        <Section title="Franchise network" icon="git-network-outline">
+          <FranchiseCard orgId={orgId} owner={role === 'owner'} />
         </Section>
       ) : null}
 

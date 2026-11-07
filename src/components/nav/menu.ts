@@ -54,6 +54,7 @@ export function useMenu() {
       key: 'company', title: 'Company', items: [
         { label: 'Company profile & settings', short: 'Settings', subtitle: 'Invoice sender details, business types, payments', icon: 'business-outline', tone: 'info', href: '/settings' },
         { label: 'Team roles & access', short: 'Team', subtitle: team != null ? `${team} team member${team === 1 ? '' : 's'}` : 'Invite and manage your crew', icon: 'people-outline', tone: 'purple', href: '/team' },
+        { label: 'Franchise HQ', short: 'Franchise HQ', subtitle: 'Locations, standards and royalties', icon: 'git-network-outline', tone: 'primary', href: '/franchise', show: admin && !org.is_demo, badge: fleetBadge },
         { label: 'Company locations', short: 'Locations', subtitle: 'Branches you operate from', icon: 'git-branch-outline', tone: 'info', href: '/branches', show: admin, badge: can('branches') ? undefined : 'Fleet' },
         { label: 'Account & security', short: 'Account & security', subtitle: 'Login, two-step verification, devices, notifications', icon: 'shield-checkmark-outline', tone: 'success', href: '/account' },
       ],

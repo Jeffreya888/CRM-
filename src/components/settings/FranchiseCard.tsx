@@ -1,0 +1,87 @@
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { View } from 'react-native';
+import { confirmAction } from '../FormSheet';
+import { Button, Card, ErrorBanner, Field, IconTile, Row, T, ToggleRow } from '../ui';
+import { joinNetwork, leaveNetwork, loadFranchise, updateMember } from '../../lib/franchise';
+import { space } from '../../lib/theme';
+import { useQuery } from '../../lib/useQuery';
+
+/**
+ * Settings → "Franchise network": a franchisee joins its HQ's network with an invite code,
+ * chooses whether HQ sees job details (totals are always shared), or leaves.
+ */
+export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean }) {
+  const q = useQuery(() => loadFranchise(orgId), [orgId]);
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try { await fn(); await q.reload(); } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+  };
+  if (q.loading) return null;
+  const hq = q.data?.hq;
+  const mem = q.data?.membership;
+
+  if (hq) {
+    return (
+      <Card onPress={() => router.push('/franchise')}>
+        <Row gap={space.md}>
+          <IconTile icon="git-network-outline" tone="primary" />
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '700' }}>You run {hq.name}</T>
+            <T variant="small">Open Franchise HQ for locations, standards and royalties.</T>
+          </View>
+        </Row>
+      </Card>
+    );
+  }
+
+  if (mem) {
+    return (
+      <Card>
+        <Row gap={space.md} style={{ marginBottom: space.md }}>
+          <IconTile icon="git-network-outline" tone="primary" />
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '700' }}>{mem.network?.name ?? 'Franchise network'}</T>
+            <T variant="small">{mem.location_name ?? 'This location'}{mem.territory ? ` · ${mem.territory}` : ''}</T>
+          </View>
+        </Row>
+        <T variant="muted" style={{ marginBottom: space.md }}>
+          Your customers, books and payments stay yours. HQ sees your totals (revenue, jobs, quality and ratings) and sets the standards marked
+          &quot;HQ standard&quot; in your services and SOPs.
+        </T>
+        {owner ? (
+          <ToggleRow label="Share job details with HQ" value={mem.share_details}
+            hint="Job number, date, aircraft, invoice total, QC result and rating. Never customer names or contact details."
+            onChange={(v) => run(() => updateMember(orgId, { shareDetails: v }))} />
+        ) : null}
+        <ErrorBanner message={error} />
+        {owner ? (
+          <Button small kind="ghost" icon="exit-outline" title="Leave network" disabled={busy}
+            onPress={() => confirmAction('Leave the franchise network?', 'HQ stops seeing your totals. You keep your copies of HQ standards, and you can edit them.', () => run(() => leaveNetwork(orgId)))} />
+        ) : null}
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <T variant="muted" style={{ marginBottom: space.md }}>
+        Part of a franchise? Enter the invite code from your franchise HQ. Your customers, books and payments stay yours; HQ sees your totals and shares its standards.
+      </T>
+      {owner ? (
+        <>
+          <Field label="Invite code" value={code} onChangeText={(t) => setCode(t.toUpperCase())} autoCapitalize="characters" placeholder="e.g. 7F3A9C21" />
+          <Field label="Location name (optional)" value={name} onChangeText={setName} placeholder="e.g. Houston Hobby" />
+          <ErrorBanner message={error} />
+          <Button title="Join network" icon="git-network-outline" loading={busy} disabled={code.trim().length < 6}
+            onPress={() => run(() => joinNetwork(orgId, code, name))} />
+        </>
+      ) : <T variant="small">Only the company owner can join a franchise network.</T>}
+    </Card>
+  );
+}
