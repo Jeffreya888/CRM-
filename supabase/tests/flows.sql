@@ -1323,4 +1323,105 @@ do $$ declare j uuid := (select v from ctx where k='mob'); begin
   assert (select cancelled_at is null from jobs where id = j), 'cleared when un-canceled';
 end $$;
 
+-- ---------- Franchise networks -------------------------------------------------
+-- Alice runs a franchise HQ; a franchisee owner joins with their own company.
+insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) values
+  ('00000000-0000-0000-0000-0000000000f5', 'owner@franchisee.test', '{"full_name":"Fran Owner"}', now());
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+insert into ctx select 'hq', public.create_organization('Franchise HQ Co', true, array['aircraft']);
+insert into ctx select 'net', public.franchise_create((select v from ctx where k='hq'), 'Alpha Franchise', 6, 2);
+update services set franchise_push = true, franchise_lock = true
+  where org_id = (select v from ctx where k='hq') and guide_key = 'exterior_wash';
+update services set franchise_push = true, franchise_lock = false
+  where org_id = (select v from ctx where k='hq') and guide_key = 'interior_detail';
+insert into service_guides (org_id, key, asset_type, title, summary, steps)
+  values ((select v from ctx where k='hq'), 'hq_ramp_rules', 'aircraft', 'HQ ramp rules', 'Brand ramp standard', '[{"title":"Check in with the FBO"}]');
+update service_guides set franchise_push = true where org_id = (select v from ctx where k='hq') and key = 'hq_ramp_rules';
+select public.franchise_update((select v from ctx where k='net'), 'Alpha Franchise', 6, 2, 'Never use bleach.');
+
+-- The franchisee joins with HQ's code; the standards arrive right away.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);
+insert into ctx select 'floc', public.create_organization('Franchise Location Co', false, array['aircraft']);
+do $$ declare code text; begin
+  reset role;
+  code := (select invite_code from franchise_networks where id = (select v from ctx where k='net'));
+  set role authenticated;
+  begin
+    perform public.franchise_join((select v from ctx where k='floc'), 'WRONG123');
+    assert false, 'bad code accepted';
+  exception when others then assert sqlerrm like '%not valid%', sqlerrm; end;
+  perform public.franchise_join((select v from ctx where k='floc'), code, 'Bravo Houston');
+end $$;
+do $$ declare b uuid := (select v from ctx where k='floc'); begin
+  assert (select count(*) from services where org_id = b and franchise_source_id is not null) = 2, 'two HQ services copied';
+  assert (select franchise_locked from services where org_id = b and guide_key = 'exterior_wash' and franchise_source_id is not null), 'locked copy';
+  assert (select count(*) from service_guides where org_id = b and key = 'hq_ramp_rules' and franchise_locked) = 1, 'HQ SOP copied and locked';
+  -- A locked standard can't be edited or deleted at the location; an editable one can.
+  begin
+    update services set base_price = 1 where org_id = b and guide_key = 'exterior_wash' and franchise_source_id is not null;
+    assert false, 'locked service edited';
+  exception when others then assert sqlerrm like 'HQ_LOCKED%', sqlerrm; end;
+  begin
+    delete from service_guides where org_id = b and key = 'hq_ramp_rules';
+    assert false, 'locked SOP deleted';
+  exception when others then assert sqlerrm like 'HQ_LOCKED%', sqlerrm; end;
+  update services set base_price = 77 where org_id = b and guide_key = 'interior_detail' and franchise_source_id is not null;
+  -- The location sees its network, but not HQ reports.
+  assert (select name from franchise_networks) = 'Alpha Franchise', 'location sees the network';
+  begin
+    perform * from public.franchise_dashboard((select v from ctx where k='net'), now() - interval '1 year', now() + interval '1 day');
+    assert false, 'location saw HQ dashboard';
+  exception when others then assert sqlerrm like '%Only franchise HQ%', sqlerrm; end;
+end $$;
+
+-- HQ: totals per location, but no direct access to the location's records.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare b uuid := (select v from ctx where k='floc'); n uuid := (select v from ctx where k='net'); begin
+  assert (select count(*) from customers where org_id = b) = 0, 'HQ cannot read location customers';
+  assert (select count(*) from invoices where org_id = b) = 0, 'HQ cannot read location invoices';
+  assert (select count(*) from public.franchise_dashboard(n, now() - interval '1 year', now() + interval '1 day')) = 2, 'HQ + one location';
+  assert (select is_hq from public.franchise_dashboard(n, now() - interval '1 year', now() + interval '1 day') limit 1), 'HQ row first';
+  assert (select location_name from public.franchise_dashboard(n, now() - interval '1 year', now() + interval '1 day') where org_id = b) = 'Bravo Houston', 'location name';
+  begin
+    perform * from public.franchise_location_jobs(n, b, now() - interval '1 year', now() + interval '1 day');
+    assert false, 'job details without sharing';
+  exception when others then assert sqlerrm like '%not shared%', sqlerrm; end;
+  -- HQ re-pushes after changing a locked price; the location's copy follows, and its own edit on the editable one stays.
+  update services set base_price = 999 where org_id = (select v from ctx where k='hq') and guide_key = 'exterior_wash';
+  assert public.franchise_push_standards(n) = 1, 'pushed to one location';
+end $$;
+reset role;
+do $$ declare b uuid := (select v from ctx where k='floc'); begin
+  assert (select base_price from services where org_id = b and guide_key = 'exterior_wash' and franchise_source_id is not null) = 999, 'location follows HQ price';
+  assert (select base_price from services where org_id = b and guide_key = 'interior_detail' and franchise_source_id is not null) = 77, 'editable standard keeps the location''s price';
+  -- Royalties: a payment at the location this month.
+  insert into customers (org_id, name) values (b, 'Franchise customer');
+  insert into invoices (org_id, number, customer_id, status, total)
+    select b, 'FR-1', id, 'sent', 1000 from customers where org_id = b;
+  insert into payments (org_id, invoice_id, amount, method) select b, id, 1000, 'card' from invoices where org_id = b;
+end $$;
+set role authenticated;
+do $$ declare n uuid := (select v from ctx where k='net'); r record; begin
+  select * into r from public.franchise_royalties(n, current_date);
+  assert r.gross_sales = 1000 and r.royalty = 60 and r.marketing = 20, 'royalty 6% and marketing 2% of 1000: ' || r::text;
+end $$;
+
+-- The location shares job details; then leaves, keeping its copies unlocked.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);
+select public.franchise_update_member((select v from ctx where k='floc'), p_share_details => true);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ begin
+  perform * from public.franchise_location_jobs((select v from ctx where k='net'), (select v from ctx where k='floc'), now() - interval '5 years', now() + interval '5 years');
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);
+select public.franchise_leave((select v from ctx where k='floc'));
+do $$ declare b uuid := (select v from ctx where k='floc'); begin
+  assert (select count(*) from services where org_id = b and franchise_locked) = 0, 'unlocked after leaving';
+  update services set base_price = 5 where org_id = b and guide_key = 'exterior_wash' and name is not null;
+  assert (select count(*) from franchise_networks) = 0, 'no longer sees the network';
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED

@@ -40,6 +40,7 @@ Who you are
 - The business side: who the customers are and what they expect. Aviation: owners, Part 91 flight departments, Part 135 charter operators, aircraft management companies, FBOs and MROs, who care about turn times, discretion, documentation and protecting an expensive asset. Marine: owners, captains and crew, marinas, boatyards and brokers, with seasonal launch and haul-out rushes and pre-sale details. Automotive: retail and enthusiast clients, dealerships and fleets, with high volume and repeat maintenance. You can help with how to communicate with these customers, plan the work, explain recommendations, train crews and run a professional operation.
 
 Company playbook
+- If the company context includes "Franchise standards" from HQ, they are the brand's rules: follow them first, then the company playbook, then general guidance (safety rules always come first).
 - The company context may include a "Company playbook" written by the owner: its own products for each job, methods, standards and rules. Follow it over general guidance, and name its products when the task matches. It never overrides the safety rules below or an aircraft's manual and approved-products list; when they conflict, say so and follow the safer one.
 - Without a playbook, describe the kind of product to use rather than a brand.
 
@@ -309,6 +310,12 @@ export async function companyContext(db: SupabaseClient, orgId: string, orgName:
     db.from("equipment").select("name, category").eq("org_id", orgId).neq("status", "retired").order("name").limit(MAX_EQUIPMENT),
     db.from("organizations").select("ai_playbook").eq("id", orgId).maybeSingle(),
   ]);
+  // Franchise: HQ's brand playbook applies to HQ and every location in its network.
+  const { data: mem } = await db.from("franchise_members").select("network_id").eq("org_id", orgId).maybeSingle();
+  const { data: net } = mem
+    ? await db.from("franchise_networks").select("name, hq_playbook").eq("id", mem.network_id).maybeSingle()
+    : await db.from("franchise_networks").select("name, hq_playbook").eq("hq_org_id", orgId).maybeSingle();
+  const brand = typeof net?.hq_playbook === "string" ? net.hq_playbook.trim().slice(0, 8000) : "";
   const playbook = typeof pbR.data?.ai_playbook === "string" ? pbR.data.ai_playbook.trim().slice(0, 8000) : "";
   const sops = [...catalog.values()].sort((a, b) => a.title.localeCompare(b.title))
     .map((e) => `- ${e.key}: ${e.title}${e.company ? " (company)" : ""}`);
@@ -324,6 +331,7 @@ export async function companyContext(db: SupabaseClient, orgId: string, orgName:
     inv.join("\n") || "(none listed)",
     `## Equipment the company has`,
     eq.length ? eq.join("; ") : "(none listed)",
+    ...(brand ? [`## Franchise standards from ${oneLine(net?.name ?? "HQ", 120)} HQ (brand-wide; follow these before the company playbook)`, brand] : []),
     `## Company playbook (this company's own products, methods and standards, written by its owner)`,
     playbook || "(none written)",
   ].join("\n");
