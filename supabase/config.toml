@@ -460,3 +460,6 @@ verify_jwt = false
 
 [functions.square-webhook]
 verify_jwt = false
+
+[functions.brand-request]
+verify_jwt = false

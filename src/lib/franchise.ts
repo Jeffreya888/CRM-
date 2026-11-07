@@ -3,7 +3,7 @@ import { friendlyError, supabase } from './supabase';
 import type { LocationStats, RoyaltyRow } from './franchiseReport';
 
 export interface FranchiseNetwork {
-  id: string; hq_org_id: string; name: string; royalty_pct: number; marketing_pct: number;
+  id: string; hq_org_id: string; name: string; royalty_pct: number; marketing_pct: number; public_slug: string | null; booking_enabled: boolean;
   invite_code: string; hq_playbook: string | null; standards_pushed_at: string | null; created_at: string;
 }
 export interface FranchiseMember {
@@ -15,7 +15,7 @@ export interface LocationJob {
 
 const rpc = async <T>(fn: string, args: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) throw new Error(friendlyError(error.message.replace(/^(HQ_LOCKED|PLAN):\s*/, '')));
+  if (error) throw new Error(friendlyError(error.message.replace(/^(HQ_LOCKED|PLAN|TERRITORY):\s*/, '')));
   return data as T;
 };
 
@@ -73,3 +73,28 @@ export const loadLocationJobs = (id: string, orgId: string, from: Date, to: Date
 
 /** Demo only: makes the demo company HQ of a sample network with four sample locations. */
 export const createDemoFranchise = () => rpc<string>('create_demo_franchise', {});
+
+export interface Territory { org_id: string; kind: 'airport' | 'zip'; code: string }
+export const loadTerritories = async (networkId: string) => {
+  const { data, error } = await supabase.from('franchise_territories').select('org_id, kind, code').eq('network_id', networkId).order('code');
+  if (error) throw error;
+  return (data ?? []) as Territory[];
+};
+/** Splits "KHOU, kiah  77001" into clean codes. */
+export const parseCodes = (text: string) => text.split(/[\s,;]+/).map((c) => c.trim().toUpperCase()).filter(Boolean);
+export const setTerritories = (networkId: string, orgId: string, airports: string[], zips: string[]) =>
+  rpc<void>('franchise_set_territories', { p_network: networkId, p_org: orgId, p_airports: airports, p_zips: zips });
+export const setBookingPage = (networkId: string, enabled: boolean, slug: string) =>
+  rpc<string>('franchise_set_booking', { p_network: networkId, p_enabled: enabled, p_slug: slug });
+export async function loadLeadCounts(networkId: string, from: Date, to: Date) {
+  const rows = await rpc<{ org_id: string | null; matched_by: string; leads: number }[]>('franchise_lead_counts', {
+    p_network: networkId, p_from: from.toISOString(), p_to: to.toISOString(),
+  });
+  const byOrg: Record<string, number> = {};
+  let unassigned = 0;
+  for (const r of rows ?? []) {
+    if (r.matched_by === 'hq') unassigned += r.leads;
+    else if (r.org_id) byOrg[r.org_id] = (byOrg[r.org_id] ?? 0) + r.leads;
+  }
+  return { byOrg, unassigned, total: Object.values(byOrg).reduce((a, b) => a + b, 0) + unassigned };
+}

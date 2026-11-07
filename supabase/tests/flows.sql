@@ -1415,6 +1415,51 @@ do $$ declare n uuid := (select v from ctx where k='net'); r record; begin
   assert r.gross_sales = 1000 and r.royalty = 60 and r.marketing = 20, 'royalty 6% and marketing 2% of 1000: ' || r::text;
 end $$;
 
+-- Territories and the brand booking page.
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select public.franchise_set_territories((select v from ctx where k='net'), (select v from ctx where k='floc'), array['khou', 'KIAH'], array['770', '78701']);
+do $$ declare n uuid := (select v from ctx where k='net'); begin
+  begin
+    perform public.franchise_set_territories(n, (select v from ctx where k='hq'), array['KHOU'], null);
+    assert false, 'airport claimed twice';
+  exception when others then assert sqlerrm like '%KHOU already belongs to Bravo Houston%', sqlerrm; end;
+  begin
+    perform public.franchise_set_territories(n, (select v from ctx where k='floc'), array['NOT AN AIRPORT'], null);
+    assert false, 'bad airport accepted';
+  exception when others then assert sqlerrm like 'TERRITORY:%', sqlerrm; end;
+  assert public.franchise_set_booking(n, true, 'Alpha Franchise!') = 'alpha-franchise', 'slug cleaned';
+end $$;
+reset role;
+do $$ declare n uuid := (select v from ctx where k='net'); f uuid := (select v from ctx where k='floc'); r jsonb; begin
+  -- The first set call failed inside its own block, so the location's territories are as set above.
+  assert (select count(*) from franchise_territories where org_id = f) = 4, 'two airports and two zips';
+  assert (select org_id from public.franchise_route(n, 'HOU', null)) = f, '3-letter code finds KHOU';
+  assert (select matched_by from public.franchise_route(n, null, '77001')) = 'zip3', 'zip area match';
+  assert (select matched_by from public.franchise_route(n, null, '78701')) = 'zip', 'exact zip';
+  assert (select matched_by from public.franchise_route(n, 'KTEB', '10001')) = 'hq', 'uncovered goes to HQ';
+  assert (public.franchise_public_info('alpha-franchise') -> 'locations' -> 0 ->> 'name') = 'Bravo Houston', 'public info';
+  r := public.franchise_submit_lead('alpha-franchise', 'Pat Pilot', 'Pat@Example.com', '555-0100', 'Pat Air', 'KIAH', null,
+                                    'Citation XLS', 'Exterior wash', '["2030-01-02T15:00:00Z"]', 'Hangar 4');
+  assert r ->> 'location' = 'Bravo Houston' and r ->> 'matched_by' = 'airport', r::text;
+  assert (select count(*) from booking_requests where org_id = f and notes like '%Citation XLS%') = 1, 'request at the location';
+  assert (select count(*) from customers where org_id = f and email = 'pat@example.com' and source = 'Brand booking page') = 1, 'customer created';
+  r := public.franchise_submit_lead('alpha-franchise', 'Pat Pilot', 'pat@example.com', null, null, 'KIAH', null, null, null, null, null);
+  assert (select count(*) from customers where org_id = f and email = 'pat@example.com') = 1, 'same customer reused';
+  r := public.franchise_submit_lead('alpha-franchise', 'Sam', 'sam@example.com', null, null, 'KTEB', null, null, null, null, null);
+  assert r ->> 'matched_by' = 'hq', 'uncovered request goes to HQ';
+  begin
+    perform public.franchise_submit_lead('alpha-franchise', 'X', 'not-an-email', null, null, null, null, null, null, null, null);
+    assert false, 'bad lead accepted';
+  exception when others then assert sqlerrm like '%name%' or sqlerrm like '%email%', sqlerrm; end;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ begin
+  assert (select sum(leads) from public.franchise_lead_counts((select v from ctx where k='net'), now() - interval '1 day', now() + interval '1 day')) = 3, 'three leads';
+  assert (select leads from public.franchise_lead_counts((select v from ctx where k='net'), now() - interval '1 day', now() + interval '1 day') where matched_by = 'hq') = 1, 'one unassigned';
+end $$;
+
 -- The location shares job details; then leaves, keeping its copies unlocked.
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);
 select public.franchise_update_member((select v from ctx where k='floc'), p_share_details => true);
@@ -1426,6 +1471,7 @@ select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5
 select public.franchise_leave((select v from ctx where k='floc'));
 do $$ declare b uuid := (select v from ctx where k='floc'); begin
   assert (select count(*) from services where org_id = b and franchise_locked) = 0, 'unlocked after leaving';
+  assert (select count(*) from franchise_territories) = 0, 'territories left with the location';
   update services set base_price = 5 where org_id = b and guide_key = 'exterior_wash' and name is not null;
   assert (select count(*) from franchise_networks) = 0, 'no longer sees the network';
 end $$;

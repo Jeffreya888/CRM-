@@ -1,17 +1,18 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
 import { View } from 'react-native';
 import { confirmAction, notify } from '../../components/FormSheet';
 import {
   Badge, Button, Card, EmptyState, ErrorBanner, Field, IconTile, Ionicons, Loading, Row, Screen, Section, Segmented, Select, StatTile, T, ToggleRow,
 } from '../../components/ui';
-import { APP_NAME } from '../../lib/config';
+import { APP_NAME, PORTAL_URL } from '../../lib/config';
 import { date, money, moneyShort } from '../../lib/format';
 import { shareTextFile } from '../../lib/finance';
 import {
-  createDemoFranchise, createNetwork, leaveNetwork, loadDashboard, loadFranchise, loadLocationJobs, loadMembers, loadRoyalties, newInviteCode, pushStandards,
-  updateMember, updateNetwork, type FranchiseMember, type FranchiseNetwork, type LocationJob,
+  createDemoFranchise, createNetwork, leaveNetwork, loadLeadCounts, loadTerritories, parseCodes, setBookingPage, setTerritories, loadDashboard, loadFranchise, loadLocationJobs, loadMembers, loadRoyalties, newInviteCode, pushStandards,
+  updateMember, updateNetwork, type FranchiseMember, type FranchiseNetwork, type LocationJob, type Territory,
 } from '../../lib/franchise';
 import { avgTicket, closeRate, insights, networkTotals, qcRate, royaltyCsv, type LocationStats } from '../../lib/franchiseReport';
 import { canAdmin } from '../../lib/plans';
@@ -264,7 +265,13 @@ function LocationCard({ net, row, rank, from, to, open, onToggle }: { net: Franc
 }
 
 function Locations({ net, onChanged }: { net: FranchiseNetwork; onChanged: () => void }) {
-  const q = useQuery(() => loadMembers(net.id), [net.id]);
+  const q = useQuery(async () => {
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const [members, territories, leads] = await Promise.all([
+      loadMembers(net.id), loadTerritories(net.id), loadLeadCounts(net.id, monthStart, new Date(Date.now() + 86400000)),
+    ]);
+    return { members, territories, leads };
+  }, [net.id]);
   const [error, setError] = useState<string | null>(null);
   const copy = async () => {
     await Clipboard.setStringAsync(net.invite_code);
@@ -286,24 +293,75 @@ function Locations({ net, onChanged }: { net: FranchiseNetwork; onChanged: () =>
         </Card>
       </Section>
       <ErrorBanner message={error ?? q.error} />
-      <Section title={`Locations (${(q.data ?? []).length})`} icon="business-outline">
-        {(q.data ?? []).length === 0 && !q.loading ? <T variant="muted">No locations have joined yet.</T> : null}
-        {(q.data ?? []).map((m) => <MemberCard key={m.org_id} m={m} onChanged={() => { q.reload(); onChanged(); }} />)}
+      <BookingPageCard net={net} unassigned={q.data?.leads.unassigned ?? 0} total={q.data?.leads.total ?? 0} onChanged={onChanged} />
+      <Section title={`Locations (${(q.data?.members ?? []).length})`} icon="business-outline">
+        {(q.data?.members ?? []).length === 0 && !q.loading ? <T variant="muted">No locations have joined yet.</T> : null}
+        {(q.data?.members ?? []).map((m) => (
+          <MemberCard key={m.org_id} m={m} net={net} territories={(q.data?.territories ?? []).filter((t) => t.org_id === m.org_id)}
+            leads={q.data?.leads.byOrg[m.org_id] ?? 0} onChanged={() => { q.reload(); onChanged(); }} />
+        ))}
       </Section>
     </>
   );
 }
 
-function MemberCard({ m, onChanged }: { m: FranchiseMember; onChanged: () => void }) {
-  const [name, setName] = useState(m.location_name ?? '');
-  const [territory, setTerritory] = useState(m.territory ?? '');
+function BookingPageCard({ net, unassigned, total, onChanged }: { net: FranchiseNetwork; unassigned: number; total: number; onChanged: () => void }) {
+  const [slug, setSlug] = useState(net.public_slug ?? net.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty = name !== (m.location_name ?? '') || territory !== (m.territory ?? '');
+  const url = net.public_slug ? `${PORTAL_URL}/book/${net.public_slug}` : null;
+  const save = async (enabled: boolean) => {
+    setBusy(true);
+    setError(null);
+    try { await setBookingPage(net.id, enabled, slug); onChanged(); } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+  };
+  return (
+    <Section title="Brand booking page" icon="globe-outline">
+      <Card>
+        <T variant="muted" style={{ marginBottom: space.md }}>
+          One booking page for the whole brand. Customers enter their airport or zip code, and each request goes straight to the location that
+          covers it, into that location&apos;s Booking requests. Requests no location covers come to HQ.
+        </T>
+        <Field label="Page address" value={slug} onChangeText={setSlug} autoCapitalize="none" hint={`${PORTAL_URL}/book/${slug || '…'}`} />
+        <ErrorBanner message={error} />
+        <Row gap={space.sm} style={{ flexWrap: 'wrap' }}>
+          {net.booking_enabled ? (
+            <>
+              <Button small icon="checkmark" title="Save address" onPress={() => save(true)} loading={busy} />
+              {url ? <Button small kind="secondary" icon="open-outline" title="Open page" onPress={() => Linking.openURL(url)} /> : null}
+              {url ? <Button small kind="secondary" icon="copy-outline" title="Copy link" onPress={async () => { await Clipboard.setStringAsync(url); notify('Copied', url); }} /> : null}
+              <Button small kind="ghost" title="Turn off" onPress={() => save(false)} disabled={busy} />
+            </>
+          ) : <Button small icon="globe-outline" title="Turn on booking page" onPress={() => save(true)} loading={busy} />}
+        </Row>
+        {net.booking_enabled ? (
+          <T variant="small" style={{ marginTop: space.sm }}>
+            This month: {total} request{total === 1 ? '' : 's'}{unassigned ? `, ${unassigned} from areas no location covers yet (sent to HQ)` : ''}.
+          </T>
+        ) : null}
+      </Card>
+    </Section>
+  );
+}
+
+function MemberCard({ m, net, territories, leads, onChanged }: { m: FranchiseMember; net: FranchiseNetwork; territories: Territory[]; leads: number; onChanged: () => void }) {
+  const initialAirports = territories.filter((t) => t.kind === 'airport').map((t) => t.code).join(', ');
+  const initialZips = territories.filter((t) => t.kind === 'zip').map((t) => t.code).join(', ');
+  const [name, setName] = useState(m.location_name ?? '');
+  const [territory, setTerritory] = useState(m.territory ?? '');
+  const [airports, setAirports] = useState(initialAirports);
+  const [zips, setZips] = useState(initialZips);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = name !== (m.location_name ?? '') || territory !== (m.territory ?? '') || airports !== initialAirports || zips !== initialZips;
   const save = async () => {
     setBusy(true);
     setError(null);
-    try { await updateMember(m.org_id, { locationName: name, territory }); onChanged(); } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+    try {
+      await updateMember(m.org_id, { locationName: name, territory });
+      if (airports !== initialAirports || zips !== initialZips) await setTerritories(net.id, m.org_id, parseCodes(airports), parseCodes(zips));
+      onChanged();
+    } catch (e: any) { setError(e.message); } finally { setBusy(false); }
   };
   const remove = () => confirmAction('Remove this location?', 'It leaves the network and keeps its own copies of your standards, unlocked.', async () => {
     try { await leaveNetwork(m.org_id); onChanged(); } catch (e: any) { setError(e.message); }
@@ -312,10 +370,14 @@ function MemberCard({ m, onChanged }: { m: FranchiseMember; onChanged: () => voi
     <Card>
       <Row gap={space.md}>
         <Field label="Location name" value={name} onChangeText={setName} style={{ flex: 1 }} />
-        <Field label="Territory or airports" value={territory} onChangeText={setTerritory} placeholder="e.g. KHOU, KIAH" style={{ flex: 1 }} />
+        <Field label="Territory name" value={territory} onChangeText={setTerritory} placeholder="e.g. Greater Houston" style={{ flex: 1 }} />
+      </Row>
+      <Row gap={space.md}>
+        <Field label="Airports it covers" value={airports} onChangeText={(t) => setAirports(t.toUpperCase())} placeholder="e.g. KHOU, KIAH, KSGR" autoCapitalize="characters" style={{ flex: 1 }} />
+        <Field label="Zip codes it covers" value={zips} onChangeText={setZips} placeholder="e.g. 77002, 770 (3 digits = whole area)" style={{ flex: 1 }} />
       </Row>
       <T variant="small" style={{ marginBottom: space.sm }}>
-        Joined {date(m.joined_at)} · {m.share_details ? 'Shares job details with HQ' : 'Shares totals only'}
+        Joined {date(m.joined_at)} · {m.share_details ? 'Shares job details with HQ' : 'Shares totals only'} · {leads} booking request{leads === 1 ? '' : 's'} this month
       </T>
       <ErrorBanner message={error} />
       <Row gap={space.sm}>
