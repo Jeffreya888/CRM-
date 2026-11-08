@@ -37,6 +37,8 @@ function BranchList() {
   const rows = q.data ?? [];
   const active = rows.filter((b) => b.active);
   const inactive = rows.filter((b) => !b.active);
+  const limitQ = useQuery(async () => (await must(supabase.rpc('org_branch_limit', { p_org: orgId }))) as number, [orgId]);
+  const limit = typeof limitQ.data === 'number' ? limitQ.data : null;
 
   const row = (b: Branch) => (
     <ListRow key={b.id} icon="business-outline" tone={b.active ? 'info' : 'neutral'} title={b.name}
@@ -53,6 +55,11 @@ function BranchList() {
         <T variant="muted" style={{ marginBottom: space.md }}>
           Locations your company operates from. Jobs, schedules, quotes, invoices and profit can be filtered by location on the dashboard. Customers, assets and services are shared across all locations.
         </T>
+        {limit != null ? (
+          <T variant="small" style={{ marginBottom: space.md }}>
+            {active.length} of {limit} active locations used.{active.length >= limit ? ' Turn one off to add another, or contact us about Enterprise for more.' : ''}
+          </T>
+        ) : null}
         {!q.loading && rows.length === 0 ? (
           <EmptyState icon="business-outline" title="No locations yet"
             body={admin ? 'Add your first location, for example each airport base or shop.' : 'Your company has not added any locations.'} />

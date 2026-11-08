@@ -56,8 +56,8 @@ export const PLANS: PlanInfo[] = [
   {
     id: 'fleet', name: 'Fleet', monthly: 219.99, annual: 2199.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000, aiChecks: 500, aiQuestions: 6000,
     features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS, 'branches', 'integrations', 'stock_locations'],
-    blurb: 'For multi-location operations and aircraft management partners.',
-    highlights: ['Everything in Team', 'Unlimited team members', 'Multiple company locations & stock by location', 'Scheduling-software integrations', '500 AI photo checks / month', askLine(6000), '3,000 customer texts / month'],
+    blurb: 'For larger crews and companies with up to 5 locations.',
+    highlights: ['Everything in Team', 'Unlimited team members', 'Up to 5 company locations & stock by location', 'Scheduling-software integrations', '500 AI photo checks / month', askLine(6000), '3,000 customer texts / month'],
   },
 ];
 

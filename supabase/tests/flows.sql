@@ -588,6 +588,35 @@ do $$ begin
     insert into branches (org_id, name) values ((select v from ctx where k='bravo'), 'Second base');
   exception when raise_exception then raise exception 'trial allows branches: %', sqlerrm;
   end;
+  -- Fleet/trial: up to 5 active locations; inactive ones don't count.
+  insert into branches (org_id, name)
+    select (select v from ctx where k='bravo'), 'Base ' || g from generate_series(1, 5 - (select count(*) from branches where org_id = (select v from ctx where k='bravo') and active)::int) g;
+  begin
+    insert into branches (org_id, name) values ((select v from ctx where k='bravo'), 'Sixth base');
+    raise exception 'sixth location should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'BRANCH_LIMIT%' then raise; end if;
+  end;
+  insert into branches (org_id, name, active) values ((select v from ctx where k='bravo'), 'Archived base', false);
+  begin
+    update branches set active = true where org_id = (select v from ctx where k='bravo') and name = 'Archived base';
+    raise exception 'reactivating past the limit should fail';
+  exception when raise_exception then
+    if sqlerrm not like 'BRANCH_LIMIT%' then raise; end if;
+  end;
+  update branches set active = false where org_id = (select v from ctx where k='bravo') and name = 'Base 1';
+  update branches set active = true where org_id = (select v from ctx where k='bravo') and name = 'Archived base';
+  begin
+    update organizations set branch_limit = 50 where id = (select v from ctx where k='bravo');
+    raise exception 'owners must not raise their own limit';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+update organizations set branch_limit = 8 where id = (select v from ctx where k='bravo');
+do $$ begin
+  assert public.org_branch_limit((select v from ctx where k='bravo')) = 8, 'support can raise the limit';
+  update organizations set branch_limit = null where id = (select v from ctx where k='bravo');
 end $$;
 
 -- ---------- Public documents & customer actions (anon) ----------------------
