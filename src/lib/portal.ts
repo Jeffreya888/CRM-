@@ -8,7 +8,7 @@
  * "Portal `data` response"):
  *
  *   { action: 'request_code', slug, email }            → { ok: true }   (always; never reveals whether the email exists)
- *   { action: 'verify', slug, email, code }            → { token: string, expires_at: string }   (30-day session)
+ *   { action: 'verify', slug, email, code }            → { token: string, expires_at: string }   (90 days from the last visit)
  *   { action: 'data', token }                          → PortalData (below)
  *   { action: 'files', token, paths: string[] }        → { urls: Record<path, signedUrl> }  (an array in the
  *                                                         same order as `paths` is also accepted)
@@ -83,10 +83,8 @@ export async function loadPortalSession(slug: string): Promise<PortalSession | n
     if (!raw) return null;
     const s = JSON.parse(raw) as PortalSession;
     if (!s?.token) return null;
-    if (s.expires_at && new Date(s.expires_at).getTime() < Date.now()) {
-      await AsyncStorage.removeItem(key(slug));
-      return null;
-    }
+    // The server keeps the sign-in alive for 90 days after each visit and answers 401 once it ends,
+    // so the stored expires_at (from sign-in day) is only informational.
     return s;
   } catch {
     return null;

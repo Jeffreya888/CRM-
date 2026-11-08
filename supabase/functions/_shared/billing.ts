@@ -54,3 +54,25 @@ export function paidPlanActive(org: { plan: string | null; plan_expires_at: stri
   if (!org.plan || !PLAN_IDS.includes(org.plan as PlanId)) return false;
   return !org.plan_expires_at || new Date(org.plan_expires_at).getTime() > now;
 }
+
+// ---------------------------------------------------------------------------
+// Extra locations (Fleet beyond 5): graduated per-location price, created in
+// Stripe on first use and found again by lookup key. No env vars needed.
+//   locations 6-20 (first 15 extras): $39/mo · location 21 and up: $29/mo · yearly = 10 months
+// ---------------------------------------------------------------------------
+export const EXTRA_LOCATION_TIER = 15;
+export const EXTRA_LOCATION_CENTS = { monthly: [3900, 2900], annual: [39000, 29000] } as const;
+export const extraLocationLookupKey = (period: Period) => `tarmo_extra_location_${period}`;
+
+/** Price in cents for n extra locations per billing period. */
+export function extraLocationsCents(n: number, period: Period): number {
+  const [first, rest] = EXTRA_LOCATION_CENTS[period];
+  const k = Math.max(0, Math.floor(n));
+  return Math.min(k, EXTRA_LOCATION_TIER) * first + Math.max(0, k - EXTRA_LOCATION_TIER) * rest;
+}
+
+/** True for a subscription item that bills extra locations. */
+export function isExtraLocationItem(item: { price?: { lookup_key?: string | null; metadata?: Record<string, string> | null } | null }): boolean {
+  const p = item.price;
+  return !!p && ((p.lookup_key ?? "").startsWith("tarmo_extra_location_") || p.metadata?.kind === "extra_location");
+}

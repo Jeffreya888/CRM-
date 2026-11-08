@@ -141,14 +141,11 @@ Run the full day with a test company: sign up → services & prices → customer
 
 ## Enterprise & Franchise customers (support steps)
 
-Run these in Supabase → SQL Editor. Replace the company name.
+No SQL needed. In the app, open **Platform admin → Enterprise & franchise**, search for the company, then:
 
-```sql
--- Let a franchise brand create its Franchise HQ network
-update organizations set franchise_hq_enabled = true where name = 'Brand Name Inc';
-
--- Let an Enterprise company have more than 5 active locations (null = back to 5)
-update organizations set branch_limit = 20 where name = 'Company Name LLC';
-```
+- **Turn on Franchise HQ** so a franchise brand can create its network (the owner gets a notification).
+- **Location limit**: Fleet owners billed on the website add extra locations themselves in Company locations
+  ($39/month each for locations 6–20, $29 from the 21st; Stripe bills it automatically). Set a limit here only
+  for customers you invoice directly or who pay through the App Store / Google Play. The screen shows the suggested price.
 
 Franchisees joining a network with an invite code need neither.

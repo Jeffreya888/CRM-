@@ -21,7 +21,7 @@
 import { Stripe, type SupabaseClient } from "../_shared/deps.ts";
 import { adminClient, notifyManagers, stripe } from "../_shared/clients.ts";
 import { env } from "../_shared/http.ts";
-import { GRACE_MS, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
+import { GRACE_MS, isExtraLocationItem, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
 import { applyRefund, CARE_PLAN_COLS, type CarePlanSchedule, recordCarePlanCharge, recordDeposit, recordInvoicePayment } from "../_shared/payments.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
@@ -274,7 +274,7 @@ async function platformPlanCheckout(db: SupabaseClient, session: Stripe.Checkout
 
 /** Plan + period from the subscription's price (portal plan switches change the price, not the metadata). */
 function planOfSubscription(sub: Stripe.Subscription): { plan: PlanId | null; period: Period } {
-  const item = sub.items?.data?.[0];
+  const item = sub.items?.data?.find((i) => !isExtraLocationItem(i)) ?? sub.items?.data?.[0];
   const price = item?.price;
   const known = planForPriceId(price?.id);
   if (known) return known;
@@ -332,8 +332,15 @@ async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscri
     }
     // past_due: the renewal failed, so the period Stripe moved to is unpaid; access runs to its start (+grace).
     const paidThrough = sub.status === "past_due" ? periodStart : periodEnd;
+    const extra = items.find((i) => isExtraLocationItem(i));
+    // Extra locations are a Fleet add-on: stop billing them if the company moved to another plan.
+    if (extra && plan !== "fleet") {
+      await stripe().subscriptionItems.del(extra.id, { proration_behavior: "create_prorations" })
+        .catch((e) => console.error("could not remove extra locations after a plan change", sub.id, (e as Error).message));
+    }
     update = {
       plan, billing_period: period, billing_source: "stripe", stripe_subscription_id: sub.id,
+      extra_locations: plan === "fleet" && extra ? Math.min(500, extra.quantity ?? 0) : 0,
       plan_expires_at: paidThrough ? new Date(paidThrough * 1000 + GRACE_MS).toISOString() : null,
     };
   } else {
@@ -341,7 +348,7 @@ async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscri
     const end = sub.ended_at ?? (sub.status === "unpaid" ? periodStart : periodEnd) ?? Math.floor(Date.now() / 1000);
     update = end * 1000 > Date.now()
       ? { plan_expires_at: iso(end), stripe_subscription_id: sub.id }
-      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id };
+      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id, extra_locations: 0 };
   }
   if (customer) update.stripe_billing_customer_id = customer;
   const { error } = await db.from("organizations").update(update).eq("id", org.id);

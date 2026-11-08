@@ -187,3 +187,15 @@ export const canAdmin = (role: Role | null | undefined) => role === 'owner' || r
 export const isOwner = (role: Role | null | undefined) => role === 'owner';
 export const canEdit = (role: Role | null | undefined) => !!role && role !== 'viewer';
 export const isManager = canSeeMoney;
+
+/** Fleet includes this many active locations; more are billed per location (Enterprise pricing). */
+export const FLEET_INCLUDED_LOCATIONS = 5;
+/** Extra locations 1-15 (locations 6-20) cost the first rate; from the 16th extra (location 21) the second. Keep in sync with _shared/billing.ts. */
+export const EXTRA_LOCATION_PRICE = { monthly: [39, 29], annual: [390, 290], tier: 15 } as const;
+
+/** What n extra locations cost per billing period, in dollars. */
+export function extraLocationsPrice(n: number, period: 'monthly' | 'annual' = 'monthly'): number {
+  const [first, rest] = EXTRA_LOCATION_PRICE[period];
+  const k = Math.max(0, Math.floor(n));
+  return Math.min(k, EXTRA_LOCATION_PRICE.tier) * first + Math.max(0, k - EXTRA_LOCATION_PRICE.tier) * rest;
+}

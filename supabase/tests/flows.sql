@@ -611,12 +611,29 @@ do $$ begin
     raise exception 'owners must not raise their own limit';
   exception when insufficient_privilege then null;
   end;
+  begin
+    update organizations set extra_locations = 50 where id = (select v from ctx where k='bravo');
+    raise exception 'owners must not set billed locations';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
 reset role;
 update organizations set branch_limit = 8 where id = (select v from ctx where k='bravo');
 do $$ begin
   assert public.org_branch_limit((select v from ctx where k='bravo')) = 8, 'support can raise the limit';
   update organizations set branch_limit = null where id = (select v from ctx where k='bravo');
+end $$;
+-- Billed extra locations (Fleet only) raise the limit and the AI / text allowances.
+do $$ declare b uuid := (select v from ctx where k='bravo'); p plan_tier; e timestamptz; begin
+  select plan, plan_expires_at into p, e from organizations where id = b;
+  update organizations set plan = 'fleet', plan_expires_at = now() + interval '30 days', extra_locations = 3 where id = b;
+  assert public.org_branch_limit(b) = 8, 'fleet + 3 extra = 8 locations';
+  assert public.ai_included(b) = 800, 'extra locations add AI checks';
+  assert public.ai_questions_included(b) = 9600, 'extra locations add questions';
+  assert (public.sms_allowance(b)->>'included')::int = 4800, 'extra locations add texts';
+  update organizations set plan = 'team' where id = b;
+  assert public.org_branch_limit(b) = 5, 'extras only count on Fleet';
+  update organizations set plan = p, plan_expires_at = e, extra_locations = 0 where id = b;
 end $$;
 
 -- ---------- Public documents & customer actions (anon) ----------------------

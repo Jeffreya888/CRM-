@@ -2,7 +2,7 @@
 // ("Portal `data` response" and "Extra backend expectations") and src/lib/portal.ts.
 //
 //   { action: 'request_code', slug, email }      → { ok: true }   (always; never reveals whether the email exists)
-//   { action: 'verify', slug, email, code }      → { token, expires_at }   (30-day session)
+//   { action: 'verify', slug, email, code }      → { token, expires_at }   (90 days from the last visit)
 //   { action: 'data', token }                    → PortalData
 //   { action: 'request', token, kind, aircraft_id?, service_id?, job_id?, preferred, notes? } → { ok: true }
 //   { action: 'files', token, paths }            → { urls: Record<path, signedUrl> }   (1 hour)
@@ -19,7 +19,8 @@ import { MAX_PHOTOS, runMeteredAssessment } from "../_shared/assess.ts";
 
 const BUCKET = "org-files";
 const CODE_TTL_MS = 10 * 60e3;
-const SESSION_TTL_MS = 30 * 864e5;
+// Rolling sign-in: 90 days from the customer's last visit, so regular customers stay signed in.
+const SESSION_TTL_MS = 90 * 864e5;
 const MAX_ATTEMPTS = 5;
 const CODES_PER_WINDOW = 3;
 const WINDOW_MS = 15 * 60e3;
@@ -167,7 +168,10 @@ async function session(db: SupabaseClient, token: unknown): Promise<Session | nu
   const { data: c } = await db.from("customers").select("id, portal_enabled, org_id").eq("id", s.customer_id).maybeSingle();
   if (!c?.portal_enabled || c.org_id !== s.org_id) return null;
   if (!s.last_used_at || Date.now() - Date.parse(s.last_used_at) > 5 * 60e3) {
-    await db.from("portal_sessions").update({ last_used_at: new Date().toISOString() }).eq("id", s.id);
+    await db.from("portal_sessions").update({
+      last_used_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + SESSION_TTL_MS).toISOString(),
+    }).eq("id", s.id);
   }
   return { id: s.id, org_id: s.org_id, customer_id: s.customer_id };
 }

@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
 import { useState } from 'react';
-import { FormSheet, type FieldDef } from '../../components/FormSheet';
+import { View } from 'react-native';
+import { confirmAction, FormSheet, notify, type FieldDef } from '../../components/FormSheet';
 import { Gate } from '../../components/Gate';
-import { Badge, Card, EmptyState, ErrorBanner, Fab, ListRow, Screen, Section, T } from '../../components/ui';
-import { canAdmin } from '../../lib/plans';
+import { Badge, Button, Card, EmptyState, ErrorBanner, Fab, ListRow, Row, Screen, Section, T } from '../../components/ui';
+import { canAdmin, extraLocationsPrice, FLEET_INCLUDED_LOCATIONS } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
-import { friendlyError, must, supabase } from '../../lib/supabase';
+import { callFunction, friendlyError, must, supabase } from '../../lib/supabase';
+import { money } from '../../lib/format';
 import type { Branch } from '../../lib/types';
 import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
@@ -30,7 +32,7 @@ export default function Branches() {
 }
 
 function BranchList() {
-  const { orgId, role, org, branchId, setBranchId } = useOrg();
+  const { orgId, role, org, plan, branchId, setBranchId, refresh } = useOrg();
   const admin = canAdmin(role);
   const [editing, setEditing] = useState<Partial<Branch> | null>(null);
   const q = useQuery(async () => (await must(supabase.from('branches').select('*').eq('org_id', orgId).order('active', { ascending: false }).order('name'))) as Branch[], [orgId]);
@@ -71,6 +73,9 @@ function BranchList() {
           </Section>
         ) : null}
         {!admin ? <T variant="small" style={{ marginTop: space.md }}>Only the owner or an admin can add or change locations.</T> : null}
+        {role === 'owner' && plan === 'fleet' && org.branch_limit == null ? (
+          <BilledLocations activeCount={active.length} onChanged={async () => { await refresh(); await limitQ.reload(); }} />
+        ) : null}
       </Screen>
       {admin ? <Fab label="Add location" onPress={() => setEditing({ active: true })} /> : null}
       <FormSheet visible={!!editing} title={editing?.id ? 'Edit location' : 'New location'} fields={FIELDS}
@@ -86,5 +91,49 @@ function BranchList() {
           await q.reload();
         }} />
     </>
+  );
+}
+
+/** Fleet owners add or remove billed locations beyond the 5 included (web subscriptions). */
+function BilledLocations({ activeCount, onChanged }: { activeCount: number; onChanged: () => Promise<void> }) {
+  const { org } = useOrg();
+  const billed = org.extra_locations ?? 0;
+  const [extra, setExtra] = useState(billed);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const period = org.billing_period === 'annual' ? 'annual' : 'monthly';
+  const per = period === 'annual' ? 'year' : 'month';
+  const min = Math.max(0, activeCount - FLEET_INCLUDED_LOCATIONS);
+  const save = () => confirmAction(
+    extra > billed ? `Add ${extra - billed} location${extra - billed === 1 ? '' : 's'}?` : 'Remove billed locations?',
+    `Your plan becomes ${FLEET_INCLUDED_LOCATIONS + extra} locations: Fleet plus ${money(extraLocationsPrice(extra, period))}/${per} for ${extra} extra. The change is prorated on your next invoice.`,
+    async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await callFunction('billing-locations', { org_id: org.id, action: 'set', extra });
+        await onChanged();
+        notify('Locations updated', `You can now have up to ${FLEET_INCLUDED_LOCATIONS + extra} active locations.`);
+      } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+    });
+  return (
+    <Section title="Need more locations?" icon="add-circle-outline">
+      <Card>
+        <T variant="muted">
+          Fleet includes {FLEET_INCLUDED_LOCATIONS} locations. Each extra location is $39/month (from the 21st location, $29), and adds 100 AI photo checks,
+          1,200 Ask Tarmo questions and 600 texts a month.
+        </T>
+        <Row style={{ alignItems: 'center', marginTop: space.md }} gap={space.md}>
+          <Button small kind="secondary" icon="remove" title="" onPress={() => setExtra((n) => Math.max(min, n - 1))} disabled={extra <= min || busy} />
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <T style={{ fontWeight: '700', fontSize: 18 }}>{FLEET_INCLUDED_LOCATIONS + extra} locations</T>
+            <T variant="small">{extra ? `+${money(extraLocationsPrice(extra, period))}/${per} for ${extra} extra` : 'Included in Fleet'}</T>
+          </View>
+          <Button small kind="secondary" icon="add" title="" onPress={() => setExtra((n) => Math.min(500, n + 1))} disabled={busy} />
+        </Row>
+        <ErrorBanner message={error} />
+        <Button title={extra === billed ? 'No change' : 'Update billing'} icon="card-outline" onPress={save} loading={busy} disabled={extra === billed} style={{ marginTop: space.md }} />
+      </Card>
+    </Section>
   );
 }

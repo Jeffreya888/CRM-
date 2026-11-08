@@ -28,7 +28,7 @@ export const PRELAUNCH = process.env.EXPO_PUBLIC_PRELAUNCH !== '0';
 /** What Enterprise adds for national networks, franchise systems and FBO chains. Only things Tarmo does today. */
 export const ENTERPRISE_POINTS = [
   'Every Fleet feature, with unlimited team members',
-  'More than 5 locations, each with its own crew, stock and schedule',
+  'More than 5 locations at $39 each per month ($29 from the 21st), each with its own crew, stock and schedule',
   'Franchise HQ: each franchisee keeps its own books, customers and payments; HQ sees revenue, jobs, close rates, QC and ratings by location',
   'Push SOPs, services and prices to every location, locked or editable, plus a brand playbook every location\u2019s AI follows',
   'Territories by airport or zip code, and one brand booking page that sends each request to the right location',
@@ -277,7 +277,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'I only detail aircraft (or only boats). Will I see car features?', a: 'No. You pick what you detail when you sign up, and Tarmo shows only those tools: an aircraft-only business sees tail numbers, aircraft pricing and aviation SOPs, and never a car or boat screen. If you expand later, add boats or cars in settings.' },
   { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
-  { q: 'How many locations does Fleet include?', a: 'Fleet includes up to 5 active company locations with unlimited team members. Companies with more than 5 locations, and franchise brands, move to Enterprise & Franchise.' },
+  { q: 'How many locations does Fleet include?', a: 'Fleet includes up to 5 active company locations with unlimited team members. Need more? Add locations any time for $39 a month each ($29 from the 21st location), and each one adds AI and texting allowance. Franchise brands use Enterprise & Franchise.' },
   { q: 'Does Tarmo work for franchise brands?', a: 'Yes. Each franchisee runs its own Tarmo company with its own customers, books and payments, and joins your network with an invite code. Franchise HQ shows every location side by side, pushes your SOPs and prices (locked or editable), routes leads by airport or zip code, and emails each location its monthly royalty statement. Franchise HQ is part of Enterprise & Franchise pricing.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
   { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. You can also write your own SOPs, or copy and edit ours, and attach your own training videos and documents to any step. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
