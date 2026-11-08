@@ -68,7 +68,19 @@ export default function Customers() {
     return { customers: (customers ?? []) as unknown as CRow[], unowned: (unowned ?? []) as AssetLite[] };
   }, [orgId]);
 
-  const all = q.data?.customers ?? [];
+  // Lists stop at 1,000 rows; past that, search also asks the server so every customer can be found.
+  const capped = (q.data?.customers.length ?? 0) >= 1000;
+  const term = search.trim().replace(/[,()*%\\]/g, ' ').trim();
+  const remote = useQuery(async () => {
+    if (!capped || term.length < 2) return [] as CRow[];
+    const like = `%${term}%`;
+    return ((await must(supabase.from('customers')
+      .select('id, name, company, status, email, phone, sms_opted_out, assets:aircraft(id, tail_number, manufacturer, model, plate, vin, hull_id, asset_type, active, category, customer_id)')
+      .eq('org_id', orgId).or(`name.ilike.${like},company.ilike.${like},email.ilike.${like},phone.ilike.${like}`).order('name').limit(200))) ?? []) as unknown as CRow[];
+  }, [orgId, capped, term]);
+  const base = q.data?.customers ?? [];
+  const extra = (remote.data ?? []).filter((r) => !base.some((c) => c.id === r.id));
+  const all = extra.length ? [...base, ...extra] : base;
   const assetCount = all.reduce((s, c) => s + c.assets.filter((a) => a.active).length, 0) + (q.data?.unowned ?? []).filter((a) => a.active).length;
   const s = search.trim().toLowerCase();
   const assetHit = (a: AssetLite) => [a.tail_number, a.manufacturer, a.model, assetModelName(a), a.plate, a.vin, a.hull_id].some((x) => x?.toLowerCase().includes(s));
@@ -107,6 +119,7 @@ export default function Customers() {
               <Button small kind="secondary" icon="location-outline" title="Facilities" onPress={() => router.push('/facilities')} />
             </Row>
             <SearchBar value={search} onChange={setSearch} placeholder="Name, phone, tail number, plate, model" />
+            {capped && !term ? <T variant="small" style={{ marginBottom: space.sm }}>Showing the first 1,000 customers A–Z. Search to find anyone else.</T> : null}
             <Segmented value={status} onChange={setStatus} options={[
               { value: 'all', label: 'All', count: all.length },
               { value: 'active', label: 'Active', count: count('active') },

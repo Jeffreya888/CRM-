@@ -117,7 +117,9 @@ Companies can sign up and pay on the website; the iPhone/Android apps keep using
 ## 8d. Capacity (before launch)
 - [ ] Supabase Pro, and raise compute above Nano (Project Settings → Compute) before real users.
 - [ ] Request a higher Anthropic usage tier so photo quotes and Ask don't hit per-minute limits; Resend Pro removes the 100/day cap.
-- [ ] Load test after the service keys are in: simulate hundreds of companies using the app at once, check slow queries (Supabase → Reports / Query performance) and add missing indexes.
+- [x] Load test (Nov 8, 2026, local stack on a 4-core machine): 361 companies, 45k customers, 180k jobs, 180k invoices and payments, 90k quotes, and a 50-location franchise network. 100 simultaneous users loading dashboards, lists, reports and the franchise dashboard: 0 errors, about 265 requests/second (the machine's limit), 60–110 ms per request at 25 users. Every foreign key is indexed (157 added) plus composite indexes for dashboards and reports.
+- [ ] After launch, watch Supabase → Reports → Query performance weekly for the first month and add an index for anything slow.
+- [ ] Turn on Supabase connection pooling defaults (Pro) and set up uptime alerts (Supabase status + an uptime monitor on gettarmo.com).
 
 ## 9. Pilot company (before real customers)
 Run the full day with a test company: sign up → services & prices → customer + aircraft (catalog) → quote with packages → customer accepts online → job → before photos → start → crew time & supplies → after photos → complete → invoice → payment → review request → recurring visit → timesheet approval → P&L. Also: invite a technician and confirm they see no prices.

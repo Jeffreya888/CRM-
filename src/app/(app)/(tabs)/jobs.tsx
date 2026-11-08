@@ -65,15 +65,18 @@ export default function Jobs() {
   }
 
   const q = useQuery(async () => {
-    let query = supabase.from('jobs')
-      .select('id, number, title, status, priority, scheduled_start, branch_id, flagged, flag_reason, customer:customers(name), aircraft:aircraft(tail_number, manufacturer, model, asset_type), location:locations(name, airport_code), job_assignments(user_id)')
-      .eq('org_id', orgId).neq('status', 'cancelled')
-      .order('scheduled_start', { ascending: true, nullsFirst: false })
-      .limit(500);
-    if (branchId) query = query.eq('branch_id', branchId);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []) as unknown as JobCard[];
+    const cols = 'id, number, title, status, priority, scheduled_start, branch_id, flagged, flag_reason, customer:customers(name), aircraft:aircraft(tail_number, manufacturer, model, asset_type), location:locations(name, airport_code), job_assignments(user_id)';
+    // Open work (soonest first) plus the most recent finished jobs, so busy companies always see today's
+    // and upcoming jobs no matter how many past jobs they have.
+    let open = supabase.from('jobs').select(cols).eq('org_id', orgId).not('status', 'in', '(cancelled,completed,invoiced)')
+      .order('scheduled_start', { ascending: true, nullsFirst: false }).limit(1000);
+    let done = supabase.from('jobs').select(cols).eq('org_id', orgId).in('status', ['completed', 'invoiced'])
+      .order('scheduled_start', { ascending: false, nullsFirst: false }).limit(300);
+    if (branchId) { open = open.eq('branch_id', branchId); done = done.eq('branch_id', branchId); }
+    const [o, d] = await Promise.all([open, done]);
+    if (o.error) throw o.error;
+    if (d.error) throw d.error;
+    return [...(o.data ?? []), ...(d.data ?? [])] as unknown as JobCard[];
   }, [orgId, branchId]);
 
   const all = q.data ?? [];
