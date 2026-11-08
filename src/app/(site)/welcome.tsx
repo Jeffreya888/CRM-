@@ -26,9 +26,11 @@ export default function Welcome() {
       <ProofBand />
       <Edge />
       <Workflow />
+      <AskTarmo />
       <Included />
       <Features />
       <BusinessTypes />
+      <FranchiseBand />
       <Security />
       <PlansTeaser />
       <FaqSection />
@@ -245,6 +247,87 @@ function Included() {
             </View>
           </Glass>
         </Grid>
+      </Section>
+    </View>
+  );
+}
+
+function AskTarmo() {
+  const { isMobile, isDesktop } = useBreakpoint();
+  return (
+    <Section>
+      <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: isDesktop ? 64 : 32, alignItems: isDesktop ? 'center' : 'stretch' }}>
+        <View style={{ flex: isDesktop ? 1 : undefined }}>
+          <Eyebrow>Ask {APP_NAME}</Eyebrow>
+          <Heading level={2}>An AI detailing expert your crew can talk to.</Heading>
+          <P size="lg" style={{ marginTop: 16 }}>
+            Hands full on the ramp? Tap the mic and ask. {APP_NAME} answers like your most experienced lead, from your SOPs, your products and the
+            aircraft&apos;s own manuals, and reads the answer aloud.
+          </P>
+          <View style={{ marginTop: 22, gap: 12 }}>
+            <Check>Aircraft, marine and auto detailing, FBO and marina know-how</Check>
+            <Check>Knows your SOPs and your company playbook</Check>
+            <Check>Stops the crew for damage, injuries and aircraft systems</Check>
+            <Check>Pricing and market answers for owners and managers only</Check>
+          </View>
+        </View>
+        <Glass padding={isMobile ? 18 : 26} style={{ flex: isDesktop ? 1 : undefined, gap: 14 }}>
+          <View style={{ alignSelf: 'flex-end', maxWidth: '85%' as any, backgroundColor: site.blue, borderRadius: 16, borderBottomRightRadius: 4, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <Ionicons name="mic" size={15} color="#fff" />
+            <Text style={{ fontFamily, color: '#fff', fontSize: 14.5, flex: 1 }}>What do I use on the brightwork on this G550?</Text>
+          </View>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: site.line, borderRadius: 16, borderTopLeftRadius: 4, padding: 16, gap: 8 }}>
+            <Text style={{ fontFamily, color: site.text, fontSize: 14.5, lineHeight: 21, fontWeight: '700' }}>Mask the probes and static ports first.</Text>
+            {['Cut with your brightwork compound, keeping the pad moving and the skin cool.', 'Polish to a mirror finish, then wipe with your hard-surface cleaner.', 'Seal with your brightwork sealant.'].map((t, i) => (
+              <Text key={t} style={{ fontFamily, color: '#C9D1DD', fontSize: 14, lineHeight: 21 }}>{i + 1}. {t}</Text>
+            ))}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
+              {['Brightwork Polish SOP · step 3', 'Company playbook'].map((c) => (
+                <View key={c} style={{ paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, borderColor: site.lineStrong }}>
+                  <Text style={{ fontFamily, color: site.muted, fontSize: 12 }}>{c}</Text>
+                </View>
+              ))}
+              <View style={{ paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, backgroundColor: 'rgba(70,152,225,0.18)', flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+                <Ionicons name="volume-high-outline" size={13} color={site.blueText} />
+                <Text style={{ fontFamily, color: site.blueText, fontSize: 12, fontWeight: '700' }}>Listen</Text>
+              </View>
+            </View>
+          </View>
+        </Glass>
+      </View>
+    </Section>
+  );
+}
+
+function FranchiseBand() {
+  const { isMobile, isDesktop } = useBreakpoint();
+  return (
+    <View style={{ position: 'relative', overflow: 'hidden' }}>
+      <Glow variant="soft" />
+      <Section>
+        <Glass padding={isMobile ? 24 : 40}>
+          <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: isDesktop ? 48 : 24, alignItems: isDesktop ? 'center' : 'stretch' }}>
+            <View style={{ flex: isDesktop ? 1.2 : undefined }}>
+              <Eyebrow>For franchise brands</Eyebrow>
+              <Heading level={2}>Many owners. One standard.</Heading>
+              <P size="lg" style={{ marginTop: 14 }}>
+                Franchise HQ shows every location side by side, pushes your SOPs and prices, routes leads by airport or zip code, and emails each
+                location its royalty statement, while every franchisee keeps its own books.
+              </P>
+              <View style={{ marginTop: 22 }}>
+                <CTAButton href="/franchises" label="See Franchise HQ" icon="arrow-forward" variant="outline" full={isMobile} />
+              </View>
+            </View>
+            <View style={{ flex: isDesktop ? 1 : undefined, gap: 10 }}>
+              {[['podium-outline', 'Location leaderboard and benchmarks'], ['lock-closed-outline', 'Locked or editable standards'], ['map-outline', 'Territories and a brand booking page'], ['document-text-outline', 'Monthly royalty statements']].map(([icon, label]) => (
+                <View key={label} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', borderWidth: 1, borderColor: site.line }}>
+                  <Ionicons name={icon as any} size={18} color={site.goldText} />
+                  <Text style={{ fontFamily, color: site.text, fontSize: 15, fontWeight: '600' }}>{label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </Glass>
       </Section>
     </View>
   );

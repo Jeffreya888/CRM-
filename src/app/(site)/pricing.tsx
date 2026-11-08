@@ -92,12 +92,12 @@ function EnterpriseBand() {
     <Glass padding={isMobile ? 24 : 36} style={{ marginTop: isMobile ? 16 : 22 }}>
       <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: isDesktop ? 48 : 22, alignItems: isDesktop ? 'center' : 'stretch' }}>
         <View style={{ flex: isDesktop ? 1 : undefined, gap: 8 }}>
-          <Text style={{ fontFamily, color: site.goldText, fontSize: 13, fontWeight: '800', letterSpacing: 1.6 }}>ENTERPRISE</Text>
-          <Heading level={2} style={{ fontSize: isMobile ? 26 : 32, lineHeight: isMobile ? 32 : 38 }}>Custom pricing for national networks</Heading>
-          <P size="sm">For detailing networks, franchise systems and FBO chains running many locations.</P>
+          <Text style={{ fontFamily, color: site.goldText, fontSize: 13, fontWeight: '800', letterSpacing: 1.6 }}>ENTERPRISE &amp; FRANCHISE</Text>
+          <Heading level={2} style={{ fontSize: isMobile ? 26 : 32, lineHeight: isMobile ? 32 : 38 }}>Custom pricing for franchise brands and networks</Heading>
+          <P size="sm">Franchise HQ for brands with many owners, plus multi-location tools for networks and FBO chains. Each location subscribes at network pricing.</P>
         </View>
         <View style={{ flex: isDesktop ? 1.3 : undefined, gap: 10 }}>
-          {ENTERPRISE_POINTS.slice(1, 5).map((p) => <Check key={p}>{p}</Check>)}
+          {ENTERPRISE_POINTS.slice(2, 6).map((p) => <Check key={p}>{p}</Check>)}
         </View>
         <View style={{ alignSelf: isDesktop ? 'center' : 'stretch' }}>
           <CTAButton href={ENTERPRISE_HREF} label="Talk to us" icon="arrow-forward" variant="outline" full={!isDesktop} />

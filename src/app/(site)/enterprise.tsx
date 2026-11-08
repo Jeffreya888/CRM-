@@ -1,28 +1,31 @@
 import { View } from 'react-native';
 import { EnterpriseForm } from '../../components/site/EnterpriseForm';
 import { SitePage } from '../../components/site/SitePage';
-import { Check, Container, Eyebrow, Glow, GradientText, Heading, P, useBreakpoint } from '../../components/site/primitives';
+import { Check, Container, Eyebrow, Glow, GradientText, Heading, P, TextLink, site, useBreakpoint } from '../../components/site/primitives';
 import { APP_NAME } from '../../lib/config';
 import { ENTERPRISE_POINTS } from '../../lib/site';
 
 export default function Enterprise() {
   const { isMobile, isDesktop } = useBreakpoint();
   return (
-    <SitePage title="Enterprise" description={`${APP_NAME} Enterprise: custom pricing for national detailing networks, franchise systems and FBO chains.`}>
+    <SitePage title="Enterprise & franchise" description={`${APP_NAME} Enterprise & Franchise: custom pricing for franchise brands, national detailing networks and FBO chains, with Franchise HQ.`}>
       <View style={{ position: 'relative', overflow: 'hidden' }}>
         <Glow variant="hero" />
         <Container style={{ paddingTop: isMobile ? 40 : 84, paddingBottom: isMobile ? 56 : 104 }}>
           <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: isDesktop ? 56 : 32, alignItems: isDesktop ? 'flex-start' : 'stretch' }}>
             <View style={{ flex: isDesktop ? 1 : undefined, maxWidth: 540 }}>
-              <Eyebrow>Enterprise</Eyebrow>
+              <Eyebrow>Enterprise &amp; franchise</Eyebrow>
               <Heading level={1}>
                 One standard at <GradientText>every location.</GradientText>
               </Heading>
               <P size="lg" style={{ marginTop: 18 }}>
-                For national detailing networks, franchise systems and FBO chains. Every crew works from the same SOPs and prices, and you see every location in one place. Pricing is built around your operation.
+                For franchise brands, national detailing networks and FBO chains. Every crew works from the same SOPs and prices, and you see every location in one place. Pricing is built around your network.
               </P>
               <View style={{ marginTop: 26, gap: 12 }}>
                 {ENTERPRISE_POINTS.map((p) => <Check key={p}>{p}</Check>)}
+              </View>
+              <View style={{ marginTop: 22 }}>
+                <TextLink href="/franchises" color={site.blueText} size={15}>See how Franchise HQ works →</TextLink>
               </View>
             </View>
             <View style={{ flex: isDesktop ? 1 : undefined }}>

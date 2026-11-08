@@ -29,12 +29,13 @@ export const PRELAUNCH = process.env.EXPO_PUBLIC_PRELAUNCH !== '0';
 export const ENTERPRISE_POINTS = [
   'Every Fleet feature, with unlimited team members',
   'Unlimited locations, each with its own crew, stock and schedule',
-  'One company-wide SOP library and price list',
-  'Franchise HQ: every franchisee keeps its own books and payments, while HQ sees revenue, jobs, close rates, QC and ratings by location',
+  'Franchise HQ: each franchisee keeps its own books, customers and payments; HQ sees revenue, jobs, close rates, QC and ratings by location',
   'Push SOPs, services and prices to every location, locked or editable, plus a brand playbook every location\u2019s AI follows',
-  'Monthly royalty and marketing-fund report per location, ready to export',
-  'Volume pricing per location and lower payment fees',
-  'Help moving your data, plus onboarding and training for your crews',
+  'Territories by airport or zip code, and one brand booking page that sends each request to the right location',
+  'Monthly royalty statements emailed to every location, with paid / unpaid tracking',
+  'Compliance by location: SOP certifications and QC trends; HQ announcements to every team',
+  'National accounts served across locations, with one combined report',
+  'Network pricing per location, plus help moving your data and onboarding every crew',
   'Priority support and yearly invoiced billing',
 ];
 export const ENTERPRISE_HREF = '/enterprise';
@@ -47,6 +48,7 @@ export const TRIAL_CTA_SHORT = PRELAUNCH ? 'Get early access' : 'Start free tria
 
 export const NAV_LINKS = [
   { label: 'Features', href: '/welcome#features' },
+  { label: 'Franchises', href: '/franchises' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Support', href: '/support' },
 ];
@@ -54,6 +56,7 @@ export const NAV_LINKS = [
 export const FOOTER_LINKS = [
   { label: 'Aviation', href: '/aviation' },
   { label: 'Marine', href: '/marine' },
+  { label: 'Franchises', href: '/franchises' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Enterprise', href: '/enterprise' },
   { label: 'Support', href: '/support' },
@@ -95,10 +98,11 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
     body: 'Your crew asks by typing or by voice; it answers from your SOPs and the aircraft\u2019s own documents.',
     bullets: [
       'Talk to it hands-free on the ramp, and hear answers read aloud',
-      'Plain, step-by-step answers with sources for every one',
+      'Expert in aircraft, marine and auto detailing, FBO and marina operations',
+      'Knows your SOPs and your company playbook: your products, your methods, your rules',
       'Uses each aircraft\u2019s manual chapters and approved-product lists first',
+      'Pricing and market answers for owners and managers; techs are sent to their manager',
       'Stop-and-report prompts for damage, injuries and aircraft systems',
-      `Questions each month: ${PLANS.map((p) => `${p.aiQuestions.toLocaleString('en-US')} on ${p.name}`).join(', ')}`,
     ],
   },
   {
@@ -145,6 +149,16 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
     id: 'crew', title: 'Crew, timesheets & payroll exports', icon: 'people-outline', tone: 'green',
     body: 'Everyone clocks their own time; you approve it in seconds.',
     bullets: ['Roles and permission toggles (techs never see prices)', 'Timesheet approvals and pay periods', 'Badge expirations and airport credentials', 'Profit & loss, payroll and accountant exports'],
+  },
+  {
+    id: 'locations', title: 'Multiple locations', icon: 'git-branch-outline', tone: 'blue',
+    body: 'One company, several bases, one set of books.',
+    bullets: ['Switch between locations or see them all', 'Each location with its own crew, stock and schedule', 'Profit and reports by location', 'One SOP library and price list everywhere'],
+  },
+  {
+    id: 'franchise', title: 'Franchise HQ', icon: 'git-network-outline', tone: 'green',
+    body: 'Run a franchise brand: many owners, one standard.',
+    bullets: ['Revenue, jobs, close rate, QC and ratings by location', 'Standards and prices pushed to every location', 'Territories and a brand booking page that routes leads', 'Royalty statements, announcements and national accounts'],
   },
   {
     id: 'costing', title: 'True job costing & profit', icon: 'stats-chart-outline', tone: 'gold',
@@ -263,6 +277,7 @@ export const SECURITY: { title: string; body: string; icon: IconName }[] = [
 export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'I only detail aircraft (or only boats). Will I see car features?', a: 'No. You pick what you detail when you sign up, and Tarmo shows only those tools: an aircraft-only business sees tail numbers, aircraft pricing and aviation SOPs, and never a car or boat screen. If you expand later, add boats or cars in settings.' },
   { q: 'Who is Tarmo for?', a: 'Professional detailing companies — aviation first, plus marine and automotive if you choose. Solo operators and multi-location crews use the same app; the plan simply grows with you.' },
+  { q: 'Does Tarmo work for franchise brands?', a: 'Yes. Each franchisee runs its own Tarmo company with its own customers, books and payments, and joins your network with an invite code. Franchise HQ shows every location side by side, pushes your SOPs and prices (locked or editable), routes leads by airport or zip code, and emails each location its monthly royalty statement. Franchise HQ is part of Enterprise & Franchise pricing.' },
   { q: 'Do I need a card to start the free trial?', a: `No. Create your company and use every feature free for ${TRIAL_DAYS} days. Choose a plan on the web or in the app when you are ready.` },
   { q: 'Are the SOPs and price guide really included?', a: `Yes, on every plan. ${GUIDE_COUNT} step-by-step SOPs (standard operating procedures) and a price guide with suggested prices for every service, by size, covering ${AIRCRAFT_MODELS} aircraft, ${BOAT_MODELS} boat and ${VEHICLE_MODELS} vehicle models are built in — no separate training program or pricing app to buy. You can also write your own SOPs, or copy and edit ours, and attach your own training videos and documents to any step. On Team and Fleet you can also certify technicians per SOP and require a quality check before jobs are completed.` },
   { q: 'How does the tail-number lookup work?', a: 'Type a US tail number (N-number) on a new aircraft. Tarmo looks it up in the FAA aircraft registry, refreshed weekly, and offers the make, model, year, serial number and size in one tap. You always confirm before anything is saved.' },
@@ -313,3 +328,21 @@ export const TROUBLESHOOTING: { title: string; body: string; icon: IconName }[] 
 ];
 
 export const SUPPORT_TOPICS = ['Getting started', 'Billing & plans', 'Payments', 'Texting', 'Account & data', 'Report a problem', 'Other'];
+
+/** /franchises: Franchise HQ for franchise brands. */
+export const FRANCHISE_FEATURES: { icon: IconName; tone: 'blue' | 'gold' | 'green'; title: string; body: string }[] = [
+  { icon: 'podium-outline', tone: 'blue', title: 'Every location, side by side', body: 'Revenue, jobs, close rate, average ticket, QC pass rate, customer ratings and AI use for each location, ranked, with plain-language benchmarks that flag who needs help.' },
+  { icon: 'lock-closed-outline', tone: 'gold', title: 'Standards that stick', body: 'Push your SOPs, service menu and prices to every location. Lock what must never change; leave the rest editable so each owner can adapt to their market.' },
+  { icon: 'sparkles-outline', tone: 'green', title: 'An AI that knows your brand', body: 'Write the brand playbook once. Every location\u2019s Ask Tarmo follows it on every answer, so a new tech in any city works your way from day one.' },
+  { icon: 'map-outline', tone: 'blue', title: 'Territories and lead routing', body: 'Assign airports and zip codes to each location. One brand booking page sends every request to the location that covers it, and shows HQ where demand has no owner yet.' },
+  { icon: 'document-text-outline', tone: 'gold', title: 'Royalty statements', body: 'Gross sales collected in Tarmo, your royalty and marketing-fund rates, and a statement emailed to every location each month, with paid and unpaid tracking.' },
+  { icon: 'shield-checkmark-outline', tone: 'green', title: 'Compliance you can see', body: 'SOP certification coverage and QC pass-rate trends by location, so brand standards are measured, not assumed.' },
+  { icon: 'megaphone-outline', tone: 'blue', title: 'Announcements', body: 'Post a new SOP, a promotion or a weather rule once. Every location sees it on their dashboard and their managers get a notification.' },
+  { icon: 'briefcase-outline', tone: 'gold', title: 'National accounts', body: 'Serve a management company or charter operator across many locations and see that account\u2019s jobs and revenue in one report.' },
+];
+export const FRANCHISE_WALLS = [
+  'Each franchisee is its own company in Tarmo, with its own owner, team and subscription',
+  'Customers, invoices and payments stay with the franchisee; payments go to their own Stripe or Square account',
+  'HQ sees totals by location, never customer names or records',
+  'A franchisee can choose to share job details with HQ, and can leave the network anytime',
+];
