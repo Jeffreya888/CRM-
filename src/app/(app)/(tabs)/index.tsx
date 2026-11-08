@@ -11,6 +11,7 @@ import { duration, money, time, titleCase } from '../../../lib/format';
 import { useColumns, useIsDesktop } from '../../../lib/layout';
 import { assetTypeInfo } from '../../../lib/pricing';
 import { canAdmin, canSeeMoney } from '../../../lib/plans';
+import { FranchiseNews } from '../../../components/franchise/FranchiseNews';
 import { AskTarmoButton } from '../../../components/ai/AskTarmoButton';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
@@ -267,6 +268,7 @@ export default function Dashboard() {
     <Screen refreshing={q.refreshing} onRefresh={refresh} kicker={`Welcome back, ${name.split(' ')[0]}`} title={org.name} right={<AskTarmoButton />}
       subtitle={`${name} · ${titleCase(role)} · ${format(new Date(), 'EEEE, MMMM d')}`}>
       <ErrorBanner message={q.error} onRetry={q.refresh} />
+      <FranchiseNews orgId={orgId} />
 
       {plan === 'trial' || plan === 'expired' ? (
         <Card onPress={() => router.push('/paywall')} style={{ backgroundColor: plan === 'expired' ? colors.dangerSoft : colors.warningSoft, borderColor: 'transparent' }}>

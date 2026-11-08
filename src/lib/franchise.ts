@@ -1,5 +1,5 @@
 // Franchise networks: HQ setup, locations, reports, royalties and pushed standards.
-import { friendlyError, supabase } from './supabase';
+import { callFunction, friendlyError, supabase } from './supabase';
 import type { LocationStats, RoyaltyRow } from './franchiseReport';
 
 export interface FranchiseNetwork {
@@ -97,4 +97,62 @@ export async function loadLeadCounts(networkId: string, from: Date, to: Date) {
     else if (r.org_id) byOrg[r.org_id] = (byOrg[r.org_id] ?? 0) + r.leads;
   }
   return { byOrg, unassigned, total: Object.values(byOrg).reduce((a, b) => a + b, 0) + unassigned };
+}
+
+// ---- Royalty statements ------------------------------------------------------
+export interface Statement {
+  id: string; network_id: string; org_id: string; month: string; gross_sales: number; royalty_pct: number; royalty: number;
+  marketing_pct: number; marketing: number; total: number; status: 'unpaid' | 'paid'; paid_at: string | null; sent_at: string | null;
+}
+const normStatement = (r: any): Statement => ({
+  ...r, gross_sales: num(r.gross_sales), royalty: num(r.royalty), marketing: num(r.marketing), total: num(r.total),
+  royalty_pct: num(r.royalty_pct), marketing_pct: num(r.marketing_pct),
+});
+export async function loadStatements(filter: { networkId?: string; orgId?: string; month?: string }) {
+  let q = supabase.from('franchise_statements').select('*').order('month', { ascending: false });
+  if (filter.networkId) q = q.eq('network_id', filter.networkId);
+  if (filter.orgId) q = q.eq('org_id', filter.orgId);
+  if (filter.month) q = q.eq('month', `${filter.month}-01`);
+  const { data, error } = await q.limit(filter.month ? 500 : 12);
+  if (error) throw error;
+  return (data ?? []).map(normStatement);
+}
+/** Creates the month's statements and emails each location's owners and admins. */
+export const sendStatements = (networkId: string, month: string) =>
+  callFunction<{ statements: number; emailed: number; failed: number }>('franchise-statements', { network_id: networkId, month });
+export const setStatementPaid = (id: string, paid: boolean) => rpc<void>('franchise_set_statement_paid', { p_statement: id, p_paid: paid });
+
+// ---- Announcements -----------------------------------------------------------------
+export interface Announcement { id: string; network_id: string; title: string; body: string | null; created_at: string }
+export async function loadAnnouncements(limit = 20) {
+  const { data, error } = await supabase.from('franchise_announcements').select('id, network_id, title, body, created_at')
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Announcement[];
+}
+export const postAnnouncement = (networkId: string, title: string, body: string) =>
+  rpc<string>('franchise_post_announcement', { p_network: networkId, p_title: title, p_body: body });
+export const deleteAnnouncement = (id: string) => rpc<void>('franchise_delete_announcement', { p_id: id });
+
+// ---- Compliance ----------------------------------------------------------------------
+export interface ComplianceRow {
+  org_id: string; location_name: string; techs: number; brand_sops: number; certified: number; possible: number;
+  qc_passed_this: number; qc_failed_this: number; qc_passed_last: number; qc_failed_last: number;
+}
+export const loadCompliance = (networkId: string) => rpc<ComplianceRow[]>('franchise_compliance', { p_network: networkId });
+
+// ---- National accounts -----------------------------------------------------------------
+export interface NationalAccount { id: string; network_id: string; name: string; notes: string | null }
+export async function loadAccounts() {
+  const { data, error } = await supabase.from('franchise_accounts').select('id, network_id, name, notes').order('name');
+  if (error) throw error;
+  return (data ?? []) as NationalAccount[];
+}
+export const saveAccount = (networkId: string, id: string | null, name: string, notes: string) =>
+  rpc<string>('franchise_save_account', { p_network: networkId, p_id: id, p_name: name, p_notes: notes });
+export const deleteAccount = (id: string) => rpc<void>('franchise_delete_account', { p_id: id });
+export interface AccountReportRow { account_id: string; account_name: string; org_id: string; location_name: string; customers: number; jobs: number; revenue: number }
+export async function loadAccountReport(networkId: string, from: Date, to: Date) {
+  const rows = await rpc<any[]>('franchise_account_report', { p_network: networkId, p_from: from.toISOString(), p_to: to.toISOString() });
+  return (rows ?? []).map((r) => ({ ...r, revenue: num(r.revenue) })) as AccountReportRow[];
 }

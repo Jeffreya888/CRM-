@@ -7,6 +7,8 @@ import { geocode } from '../../../lib/geo';
 import { useLookups } from '../../../lib/lookups';
 import { useOrg } from '../../../lib/session';
 import { friendlyError, supabase } from '../../../lib/supabase';
+import { loadAccounts } from '../../../lib/franchise';
+import { useQuery } from '../../../lib/useQuery';
 import { space } from '../../../lib/theme';
 
 export default function CustomerEdit() {
@@ -18,6 +20,8 @@ export default function CustomerEdit() {
   const [values, setValues] = useState<FormValues | null>(id ? null : { kind: 'owner', status: 'active', tax_exempt: false, discount_pct: '' });
   const [error, setError] = useState<string | null>(null);
   const [initialAddress, setInitialAddress] = useState<string | null>(null);
+  // National accounts from the company's franchise network (empty for everyone else).
+  const accounts = useQuery(() => loadAccounts().catch(() => []), [orgId]);
 
   useEffect(() => {
     if (!id) return;
@@ -42,6 +46,8 @@ export default function CustomerEdit() {
     { key: 'preferred_location_id', label: 'Preferred facility', type: 'select', options: locationOptions, allowClear: true },
     { key: 'source', label: 'How they found you', type: 'text', placeholder: 'Referral, FBO, website, trade show…' },
     { key: 'tags', label: 'Tags', type: 'text', placeholder: 'Comma separated, e.g. VIP, monthly' },
+    ...((accounts.data ?? []).length ? [{ key: 'franchise_account_id', label: 'National account', type: 'select', allowClear: true,
+      options: (accounts.data ?? []).map((x) => ({ value: x.id, label: x.name })) } as FieldDef] : []),
     { key: 'notes', label: 'Notes', type: 'multiline' },
   ];
   const billingFields: FieldDef[] = [

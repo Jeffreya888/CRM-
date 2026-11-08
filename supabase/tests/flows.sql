@@ -686,6 +686,9 @@ do $$ declare n uuid; begin
   assert (select count(*) from public.franchise_dashboard(n, date_trunc('month', now()), now() + interval '1 day')) = 5, 'HQ + 4 sample locations';
   assert (select sum(revenue) from public.franchise_dashboard(n, date_trunc('month', now()) - interval '1 month', now() + interval '1 day')) > 0, 'sample revenue';
   assert (select count(*) from public.franchise_royalties(n, (date_trunc('month', now()) - interval '1 month')::date) where royalty > 0) = 4, 'sample royalties last month';
+  assert (select count(*) from franchise_statements where network_id = n) = 4, 'sample statements';
+  assert (select count(*) from franchise_announcements where network_id = n) = 2, 'sample announcements';
+  assert (select count(*) from public.franchise_account_report(n, now() - interval '1 year', now() + interval '1 day')) = 2, 'national account at two locations';
 end $$;
 insert into messages (org_id, channel, to_address, body) select v, 'email', 'x@example.com', 'Hi' from ctx where k='demo';
 do $$ begin assert (select status from messages) = 'blocked', 'demo messages are blocked'; end $$;
@@ -1459,6 +1462,68 @@ do $$ begin
   assert (select sum(leads) from public.franchise_lead_counts((select v from ctx where k='net'), now() - interval '1 day', now() + interval '1 day')) = 3, 'three leads';
   assert (select leads from public.franchise_lead_counts((select v from ctx where k='net'), now() - interval '1 day', now() + interval '1 day') where matched_by = 'hq') = 1, 'one unassigned';
 end $$;
+
+-- Royalty statements, announcements, compliance and national accounts.
+reset role;
+do $$ declare f uuid := (select v from ctx where k='floc'); i uuid; begin
+  insert into invoices (org_id, number, customer_id, status, total, issue_date)
+    select f, 'FR-2', id, 'sent', 500, (date_trunc('month', now()) - interval '1 month')::date from customers where org_id = f limit 1 returning id into i;
+  insert into payments (org_id, invoice_id, amount, method, received_at) values (f, i, 500, 'card', date_trunc('month', now()) - interval '20 days');
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare n uuid := (select v from ctx where k='net'); st uuid; last_month date := (date_trunc('month', now()) - interval '1 month')::date; begin
+  begin
+    perform public.franchise_generate_statements(n, current_date);
+    assert false, 'statement for the current month';
+  exception when others then assert sqlerrm like '%finished months%', sqlerrm; end;
+  assert public.franchise_generate_statements(n, last_month) = 1, 'one statement';
+  select id into st from franchise_statements where network_id = n;
+  assert (select royalty = 30 and marketing = 10 and total = 40 and status = 'unpaid' from franchise_statements where id = st), 'statement amounts';
+  perform public.franchise_set_statement_paid(st, true);
+  assert public.franchise_generate_statements(n, last_month) = 0, 'paid statements are not changed';
+  -- Announcement: stored and queued for the location's managers.
+  perform public.franchise_post_announcement(n, 'New brightwork SOP', 'Use the new steps from Monday.');
+  -- National account: a location's customer is tagged; the report shows its business there.
+  insert into ctx select 'acct', public.franchise_save_account(n, null, 'Sky Management', 'Manages 40 jets');
+  begin
+    perform public.franchise_save_account(n, null, 'sky management', null);
+    assert false, 'duplicate account';
+  exception when others then assert sqlerrm like '%already%', sqlerrm; end;
+  assert (select count(*) from public.franchise_compliance(n)) = 1, 'compliance row per location';
+  assert (select brand_sops from public.franchise_compliance(n)) >= 1, 'brand SOPs counted';
+end $$;
+reset role;
+do $$ declare f uuid := (select v from ctx where k='floc'); begin
+  assert (select count(*) from notification_outbox where org_id = f and kind = 'franchise_announcement') = 1, 'location managers notified';
+  update customers set franchise_account_id = (select v from ctx where k='acct') where org_id = f;
+  begin
+    update customers set franchise_account_id = (select v from ctx where k='acct') where org_id = (select v from ctx where k='edge');
+    assert false, 'account used outside the network';
+  exception when others then assert sqlerrm like '%not in your franchise network%', sqlerrm; end;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare r record; begin
+  select * into r from public.franchise_account_report((select v from ctx where k='net'), now() - interval '1 year', now() + interval '1 day');
+  assert r.account_name = 'Sky Management' and r.location_name = 'Bravo Houston' and r.revenue = 1500, 'account report: ' || r::text;
+end $$;
+-- The location owner sees its statement and HQ's announcement, but can't post or mark paid.
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);
+do $$ begin
+  assert (select count(*) from franchise_statements) = 1, 'location sees its statement';
+  assert (select title from franchise_announcements) = 'New brightwork SOP', 'location sees announcement';
+  assert (select name from franchise_accounts) = 'Sky Management', 'location sees national accounts';
+  begin
+    perform public.franchise_post_announcement((select v from ctx where k='net'), 'x', null);
+    assert false, 'location posted';
+  exception when others then assert sqlerrm like '%Only franchise HQ%', sqlerrm; end;
+  begin
+    perform public.franchise_set_statement_paid((select id from franchise_statements), false);
+    assert false, 'location marked paid';
+  exception when others then assert sqlerrm like '%Only franchise HQ%', sqlerrm; end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 
 -- The location shares job details; then leaves, keeping its copies unlocked.
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000f5', false);

@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { confirmAction } from '../FormSheet';
 import { Button, Card, ErrorBanner, Field, IconTile, Row, T, ToggleRow } from '../ui';
-import { joinNetwork, leaveNetwork, loadFranchise, updateMember } from '../../lib/franchise';
+import { joinNetwork, leaveNetwork, loadFranchise, loadStatements, updateMember } from '../../lib/franchise';
+import { date, money } from '../../lib/format';
 import { space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 
@@ -12,7 +13,11 @@ import { useQuery } from '../../lib/useQuery';
  * chooses whether HQ sees job details (totals are always shared), or leaves.
  */
 export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean }) {
-  const q = useQuery(() => loadFranchise(orgId), [orgId]);
+  const q = useQuery(async () => {
+    const f = await loadFranchise(orgId);
+    const statements = f.membership ? await loadStatements({ orgId }).catch(() => []) : [];
+    return { ...f, statements };
+  }, [orgId]);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -58,6 +63,17 @@ export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean 
           <ToggleRow label="Share job details with HQ" value={mem.share_details}
             hint="Job number, date, aircraft, invoice total, QC result and rating. Never customer names or contact details."
             onChange={(v) => run(() => updateMember(orgId, { shareDetails: v }))} />
+        ) : null}
+        {(q.data?.statements ?? []).length ? (
+          <View style={{ marginBottom: space.md }}>
+            <T style={{ fontWeight: '700', marginBottom: space.xs }}>Royalty statements</T>
+            {(q.data?.statements ?? []).map((st) => (
+              <Row key={st.id} style={{ justifyContent: 'space-between', paddingVertical: 4 }} gap={space.sm}>
+                <T style={{ flex: 1 }}>{new Date(`${st.month}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</T>
+                <T variant="small">{money(st.total)} · {st.status === 'paid' ? `Paid ${st.paid_at ? date(st.paid_at) : ''}` : 'Unpaid'}</T>
+              </Row>
+            ))}
+          </View>
         ) : null}
         <ErrorBanner message={error} />
         {owner ? (

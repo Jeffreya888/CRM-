@@ -4,6 +4,7 @@ import { useState } from 'react';
 import * as Linking from 'expo-linking';
 import { View } from 'react-native';
 import { confirmAction, notify } from '../../components/FormSheet';
+import { AccountsTab, AnnouncementsTab, ComplianceTab, StatementsPanel } from '../../components/franchise/HqTabs';
 import {
   Badge, Button, Card, EmptyState, ErrorBanner, Field, IconTile, Ionicons, Loading, Row, Screen, Section, Segmented, Select, StatTile, T, ToggleRow,
 } from '../../components/ui';
@@ -21,7 +22,7 @@ import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 
-type Tab = 'dashboard' | 'locations' | 'standards' | 'royalties';
+type Tab = 'dashboard' | 'locations' | 'standards' | 'royalties' | 'news' | 'accounts' | 'compliance';
 type Period = 'month' | 'last_month' | 'quarter' | 'year';
 
 const pct = (n: number | null) => (n == null ? '—' : `${n}%`);
@@ -84,11 +85,17 @@ export default function FranchiseHQ() {
             { value: 'locations', label: 'Locations' },
             { value: 'standards', label: 'Standards' },
             { value: 'royalties', label: 'Royalties' },
+            { value: 'compliance', label: 'Compliance' },
+            { value: 'news', label: 'Announcements' },
+            { value: 'accounts', label: 'National accounts' },
           ]} />
           {tab === 'dashboard' ? <Dashboard net={hq} /> : null}
           {tab === 'locations' ? <Locations net={hq} onChanged={q.reload} /> : null}
           {tab === 'standards' ? <Standards net={hq} onChanged={q.reload} /> : null}
           {tab === 'royalties' ? <Royalties net={hq} /> : null}
+          {tab === 'compliance' ? <ComplianceTab net={hq} /> : null}
+          {tab === 'news' ? <AnnouncementsTab net={hq} /> : null}
+          {tab === 'accounts' ? <AccountsTab net={hq} /> : null}
         </>
       )}
     </Screen>
@@ -510,6 +517,9 @@ function Royalties({ net }: { net: FranchiseNetwork }) {
         </Card>
       ))}
       <Button kind="secondary" icon="download-outline" title="Export CSV" onPress={exportCsv} disabled={!rows.length} style={{ marginTop: space.sm }} />
+      <View style={{ marginTop: space.lg }}>
+        <StatementsPanel net={net} month={month} label={label} names={Object.fromEntries(rows.map((r) => [r.org_id, r.location_name]))} />
+      </View>
       <T variant="small" style={{ marginTop: space.md, marginBottom: space.lg }}>
         Gross sales are payments each location collected in {APP_NAME} that month (card, Square and recorded payments). {APP_NAME} reports what&apos;s due; you invoice
         franchisees as you do today.
