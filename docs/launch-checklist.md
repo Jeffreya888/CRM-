@@ -138,3 +138,17 @@ Run the full day with a test company: sign up → services & prices → customer
 - QuickBooks Online (Phase 2): start Intuit app review during beta; build at ~10–20 paying companies.
 - Send your aircraft pricing file to merge into the Tarmo price guide (`price_guide` table).
 - Film the videos for brightwork polishing, ceramic coating, carpet extraction and paint correction and attach them to the guide steps in the Training center.
+
+## Enterprise & Franchise customers (support steps)
+
+Run these in Supabase → SQL Editor. Replace the company name.
+
+```sql
+-- Let a franchise brand create its Franchise HQ network
+update organizations set franchise_hq_enabled = true where name = 'Brand Name Inc';
+
+-- Let an Enterprise company have more than 5 active locations (null = back to 5)
+update organizations set branch_limit = 20 where name = 'Company Name LLC';
+```
+
+Franchisees joining a network with an invite code need neither.

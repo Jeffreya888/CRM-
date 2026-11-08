@@ -50,6 +50,7 @@ export interface Organization {
   service_radius_miles: number | null;
   role_permissions: RolePermissions;
   is_demo: boolean; demo_expires_at: string | null;
+  franchise_hq_enabled?: boolean;
   accountant_email: string | null;
   tax_set_aside_pct: number;
   mileage_rate: number;

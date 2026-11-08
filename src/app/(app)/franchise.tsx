@@ -48,7 +48,7 @@ const lastMonths = (n: number) => Array.from({ length: n }, (_, i) => {
 
 /** Franchise HQ: network totals and benchmarks, locations, pushed standards and royalties. */
 export default function FranchiseHQ() {
-  const { org, orgId, role, plan } = useOrg();
+  const { org, orgId, role } = useOrg();
   const admin = canAdmin(role);
   const q = useQuery(() => loadFranchise(orgId), [orgId]);
   const [tab, setTab] = useState<Tab>('dashboard');
@@ -68,7 +68,7 @@ export default function FranchiseHQ() {
           body="Your franchise HQ manages the network. See what you share with HQ in Settings → Franchise network."
           action={<Button title="Open settings" onPress={() => router.push('/settings')} />} />
       ) : !hq ? (
-        org.is_demo ? <DemoNetwork onCreated={q.reload} /> : <CreateNetwork orgId={orgId} defaultName={org.name} allowed={plan === 'fleet' || plan === 'trial'} onCreated={q.reload} />
+        org.is_demo ? <DemoNetwork onCreated={q.reload} /> : <CreateNetwork orgId={orgId} defaultName={org.name} allowed={!!org.franchise_hq_enabled} onCreated={q.reload} />
       ) : (
         <>
           <Card>
@@ -151,9 +151,12 @@ function CreateNetwork({ orgId, defaultName, allowed, onCreated }: { orgId: stri
         </T>
         {!allowed ? (
           <>
-            <Badge label="Fleet and Enterprise" tone="primary" />
-            <T variant="small" style={{ marginTop: space.sm }}>Franchise HQ is part of the Fleet and Enterprise plans.</T>
-            <Button title="See plans" onPress={() => router.push('/paywall')} style={{ marginTop: space.md }} />
+            <Badge label="Enterprise & Franchise" tone="primary" />
+            <T variant="small" style={{ marginTop: space.sm }}>
+              Franchise HQ is part of Enterprise &amp; Franchise. Tell us about your brand and we&apos;ll set it up for you. Joining a network as a
+              franchisee doesn&apos;t need it: use the invite code from your HQ in Settings.
+            </T>
+            <Button title="Talk to us" icon="arrow-forward" onPress={() => Linking.openURL(`${PORTAL_URL}/enterprise`)} style={{ marginTop: space.md }} />
           </>
         ) : (
           <>

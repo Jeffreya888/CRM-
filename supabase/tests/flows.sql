@@ -1370,6 +1370,20 @@ insert into auth.users (id, email, raw_user_meta_data, email_confirmed_at) value
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
 insert into ctx select 'hq', public.create_organization('Franchise HQ Co', true, array['aircraft']);
+do $$ begin
+  perform public.franchise_create((select v from ctx where k='hq'), 'Alpha Franchise', 6, 2);
+  raise exception 'creating a network without approval should fail';
+exception when raise_exception then
+  if sqlerrm not like 'PLAN_FEATURE%' then raise; end if;
+end $$;
+do $$ begin
+  update organizations set franchise_hq_enabled = true where id = (select v from ctx where k='hq');
+  raise exception 'owners must not approve themselves';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+update organizations set franchise_hq_enabled = true where id = (select v from ctx where k='hq');
+set role authenticated;
 insert into ctx select 'net', public.franchise_create((select v from ctx where k='hq'), 'Alpha Franchise', 6, 2);
 update services set franchise_push = true, franchise_lock = true
   where org_id = (select v from ctx where k='hq') and guide_key = 'exterior_wash';
