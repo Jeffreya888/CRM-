@@ -1501,6 +1501,12 @@ do $$ declare b uuid := (select v from ctx where k='floc'); n uuid := (select v 
   update organizations set billing_source = 'stripe', plan = 'fleet', plan_expires_at = now() + interval '60 days' where id = b;
   assert public.franchise_apply_coverage(n) = 0, 'own plan kept';
   update organizations set billing_source = 'franchise', plan = 'team', plan_expires_at = now() + interval '33 days' where id = b;
+  -- Paying through the App Store: told to cancel there (once), since HQ pays.
+  update organizations set billing_source = 'app_store', plan = 'team', plan_expires_at = now() + interval '20 days' where id = b;
+  assert public.franchise_notify_store_members(n) = 1, 'store-billed owner told';
+  assert public.franchise_notify_store_members(n) = 0, 'told once';
+  assert (select title from notification_outbox where org_id = b and kind = 'franchise_store_billing') like '%now pays for your plan', 'all-in message';
+  update organizations set billing_source = 'franchise', plan = 'team', plan_expires_at = now() + interval '33 days' where id = b;
 end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);

@@ -7,7 +7,7 @@ import { useOrg } from '../../lib/session';
 import { APP_NAME } from '../../lib/config';
 import { joinNetwork, leaveNetwork, loadFranchise, loadStatements, updateMember } from '../../lib/franchise';
 import { date, money } from '../../lib/format';
-import { space } from '../../lib/theme';
+import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 
 /**
@@ -20,8 +20,9 @@ export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean 
     const statements = f.membership ? await loadStatements({ orgId }).catch(() => []) : [];
     return { ...f, statements };
   }, [orgId]);
-  const { org } = useOrg();
+  const { org, plan } = useOrg();
   const coveredByHq = org?.billing_source === 'franchise';
+  const onStore = (org?.billing_source === 'app_store' || org?.billing_source === 'play_store') && plan !== 'trial' && plan !== 'expired';
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -80,6 +81,18 @@ export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean 
           </View>
         ) : null}
         {coveredByHq ? <T variant="small" style={{ marginBottom: space.sm }}>Your {APP_NAME} plan is paid for by HQ.</T> : null}
+        {onStore && mem.network?.billing_mode ? (
+          <View style={{ marginBottom: space.sm, padding: space.sm, borderRadius: 10, backgroundColor: colors.warningSoft }}>
+            <T variant="small" style={{ fontWeight: '700' }}>
+              {mem.network.billing_mode === 'all_in' ? 'HQ pays for your plan' : 'Get 15% off on the web'}
+            </T>
+            <T variant="small">
+              {mem.network.billing_mode === 'all_in'
+                ? `You also pay through ${org?.billing_source === 'play_store' ? 'Google Play' : 'the App Store'}. Cancel that subscription in your phone settings so you aren't charged twice; your plan stays active.`
+                : `You pay through ${org?.billing_source === 'play_store' ? 'Google Play' : 'the App Store'}, which can't apply your network's discount. Cancel it in your phone settings, then subscribe at gettarmo.com for 15% off.`}
+            </T>
+          </View>
+        ) : null}
         <ErrorBanner message={error} />
         {owner ? (
           <Button small kind="ghost" icon="exit-outline" title="Leave network" disabled={busy}
