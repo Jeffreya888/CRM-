@@ -12,6 +12,7 @@
 //   https://<project>.supabase.co/functions/v1/square-connect
 import { adminClient, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json, portalUrl } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 import {
   authorizeUrl, cardLocations, obtainToken, revokeSeller, saveConnection, sellerFor, signState, squareConfigured,
   squareFetch, verifyState,
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
     }
     return error("Unknown action");
   } catch (e) {
-    console.error(e);
+    reportError("square-connect", e);
     return error((e as Error).message, 500);
   }
 });

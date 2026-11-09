@@ -13,6 +13,7 @@ import {
   type BillingMode, foundingNetworkCoupon, franchiseCents, franchisePrice, locationCount, NETWORK_COLS, type NetworkRow, syncNetwork,
 } from "../_shared/franchiseBilling.ts";
 import { stripe } from "../_shared/clients.ts";
+import { reportError } from "../_shared/errors.ts";
 
 type Body = { action?: string; network_id?: string };
 const LIVE = ["active", "trialing", "past_due"];
@@ -102,7 +103,7 @@ Deno.serve(async (req) => {
         return error("Unknown request");
     }
   } catch (e) {
-    console.error(e);
+    reportError("franchise-billing", e);
     return error("Could not update network billing. Please try again in a moment.", 500);
   }
 });

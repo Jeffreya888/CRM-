@@ -7,6 +7,7 @@
 // Card + ACH availability is configured in Stripe Dashboard → Payment methods.
 import { adminClient, callerCanMoney, callerRole, platformFeeCents, stripe } from "../_shared/clients.ts";
 import { corsHeaders, error, json, portalUrl } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -71,7 +72,7 @@ Deno.serve(async (req) => {
     });
     return json({ url: session.url });
   } catch (e) {
-    console.error(e);
+    reportError("invoice-checkout", e);
     return error((e as Error).message, 500);
   }
 });

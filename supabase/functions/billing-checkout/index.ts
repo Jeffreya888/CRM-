@@ -11,6 +11,7 @@ import { adminClient, callerRole, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
 import { billingCustomer } from "../_shared/stripeCustomer.ts";
 import { PACKS, packPriceId, paidPlanActive, PERIODS, PLAN_IDS, planPriceId, type Period, type PlanId } from "../_shared/billing.ts";
+import { reportError } from "../_shared/errors.ts";
 
 type Body = { action?: string; org_id?: string; kind?: string; plan?: string; period?: string; pack?: string };
 
@@ -108,7 +109,7 @@ Deno.serve(async (req) => {
 
     return error("Unknown request");
   } catch (e) {
-    console.error(e);
+    reportError("billing-checkout", e);
     return error("Could not start checkout. Please try again in a moment.", 500);
   }
 });

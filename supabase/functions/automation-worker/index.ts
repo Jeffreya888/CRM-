@@ -14,12 +14,14 @@
 // A worker_runs row { worker: 'automation', ok, details } records each run.
 import { adminClient } from "../_shared/clients.ts";
 import type { SupabaseClient } from "../_shared/deps.ts";
-import { env, json, safeEqual } from "../_shared/http.ts";
+import { env, json, portalUrl, safeEqual } from "../_shared/http.ts";
 import { type PrefKey, pushesFor, sendPushes, tokensFor } from "../_shared/push.ts";
 import { duePhrase, renderTemplate } from "../_shared/templates.ts";
-import { isEmail } from "../_shared/email.ts";
+import { emailLayout, isEmail, sendEmail, textToHtml } from "../_shared/email.ts";
 import { toE164 } from "../_shared/sms.ts";
 import { chargeDueCarePlans } from "../_shared/squareBilling.ts";
+import { reportError } from "../_shared/errors.ts";
+import { qboConfigured, syncCompany } from "../_shared/quickbooks.ts";
 import { NETWORK_COLS, type NetworkRow, removeStaleDiscounts, syncNetwork } from "../_shared/franchiseBilling.ts";
 import {
   addDays, daysBetween, deliverMessage, fmtDate, fmtDateTime, fmtTime, fmtYmd, invoiceEmailText, links, localDate, money,
@@ -40,6 +42,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
     } catch (e) {
       ok = false;
       console.error(`step ${name} failed`, e);
+      await reportError(`automation-worker:${name}`, e);
       details[name] = { error: (e as Error).message ?? String(e) };
     }
     console.log(`step ${name} took ${Date.now() - t0}ms`);
@@ -55,6 +58,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
   });
   await step("square_care_plans", () => chargeDueCarePlans(db));
   await step("franchise_billing", () => franchiseBilling(db));
+  await step("quickbooks", () => quickbooksSync(db));
   // Founder dashboard history: refresh today's row about once an hour (the worker runs every 10 minutes).
   if (new Date().getUTCMinutes() < 10) {
     await step("platform_snapshot", async () => { const { error } = await db.rpc("platform_snapshot"); if (error) throw error; });
@@ -66,8 +70,11 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
     const r = await db.rpc("cleanup_demo_workspaces");
     if (r.error) throw r.error;
     await db.rpc("prune_email_quota_log");
+    await db.rpc("prune_app_errors");
     return { demo_workspaces_removed: r.data };
   });
+
+  await step("error_alerts", () => errorAlerts(db));
 
   await db.from("worker_runs").insert({ worker: "automation", ok, details });
   return { ok, ...details };
@@ -892,4 +899,51 @@ async function franchiseBilling(db: SupabaseClient) {
     try { await syncNetwork(db, n); } catch (e) { console.error("franchise billing sync", n.id, (e as Error).message); }
   }
   await removeStaleDiscounts(db);
+}
+
+/**
+ * Emails platform admins about errors that are new, or that came back or spiked by 25+ since the last alert.
+ * At most one email per run; each error is mentioned again only after it grows by another 25.
+ */
+async function errorAlerts(db: SupabaseClient) {
+  const { data: errs, error } = await db.from("app_errors")
+    .select("id, kind, source, message, route, count, alerted_at, alerted_count, last_seen, org_ids")
+    .is("resolved_at", null).gte("last_seen", new Date(Date.now() - 24 * 3600e3).toISOString())
+    .order("last_seen", { ascending: false }).limit(200);
+  if (error) throw error;
+  const due = (errs ?? []).filter((e) => !e.alerted_at || e.count - e.alerted_count >= 25);
+  if (!due.length) return { alerted: 0 };
+  const { data: admins } = await db.rpc("platform_admin_emails");
+  const to = ((admins ?? []) as string[]).filter(isEmail);
+  if (!to.length || !Deno.env.get("RESEND_API_KEY")) return { alerted: 0, skipped: "no admin email or email not configured" };
+  const lines = due.slice(0, 20).map((e) =>
+    `• ${e.alerted_at ? `Spiking (${e.count - e.alerted_count} more)` : "New"} · ${e.kind === "app" ? `App${e.route ? ` ${e.route}` : ""}` : `Server: ${e.source}`} · ${e.count}× · ${e.org_ids?.length ?? 0} companies\n  ${String(e.message).slice(0, 200)}`);
+  const text = `${due.length} error${due.length === 1 ? "" : "s"} need${due.length === 1 ? "s" : ""} a look:\n\n${lines.join("\n\n")}\n\nOpen Platform admin → Errors: ${portalUrl()}/admin`;
+  await sendEmail({
+    to, subject: `Tarmo: ${due.length} error${due.length === 1 ? "" : "s"} need${due.length === 1 ? "s" : ""} a look`, text,
+    html: emailLayout({ heading: "Errors to look at", bodyHtml: textToHtml(text), button: { label: "Open Errors", url: `${portalUrl()}/admin` } }),
+  });
+  const now = new Date().toISOString();
+  for (const e of due) await db.from("app_errors").update({ alerted_at: now, alerted_count: e.count }).eq("id", e.id);
+  return { alerted: due.length };
+}
+
+/** QuickBooks: send new and changed invoices, and new payments, for every connected company. */
+async function quickbooksSync(db: SupabaseClient) {
+  if (!qboConfigured()) return { skipped: "QuickBooks not configured" };
+  const { data: conns, error } = await db.from("qbo_connections").select("org_id").limit(500);
+  if (error) throw error;
+  let invoices = 0, payments = 0, failed = 0;
+  for (const c of conns ?? []) {
+    try {
+      const r = await syncCompany(db, c.org_id);
+      invoices += r.invoices;
+      payments += r.payments;
+      if (r.error) failed++;
+    } catch (e) {
+      failed++;
+      await reportError("automation-worker:quickbooks", e, c.org_id);
+    }
+  }
+  return { companies: conns?.length ?? 0, invoices, payments, failed };
 }

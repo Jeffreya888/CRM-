@@ -159,3 +159,13 @@ Franchisees joining a network with an invite code need neither.
    are covered automatically, and split franchisees billed on the web get 15% off automatically. A location that leaves an
    all-in network gets 14 days to choose its own plan.
 The Stripe prices and coupons are created automatically the first time they're used.
+
+## QuickBooks, calendar sync and error monitoring
+
+- [ ] **QuickBooks Online** (optional for launch): create an app at developer.intuit.com (Accounting scope). Add the redirect URI
+  `https://<your-project>.supabase.co/functions/v1/quickbooks` under Keys & credentials. In Supabase → Edge Functions → Secrets set
+  `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET` and `QBO_ENVIRONMENT=sandbox`, test with a sandbox company, then complete Intuit's
+  production questionnaire and switch to the production keys with `QBO_ENVIRONMENT=production`. Until the keys are set the card says
+  QuickBooks isn't set up yet.
+- Calendar sync needs no setup: Account & security → Calendar sync.
+- Error monitoring needs no setup: Platform admin → Errors. Alerts go to every platform admin's email (needs Resend).

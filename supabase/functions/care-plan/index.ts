@@ -16,6 +16,7 @@ import { Stripe } from "../_shared/deps.ts";
 import { disableCard, sellerFor } from "../_shared/square.ts";
 import { adminClient, callerCanMoney, callerRole, MANAGER_ROLES, orgFeeBps, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -150,7 +151,7 @@ Deno.serve(async (req) => {
     });
     return json({ url: session.url });
   } catch (e) {
-    console.error(e);
+    reportError("care-plan", e);
     return error((e as Error).message || "Something went wrong", 500);
   }
 });

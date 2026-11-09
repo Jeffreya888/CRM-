@@ -4,6 +4,7 @@ import { adminClient, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
 import { fmtDateTime, links } from "../_shared/automation.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const ROLE_LABEL: Record<string, string> = {
   admin: "Admin", manager: "Manager", technician: "Technician", viewer: "Viewer",
@@ -49,7 +50,7 @@ Deno.serve(async (req) => {
     await db.from("invitations").update({ sent_at: new Date().toISOString() }).eq("id", inv.id);
     return json({ sent: true });
   } catch (e) {
-    console.error(e);
+    reportError("send-invite", e);
     return error((e as Error).message, 500);
   }
 });

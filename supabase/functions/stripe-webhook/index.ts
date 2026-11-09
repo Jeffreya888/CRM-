@@ -24,6 +24,7 @@ import { env } from "../_shared/http.ts";
 import { extraLocationsCents, GRACE_MS, isExtraLocationItem, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
 import { applyFranchiseSubscription } from "../_shared/franchiseBilling.ts";
 import { applyRefund, CARE_PLAN_COLS, type CarePlanSchedule, recordCarePlanCharge, recordDeposit, recordInvoicePayment } from "../_shared/payments.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
 
@@ -141,7 +142,7 @@ Deno.serve(async (req) => {
       }
     }
   } catch (e) {
-    console.error(e);
+    reportError("stripe-webhook", e);
     return new Response("handler error", { status: 500 }); // Stripe will retry
   }
   return new Response(JSON.stringify({ received: true }), { headers: { "Content-Type": "application/json" } });

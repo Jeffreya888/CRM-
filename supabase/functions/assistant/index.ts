@@ -16,6 +16,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.130.0";
 import { adminClient, callerCanMoney, callerRole } from "../_shared/clients.ts";
 import { partialAnswer } from "../_shared/partialAnswer.ts";
 import { corsHeaders, env, error, json, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 import {
   ANSWER_SCHEMA,
   assetText,
@@ -337,7 +338,7 @@ Deno.serve(async (req) => {
             });
             send({ type: "done", ...(await save(reply)) });
           } catch (e) {
-            console.error(e);
+            reportError("assistant", e);
             send({ type: "error", error: "Something went wrong. Please try again." });
           } finally {
             if (conn && claimed != null && !answered) {
@@ -352,7 +353,7 @@ Deno.serve(async (req) => {
 
     return json(await save(await askClaude()));
   } catch (e) {
-    console.error(e);
+    reportError("assistant", e);
     return error("Something went wrong. Please try again.", 500);
   } finally {
     if (db && usage != null && !answered && !streaming) {

@@ -9,6 +9,7 @@ import type { SupabaseClient } from "../_shared/deps.ts";
 import { env, json } from "../_shared/http.ts";
 import { outbox, type Row } from "../_shared/automation.ts";
 import { phoneKey, smsProvider, toE164 } from "../_shared/sms.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const TOLERANCE_S = 5 * 60;
 const STOP_WORDS = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT", "OPTOUT", "REVOKE"];
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
     if (type === "message.sent" || type === "message.finalized") return json(await status(db, p));
     return json({ ignored: type });
   } catch (e) {
-    console.error(e);
+    reportError("telnyx-webhook", e);
     return new Response("error", { status: 500 }); // Telnyx retries
   }
 });

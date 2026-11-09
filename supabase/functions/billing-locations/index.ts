@@ -9,6 +9,7 @@
 // the stripe-webhook function mirrors the quantity onto organizations.extra_locations as well.
 import { adminClient, callerRole, stripe } from "../_shared/clients.ts";
 import { error, json, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 import {
   EXTRA_LOCATION_CENTS, EXTRA_LOCATION_TIER, extraLocationLookupKey, extraLocationsCents, isExtraLocationItem, type Period, planPriceId,
 } from "../_shared/billing.ts";
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     if (e) throw e;
     return json({ ok: true, extra });
   } catch (e) {
-    console.error(e);
+    reportError("billing-locations", e);
     return error("Could not update your locations. Please try again in a moment.", 500);
   }
 });

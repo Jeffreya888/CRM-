@@ -13,6 +13,7 @@ import { JSZip } from "../_shared/deps.ts";
 import type { SupabaseClient } from "../_shared/deps.ts";
 import { adminClient, callerRole } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const BUCKET = "org-files";
 const PAGE = 1000;
@@ -222,7 +223,7 @@ Deno.serve(async (req) => {
       .then(({ error }) => error && console.warn("audit_log insert skipped", error.message));
     return json({ url: signed.signedUrl, files_included: included, files_not_included: skipped.length });
   } catch (e) {
-    console.error(e);
+    reportError("export-data", e);
     return error("The export couldn't be created. Please try again, or contact support if it keeps failing.", 500);
   }
 });

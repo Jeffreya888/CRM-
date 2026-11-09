@@ -5,6 +5,7 @@ import { adminClient, userClient } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, isEmail, sendEmail, textToHtml } from "../_shared/email.ts";
 import { loadOrg, queueMessage } from "../_shared/automation.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const REPORT_TYPES: Record<string, string> = { pdf: "application/pdf", csv: "text/csv", html: "text/html" };
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
     }).catch((err) => console.error("log failed", err));
     return json({ sent: true });
   } catch (e) {
-    console.error(e);
+    reportError("send-report", e);
     return error((e as Error).message, 500);
   }
 });

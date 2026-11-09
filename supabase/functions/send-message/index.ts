@@ -7,6 +7,7 @@
 import { adminClient, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { deliverMessage } from "../_shared/automation.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -29,7 +30,7 @@ Deno.serve(async (req) => {
     }
     return json(r);
   } catch (e) {
-    console.error(e);
+    reportError("send-message", e);
     return error((e as Error).message, 500);
   }
 });

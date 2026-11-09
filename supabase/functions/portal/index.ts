@@ -16,6 +16,7 @@ import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
 import type { Row } from "../_shared/automation.ts";
 import { MAX_PHOTOS, runMeteredAssessment } from "../_shared/assess.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const BUCKET = "org-files";
 const CODE_TTL_MS = 10 * 60e3;
@@ -78,7 +79,7 @@ Deno.serve(async (req) => {
       default: return error("Unknown action");
     }
   } catch (e) {
-    console.error(e);
+    reportError("portal", e);
     return error("Something went wrong. Please try again.", 500);
   }
 });
@@ -112,7 +113,7 @@ async function requestCode(db: SupabaseClient, body: Row) {
     id, org_id: org.id, customer_id: customer.id, email,
     code_hash: await sha256(`${id}:${code}`), code_expires_at: new Date(Date.now() + CODE_TTL_MS).toISOString(), attempts: 0,
   });
-  if (e) { console.error(e); return ok; }
+  if (e) { reportError("portal", e); return ok; }
   if (org.is_demo) return ok; // demo companies never send real email
 
   const html = emailLayout({

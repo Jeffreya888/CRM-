@@ -7,6 +7,7 @@ import { adminClient, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
 import { sendPushes, tokensFor, pushesFor } from "../_shared/push.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -46,7 +47,7 @@ Deno.serve(async (req) => {
 
     return json({ status: "pending" });
   } catch (e) {
-    console.error(e);
+    reportError("texting", e);
     return error((e as Error).message, 500);
   }
 });

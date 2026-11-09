@@ -8,6 +8,7 @@
 import { adminClient, callerRole } from "../_shared/clients.ts";
 import { error, json, preflight, readJson } from "../_shared/http.ts";
 import { MAX_PHOTOS, runMeteredAssessment } from "../_shared/assess.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
     }
     return json(row);
   } catch (e) {
-    console.error(e);
+    reportError("assess-photos", e);
     return error("Couldn't check the photos right now. Please try again.", 500);
   }
 });

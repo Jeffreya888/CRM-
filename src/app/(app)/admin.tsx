@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Attention, attentionCount, useAttention } from '../../components/admin/Attention';
 import { Companies } from '../../components/admin/Companies';
 import { EnterpriseAdmin } from '../../components/admin/EnterpriseAdmin';
+import { Errors, useErrors } from '../../components/admin/Errors';
 import { Growth } from '../../components/admin/Growth';
 import { PlatformMetrics, usePlatformMetrics } from '../../components/admin/PlatformMetrics';
 import { notify } from '../../components/FormSheet';
@@ -67,9 +68,10 @@ export default function PlatformAdmin() {
 }
 
 function AdminBody() {
-  const [tab, setTab] = useState<'metrics' | 'growth' | 'attention' | 'companies' | 'health' | 'support' | 'early' | 'actions' | 'enterprise' | 'launch'>('metrics');
+  const [tab, setTab] = useState<'metrics' | 'growth' | 'attention' | 'companies' | 'errors' | 'health' | 'support' | 'early' | 'actions' | 'enterprise' | 'launch'>('metrics');
   const [openCompany, setOpenCompany] = useState<string | null>(null);
   const attention = useAttention();
+  const errorsQ = useErrors(false);
   const [showHandled, setShowHandled] = useState(false);
 
   const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
@@ -108,6 +110,7 @@ function AdminBody() {
         { value: 'growth', label: 'Growth & funnel' },
         { value: 'attention', label: 'Needs attention', count: attentionCount(attention.data) },
         { value: 'companies', label: 'Companies' },
+        { value: 'errors', label: 'Errors', count: errorsQ.data?.length },
         { value: 'health', label: 'Health' },
         { value: 'support', label: 'Support', count: h?.support_open },
         { value: 'early', label: 'Early access', count: early.data?.length },
@@ -119,6 +122,7 @@ function AdminBody() {
       {tab === 'metrics' ? <PlatformMetrics q={metrics} /> : null}
       {tab === 'enterprise' ? <EnterpriseAdmin /> : null}
       {tab === 'growth' ? <Growth /> : null}
+      {tab === 'errors' ? <Errors /> : null}
       {tab === 'attention' ? <Attention q={attention} onOpen={(id) => { setOpenCompany(id); setTab('companies'); }} /> : null}
       {tab === 'companies' ? <Companies openId={openCompany} onOpened={() => setOpenCompany(null)} /> : null}
 

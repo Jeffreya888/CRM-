@@ -3,6 +3,7 @@
 // POST { org_id } → { url }
 import { adminClient, callerRole, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -24,7 +25,7 @@ Deno.serve(async (req) => {
     });
     return json({ url: session.url });
   } catch (e) {
-    console.error(e);
+    reportError("billing-portal", e);
     return error("Could not open billing. Please try again in a moment.", 500);
   }
 });

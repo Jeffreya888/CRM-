@@ -9,6 +9,7 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.130.0";
 import { adminClient, userClient } from "../_shared/clients.ts";
 import { env, error, json, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 // Must match expenses_category_check in 20261017000400_finance.sql.
 const CATEGORIES = [
@@ -114,7 +115,7 @@ Deno.serve(async (req) => {
       console.error("Claude API error", e.status, e.message);
       return error("Couldn't read the receipt right now. You can type the details instead.", 502);
     }
-    console.error(e);
+    reportError("scan-receipt", e);
     return error("Couldn't read the receipt right now. You can type the details instead.", 500);
   }
 });

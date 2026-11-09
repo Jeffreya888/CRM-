@@ -1,8 +1,8 @@
 import * as Linking from 'expo-linking';
-import { router, Stack, usePathname, useRootNavigationState, useSegments } from 'expo-router';
+import { router, Stack, usePathname, useRootNavigationState, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLockGate } from '../components/security/AppLockGate';
 import { DemoBanner } from '../components/security/DemoBanner';
@@ -14,6 +14,9 @@ import { currentSessionId, handleAuthLink, isAnonymous, pushDisabledHere, regist
 import { SessionProvider, useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 import { colors } from '../lib/theme';
+import { installGlobalErrorHandlers, reportClientError, setErrorContext } from '../lib/errorReporter';
+
+installGlobalErrorHandlers();
 
 // Where a web visitor first landed, before any guard redirect.
 const initialWebPath = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : null;
@@ -28,6 +31,7 @@ function RootNavigator() {
   const pathname = usePathname();
   const navState = useRootNavigationState();
   const insets = useSafeAreaInsets();
+  useEffect(() => { setErrorContext({ route: pathname, orgId: org?.id ?? null }); }, [pathname, org?.id]);
   const recovery = useRecovery((s) => s.active);
   const aal = useAal();
   const anon = isAnonymous(session);
@@ -120,5 +124,25 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <RootNavigator />
     </SessionProvider>
+  );
+}
+
+/** Shown instead of a blank or frozen screen when something crashes; the error is reported. */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => { reportClientError(error); }, [error]);
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', textAlign: 'center' }}>Something went wrong</Text>
+      <Text style={{ color: colors.textMuted, fontSize: 15, textAlign: 'center', marginTop: 8, maxWidth: 360 }}>
+        We&apos;ve been notified and will look into it. Try again, or go back to your dashboard.
+      </Text>
+      <Pressable onPress={retry} accessibilityRole="button"
+        style={{ marginTop: 20, backgroundColor: colors.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 }}>
+        <Text style={{ color: colors.white, fontWeight: '700' }}>Try again</Text>
+      </Pressable>
+      <Pressable onPress={() => router.replace('/')} accessibilityRole="button" style={{ marginTop: 12, padding: 8 }}>
+        <Text style={{ color: colors.primaryText, fontWeight: '600' }}>Go to dashboard</Text>
+      </Pressable>
+    </View>
   );
 }

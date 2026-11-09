@@ -5,6 +5,7 @@ import { adminClient, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailVendorOrders, REORDER_COLS, type ReorderItem } from "../_shared/reorder.ts";
 import { loadOrg } from "../_shared/automation.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
     if (!emailed && failures.length) return error(failures.join("; "), 502);
     return json({ emailed, skipped_without_email: skipped, failed: failures.length });
   } catch (e) {
-    console.error(e);
+    reportError("send-reorder", e);
     return error((e as Error).message, 500);
   }
 });

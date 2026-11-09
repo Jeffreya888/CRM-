@@ -3,6 +3,7 @@ import { Screen, Section } from '../../components/ui';
 import { CompaniesSection, DataSection, DemoStatusCard, PushSection } from '../../components/security/AccountSections';
 import { AppleSection, PasswordSection, ProfileSection } from '../../components/security/ProfileSections';
 import { AppLockSection, DevicesSection, TwoStepSection } from '../../components/security/SecuritySections';
+import { CalendarSyncSection } from '../../components/settings/CalendarSyncSection';
 import { isAnonymous } from '../../lib/security';
 import { useOrg } from '../../lib/session';
 
@@ -33,6 +34,7 @@ export default function Account() {
       <AppleSection />
       <DevicesSection />
       <PushSection />
+      <CalendarSyncSection />
       <CompaniesSection />
       <DataSection />
     </Screen>

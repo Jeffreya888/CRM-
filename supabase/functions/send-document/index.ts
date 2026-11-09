@@ -8,6 +8,7 @@ import { adminClient, callerCanMoney, callerRole } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, textToHtml } from "../_shared/email.ts";
 import { DEMO_BLOCKED, deliverMessage, fmtYmd, invoiceEmailText, links, loadOrg, money, queueMessage, type Row } from "../_shared/automation.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -85,7 +86,7 @@ Deno.serve(async (req) => {
     });
     return json({ sent: true, link });
   } catch (e) {
-    console.error(e);
+    reportError("send-document", e);
     return error((e as Error).message, 500);
   }
 });

@@ -17,6 +17,7 @@ import {
   squareRef,
 } from "../_shared/square.ts";
 import type { SupabaseClient } from "../_shared/deps.ts";
+import { reportError } from "../_shared/errors.ts";
 
 type Body = { action?: string; kind?: string; token?: string; source_id?: string; idempotency_key?: string; cardholder_name?: string };
 type Payable = {
@@ -184,7 +185,7 @@ Deno.serve(async (req) => {
     }
     return error("Unknown action");
   } catch (e) {
-    console.error(e);
+    reportError("square-pay", e);
     return error("Could not complete the payment. Please try again.", 500);
   }
 });

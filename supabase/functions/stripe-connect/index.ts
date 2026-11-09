@@ -5,6 +5,7 @@
 // POST { org_id, action: "onboard" | "status" | "dashboard", return_url? }
 import { adminClient, callerRole, stripe } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
     });
     return json({ url: link.url });
   } catch (e) {
-    console.error(e);
+    reportError("stripe-connect", e);
     return error((e as Error).message, 500);
   }
 });

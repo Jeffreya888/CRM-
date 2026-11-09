@@ -4,6 +4,7 @@
 import { userClient } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
 import { emailLayout, esc, isEmail, sendEmail } from "../_shared/email.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -27,7 +28,7 @@ Deno.serve(async (req) => {
     await sendEmail({ to: user.email!, subject: "New sign-in to your Tarmo account", html, text });
     return json({ sent: true });
   } catch (e) {
-    console.error(e);
+    reportError("security-alert", e);
     return error((e as Error).message, 500);
   }
 });

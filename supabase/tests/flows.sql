@@ -1279,6 +1279,36 @@ do $$ declare o uuid; p uuid; h int; a jsonb; c jsonb; f jsonb; t timestamptz; b
   exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
   delete from organizations where id in (o, p);
 end $$;
+-- Error monitoring: repeats are grouped, ids/numbers don't split groups, fixed errors reopen when they return.
+do $$ declare e jsonb; n int; begin
+  perform public.log_server_error('invoice-checkout', 'Invoice 3fa85f64-5717-4562-b3fc-2c963f66afa6 not found (amount 120)', 'Error
+    at pay (index.ts:42:7)');
+  perform public.log_server_error('invoice-checkout', 'Invoice 9c858901-8a57-4791-81fe-4c455b099bc9 not found (amount 75)', 'Error
+    at pay (index.ts:42:7)');
+  perform public.log_server_error('send-message', 'Telnyx timeout', null);
+  select count(*) into n from app_errors where source = 'invoice-checkout';
+  assert n = 1, 'same error grouped once: ' || n;
+  assert (select count from app_errors where source = 'invoice-checkout') = 2, 'counted twice';
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+  e := public.platform_errors();
+  assert jsonb_array_length(e) >= 2, 'admin sees errors';
+  perform public.platform_resolve_error((select id from app_errors where source = 'send-message'));
+  assert not (public.platform_errors() @> '[{"source":"send-message"}]'), 'fixed error hidden';
+  perform public.log_server_error('send-message', 'Telnyx timeout', null);
+  assert (select resolved_at is null and count = 2 from app_errors where source = 'send-message'), 'it came back: reopened';
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', true);
+  begin perform public.platform_errors(); raise exception 'errors are admin-only';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  delete from app_errors;
+end $$;
+set role anon;
+select public.log_client_error('Cannot read properties of undefined', 'TypeError
+    at Screen (app.js:1:2)', '/jobs', 'web', '1.0.0', null);
+reset role;
+do $$ begin
+  assert (select count(*) from app_errors where kind = 'app' and route = '/jobs') = 1, 'app crash reported before sign-in';
+  delete from app_errors;
+end $$;
 -- MRR counts billed extra locations: 7 extra = 7 x $39 on a monthly Fleet plan.
 do $$ declare o uuid; m1 jsonb; m2 jsonb; begin
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
@@ -1693,6 +1723,47 @@ end $$;
 reset role;
 do $$ begin
   assert (select plan_expires_at <= now() + interval '14 days 1 minute' from organizations where id = (select v from ctx where k='floc')), 'leaving an all-in network: 14 days to choose a plan';
+end $$;
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ---------- Calendar sync: private links per person -------------------------
+create temp table cal (k text primary key, v text);
+grant all on cal to authenticated;
+reset role;
+with x as (insert into organizations (name, plan, trial_ends_at) values ('Calendar Co', 'trial', now() + interval '30 days') returning id) insert into ctx select 'calco', id from x;
+insert into memberships (org_id, user_id, role, active) values
+  ((select v from ctx where k='calco'), '00000000-0000-0000-0000-00000000000a', 'owner', true),
+  ((select v from ctx where k='calco'), '00000000-0000-0000-0000-00000000000c', 'technician', true);
+insert into customers (org_id, name) values ((select v from ctx where k='calco'), 'Calendar customer');
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+insert into cal select 'all', public.calendar_feed_token((select v from ctx where k='calco'), 'all');
+insert into cal select 'mine_a', public.calendar_feed_token((select v from ctx where k='calco'), 'mine');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
+insert into cal select 'mine_c', public.calendar_feed_token((select v from ctx where k='calco'), 'mine');
+do $$ begin
+  perform public.calendar_feed_token((select v from ctx where k='calco'), 'all');
+  raise exception 'a technician must not get every company job';
+exception when raise_exception then if sqlerrm not like 'Only owners%' then raise; end if; end $$;
+do $$ begin
+  begin perform public.calendar_feed_events((select v from cal where k='mine_c')); raise exception 'events are service-only';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ declare o uuid := (select v from ctx where k='calco'); j uuid; n int; old text := (select v from cal where k='all'); begin
+  insert into jobs (org_id, number, title, customer_id, scheduled_start, status)
+    select o, 'CAL-1', 'Exterior wash', id, now() + interval '2 days', 'scheduled' from customers where org_id = o limit 1 returning id into j;
+  insert into job_assignments (job_id, user_id, org_id) values (j, '00000000-0000-0000-0000-00000000000c', o);
+  insert into jobs (org_id, number, title, customer_id, scheduled_start, status)
+    select o, 'CAL-2', 'Interior detail', id, now() + interval '3 days', 'scheduled' from customers where org_id = o limit 1;
+  assert (select count(*) from public.calendar_feed_events((select v from cal where k='mine_c')) where number like 'CAL-%') = 1, 'tech sees only assigned job';
+  assert (select count(*) from public.calendar_feed_events(old) where number like 'CAL-%') = 2, 'owner link shows every job';
+  assert (select ends_at - starts_at from public.calendar_feed_events(old) where number = 'CAL-1') = interval '2 hours', 'default 2-hour event';
+  assert (select count(*) from public.calendar_feed_events('nope')) = 0, 'unknown link is empty';
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', true);
+  perform public.calendar_feed_token(o, 'all', true);
+  assert (select count(*) from public.calendar_feed_events(old)) = 0, 'reset link stops working';
+  delete from jobs where number like 'CAL-%' and org_id = o;
 end $$;
 select set_config('request.jwt.claim.sub', '', false);
 

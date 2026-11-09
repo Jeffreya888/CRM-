@@ -12,6 +12,7 @@ import { adminClient, callerCanMoney, callerRole, platformFeeCents } from "../_s
 import { env, error, json, preflight, readJson } from "../_shared/http.ts";
 import { getPayment, sellerFor, squareEnvironment, squareRef } from "../_shared/square.ts";
 import { recordSquarePayment } from "../_shared/squareBilling.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
     }
     return error("Unknown action");
   } catch (e) {
-    console.error(e);
+    reportError("square-reader", e);
     return error((e as Error).message || "Something went wrong", 500);
   }
 });

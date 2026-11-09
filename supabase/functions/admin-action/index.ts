@@ -13,6 +13,7 @@ import { outbox } from "../_shared/automation.ts";
 import { toE164 } from "../_shared/sms.ts";
 import { emailLayout, isEmail, sendEmail } from "../_shared/email.ts";
 import { quoteEmail } from "../_shared/franchiseQuote.ts";
+import { reportError } from "../_shared/errors.ts";
 
 const SMS_STATUSES = ["not_requested", "pending", "active", "suspended"];
 const INTEGRATION_STATUSES = ["prepared", "sent_to_vendor", "approved", "live", "declined"];
@@ -154,7 +155,7 @@ Deno.serve(async (req) => {
         return error("Unknown action");
     }
   } catch (e) {
-    console.error(e);
+    reportError("admin-action", e);
     return error((e as Error).message, 500);
   }
 });

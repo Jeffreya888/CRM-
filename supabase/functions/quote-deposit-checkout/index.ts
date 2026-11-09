@@ -7,6 +7,7 @@
 // stripe-webhook marks the deposit paid (metadata.kind = "quote_deposit").
 import { adminClient, platformFeeCents, stripe } from "../_shared/clients.ts";
 import { error, json, portalUrl, preflight, readJson } from "../_shared/http.ts";
+import { reportError } from "../_shared/errors.ts";
 
 Deno.serve(async (req) => {
   const pre = preflight(req);
@@ -62,7 +63,7 @@ Deno.serve(async (req) => {
     }, { idempotencyKey: `deposit-${q.id}-${amountCents}-${Math.floor(Date.now() / 60000)}` });
     return json({ url: session.url });
   } catch (e) {
-    console.error(e);
+    reportError("quote-deposit-checkout", e);
     return error("Could not start the payment. Please try again.", 500);
   }
 });

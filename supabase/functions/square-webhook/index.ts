@@ -11,6 +11,7 @@ import { env, safeEqual } from "../_shared/http.ts";
 import { applyRefund } from "../_shared/payments.ts";
 import { getPayment, sellerForMerchant, type SquarePayment } from "../_shared/square.ts";
 import { recordSquarePayment } from "../_shared/squareBilling.ts";
+import { reportError } from "../_shared/errors.ts";
 
 async function validSignature(raw: string, sig: string): Promise<boolean> {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env("SQUARE_WEBHOOK_SIGNATURE_KEY")), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
       }
     }
   } catch (e) {
-    console.error(e);
+    reportError("square-webhook", e);
     return new Response("handler error", { status: 500 }); // Square retries
   }
   return new Response("ok");

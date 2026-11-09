@@ -10,6 +10,7 @@ import { JobCostingCard } from '../../components/settings/JobCostingCard';
 import { WorkModeCard } from '../../components/settings/WorkModeCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { PaymentsCard } from '../../components/settings/PaymentsCard';
+import { QuickBooksCard } from '../../components/settings/QuickBooksCard';
 import { Badge, Button, Card, ErrorBanner, IconTile, KeyValue, ListRow, Row, Screen, Section, T, ToggleRow } from '../../components/ui';
 import { openBillingPortal, storeLabel, storeManaged, webBilling } from '../../lib/billing';
 import { APP_NAME } from '../../lib/config';
@@ -248,6 +249,12 @@ export default function Settings() {
       {admin ? (
         <Section title={`Ask ${APP_NAME} playbook`} icon="sparkles-outline">
           <AiPlaybookCard org={org} onChanged={refresh} />
+        </Section>
+      ) : null}
+
+      {admin ? (
+        <Section title="QuickBooks Online" icon="swap-horizontal-outline">
+          <QuickBooksCard orgId={orgId} isDemo={isDemo} />
         </Section>
       ) : null}
 
