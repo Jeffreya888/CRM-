@@ -1,6 +1,6 @@
 -- Franchise network billing through Stripe (platform account).
 --  all_in: HQ pays $149 per franchisee location per month (min $499) and every franchisee is on Team, covered by HQ.
---  split:  HQ pays $45 per franchisee location for Franchise HQ (min $499); franchisees pay their own plan with 15% off.
+--  split:  HQ pays $47 per franchisee location for Franchise HQ (min $499); franchisees pay their own plan with 15% off.
 -- Support picks the mode (Platform admin). Stripe keeps quantity = number of franchisee locations; the
 -- franchise-billing function and the automation worker keep it in sync. The HQ's own company keeps its own plan.
 

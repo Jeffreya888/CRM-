@@ -151,7 +151,7 @@ No SQL needed. In the app, open **Platform admin → Enterprise & franchise**, s
 Franchisees joining a network with an invite code need neither.
 
 **Franchise network billing** (same screen, after Franchise HQ is on and the brand has created its network):
-1. Choose **All-in** (HQ pays $149 per franchisee location, franchisees covered on Team) or **Split** (HQ pays $45 per
+1. Choose **All-in** (HQ pays $149 per franchisee location, franchisees covered on Team) or **Split** (HQ pays $47 per
    location for Franchise HQ; franchisees pay their own plan with 15% off). $499/month minimum either way. Turn on the
    **founding network rate** ($129 for 12 months, all-in only) for the first brands. Save.
 2. Either tap **Bill by invoice (net 30)**, or let the HQ owner tap **Start billing** in Franchise HQ → Dashboard to pay by card.

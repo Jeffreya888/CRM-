@@ -1,13 +1,13 @@
 // Franchise network billing (Stripe, platform account). Keep the numbers in sync with
 // FRANCHISE_PRICING in src/lib/plans.ts.
 //   all_in: $149 per franchisee location / month, $499 minimum (HQ pays; franchisees covered on Team)
-//   split:  $45 per franchisee location / month for Franchise HQ, $499 minimum; franchisees get 15% off their own plan
+//   split:  $47 per franchisee location / month for Franchise HQ, $499 minimum; franchisees get 15% off their own plan
 //   founding network rate (all_in only): 13.42% off for 12 months = $129 per location
 import { stripe } from "./clients.ts";
 import { type Stripe, type SupabaseClient } from "./deps.ts";
 
 export type BillingMode = "all_in" | "split";
-export const FRANCHISE_CENTS = { all_in: 14900, split: 4500, minimum: 49900 } as const;
+export const FRANCHISE_CENTS = { all_in: 14900, split: 4700, minimum: 49900 } as const;
 export const NETWORK_DISCOUNT_COUPON = "tarmo-network-15";
 export const FOUNDING_NETWORK_COUPON = "tarmo-founding-network";
 const LIVE = ["active", "trialing", "past_due"];
@@ -26,7 +26,7 @@ export function franchiseCents(mode: BillingMode, n: number): number {
 /** Volume-tier price: the minimum covers the first locations, then every location at the per-location rate. */
 export async function franchisePrice(mode: BillingMode): Promise<string> {
   const s = stripe();
-  const lookup_key = `tarmo_franchise_${mode}_monthly`;
+  const lookup_key = `tarmo_franchise_${mode}_${FRANCHISE_CENTS[mode]}_monthly`; // a new price if the rate changes
   const found = await s.prices.list({ lookup_keys: [lookup_key], active: true, limit: 1 });
   if (found.data[0]) return found.data[0].id;
   const per = FRANCHISE_CENTS[mode];
