@@ -5,11 +5,14 @@
 //      { action: 'find_orgs', query } → { orgs }
 //      { action: 'set_enterprise', org_id, franchise_hq_enabled?, branch_limit? (number | null) }
 //      { action: 'set_franchise_billing', network_id, mode: 'all_in'|'split', founding? }
+//      { action: 'send_franchise_quote', to, brand, locations, contact_name?, current_per_location?, tech_fee?, founding? }
 // → { ok: true }
 import { adminClient, userClient } from "../_shared/clients.ts";
-import { corsHeaders, error, json } from "../_shared/http.ts";
+import { corsHeaders, error, json, portalUrl } from "../_shared/http.ts";
 import { outbox } from "../_shared/automation.ts";
 import { toE164 } from "../_shared/sms.ts";
+import { emailLayout, isEmail, sendEmail } from "../_shared/email.ts";
+import { quoteEmail } from "../_shared/franchiseQuote.ts";
 
 const SMS_STATUSES = ["not_requested", "pending", "active", "suspended"];
 const INTEGRATION_STATUSES = ["prepared", "sent_to_vendor", "approved", "live", "declined"];
@@ -126,6 +129,25 @@ Deno.serve(async (req) => {
         if (live && net.billing_mode !== mode) return error("Billing is already running. Cancel it in Stripe before switching all-in and split.", 409);
         const { error: e } = await db.from("franchise_networks").update({ billing_mode: mode, founding_rate: mode === "all_in" && body.founding === true }).eq("id", network_id);
         if (e) throw e;
+        return json({ ok: true });
+      }
+      case "send_franchise_quote": {
+        // Emails a brand its franchise network quote; the admin who sends it gets a copy and the replies.
+        const to = typeof body.to === "string" ? body.to.trim().toLowerCase() : "";
+        const brand = typeof body.brand === "string" ? body.brand.trim().slice(0, 120) : "";
+        const locations = Number(body.locations);
+        if (!isEmail(to)) return error("Enter the contact's email address");
+        if (!brand) return error("Enter the brand name");
+        if (!Number.isInteger(locations) || locations < 1 || locations > 5000) return error("Enter the number of locations");
+        const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 && v < 100000 ? v : null);
+        const q = quoteEmail({
+          brand, locations, contactName: typeof body.contact_name === "string" ? body.contact_name.slice(0, 80) : null,
+          currentPerLocation: num(body.current_per_location), techFee: num(body.tech_fee), founding: body.founding === true,
+        }, portalUrl());
+        await sendEmail({
+          to, cc: user.email ?? null, replyTo: user.email ?? null, fromName: "Tarmo", subject: q.subject, text: q.text,
+          html: emailLayout({ heading: "Your franchise network quote", bodyHtml: q.html, button: { label: "See Franchise HQ", url: `${portalUrl()}/franchises` } }),
+        });
         return json({ ok: true });
       }
       default:

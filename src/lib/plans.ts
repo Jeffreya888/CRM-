@@ -208,7 +208,7 @@ export function extraLocationsPrice(n: number, period: 'monthly' | 'annual' = 'm
  */
 export const FRANCHISE_PRICING = { allIn: 149, foundingAllIn: 129, foundingPercentOff: 13.42, hqPerLocation: 47, hqMinimum: 499, franchiseeDiscount: 0.15 } as const;
 
-export function franchiseQuote(locations: number) {
+export function franchiseQuote(locations: number, opts: { currentPerLocation?: number | null; techFee?: number | null; founding?: boolean } = {}) {
   const n = Math.max(0, Math.floor(locations));
   const team = PLANS.find((p) => p.id === 'team')!.monthly;
   const franchiseePlan = Math.round(team * (1 - FRANCHISE_PRICING.franchiseeDiscount) * 100) / 100;
@@ -221,5 +221,20 @@ export function franchiseQuote(locations: number) {
     allIn,                                   // HQ pays, per month
     foundingAllIn: founding,                 // first-brand rate, per month for 12 months
     split: { hq: hqSplit, franchiseePlan, franchisees: Math.round(n * franchiseePlan * 100) / 100, total: Math.round((hqSplit + n * franchiseePlan) * 100) / 100 },
+    ...quoteExtras(n, allIn, opts), // regular price: the numbers still hold after a founding year
+  };
+}
+
+const r2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Sales numbers for a quote: savings against what the brand pays today, and HQ's margin on a technology fee. */
+function quoteExtras(n: number, tarmoMonthly: number, opts: { currentPerLocation?: number | null; techFee?: number | null }) {
+  const current = opts.currentPerLocation && opts.currentPerLocation > 0 ? r2(n * opts.currentPerLocation) : null;
+  const fee = opts.techFee && opts.techFee > 0 ? r2(n * opts.techFee) : null;
+  return {
+    /** What they pay now per month, and what Tarmo saves them (negative = Tarmo costs more). */
+    savings: current == null ? null : { currentMonthly: current, monthly: r2(current - tarmoMonthly), yearly: r2((current - tarmoMonthly) * 12) },
+    /** All-in: HQ collects the fee from every franchisee and pays Tarmo; what it keeps. */
+    techFee: fee == null ? null : { collectedMonthly: fee, keptMonthly: r2(fee - tarmoMonthly), keptYearly: r2((fee - tarmoMonthly) * 12) },
   };
 }

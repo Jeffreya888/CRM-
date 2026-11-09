@@ -34,3 +34,13 @@ test('franchise network quote', async () => {
   assert.equal(franchiseQuote(3).split.hq, 499);
   assert.equal(franchiseQuote(0).allIn, 0);
 });
+
+test('franchise quote: savings and technology fee', async () => {
+  const { franchiseQuote } = await import('./plans');
+  const q = franchiseQuote(46, { currentPerLocation: 199, techFee: 199 });
+  assert.deepEqual(q.savings, { currentMonthly: 9154, monthly: 2300, yearly: 27600 });
+  assert.deepEqual(q.techFee, { collectedMonthly: 9154, keptMonthly: 2300, keptYearly: 27600 });
+  assert.equal(franchiseQuote(46).savings, null);
+  const f = franchiseQuote(46, { techFee: 199, founding: true });
+  assert.equal(f.techFee?.keptMonthly, 46 * 50);                           // regular $149, even with a founding rate
+});

@@ -172,9 +172,29 @@ function NetworkBilling({ network, onSaved }: { network: NonNullable<OrgRow['net
 /** Quote a franchise network: all-in (HQ pays) or split (franchisees pay their own plan). */
 function FranchiseCalculator() {
   const [locations, setLocations] = useState('10');
+  const [current, setCurrent] = useState('');
+  const [fee, setFee] = useState('');
+  const [founding, setFounding] = useState(false);
+  const [brand, setBrand] = useState('');
+  const [contact, setContact] = useState('');
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const n = Number(locations);
   const valid = Number.isInteger(n) && n > 0 && n <= 5000;
-  const q = franchiseQuote(valid ? n : 0);
+  const amount = (s: string) => (s.trim() && Number(s) > 0 ? Number(s) : null);
+  const q = franchiseQuote(valid ? n : 0, { currentPerLocation: amount(current), techFee: amount(fee), founding });
+  const send = () => confirmAction(`Email this quote to ${email.trim()}?`, `Both options for ${brand.trim()}'s ${n} locations${founding ? ', with the founding network rate' : ''}. You get a copy, and their replies come to you.`, async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await callFunction('admin-action', {
+        action: 'send_franchise_quote', to: email.trim(), brand: brand.trim(), contact_name: contact.trim() || undefined, locations: n,
+        current_per_location: amount(current) ?? undefined, tech_fee: amount(fee) ?? undefined, founding,
+      });
+      notify('Quote sent', `Sent to ${email.trim()}. A copy is in your inbox.`);
+    } catch (e: any) { setError(friendlyError(e.message)); } finally { setBusy(false); }
+  });
   const line = (label: string, value: string, strong = false) => (
     <Row style={{ justifyContent: 'space-between', paddingVertical: 3 }} gap={space.sm}>
       <T style={{ flex: 1, fontWeight: strong ? '700' : '400' }}>{label}</T>
@@ -196,6 +216,36 @@ function FranchiseCalculator() {
             {line(`Each franchisee: Team at 15% off`, `${money(q.split.franchiseePlan)}/mo`)}
             {line('Network total', `${money(q.split.total)}/mo`, true)}
             <T variant="small" style={{ marginTop: space.sm }}>HQ pays at least {money(FRANCHISE_PRICING.hqMinimum)}/month either way.</T>
+            <Button small kind={founding ? 'primary' : 'secondary'} icon={founding ? 'checkmark' : 'pricetag-outline'} style={{ marginTop: space.sm }}
+              title={founding ? 'Founding network rate included in the quote' : 'Include founding network rate'} onPress={() => setFounding(!founding)} />
+
+            <T variant="small" style={{ fontWeight: '700', marginTop: space.lg }}>Compared with today</T>
+            <Field label="What they pay now, per location per month (optional)" value={current} onChangeText={setCurrent} keyboardType="decimal-pad" placeholder="e.g. 199" />
+            {q.savings ? (
+              <>
+                {line('They pay now', `${money(q.savings.currentMonthly)}/mo`)}
+                {line(q.savings.monthly >= 0 ? 'Tarmo saves them' : 'Tarmo costs more by', `${money(Math.abs(q.savings.monthly))}/mo · ${money(Math.abs(q.savings.yearly))}/yr`, true)}
+              </>
+            ) : null}
+
+            <T variant="small" style={{ fontWeight: '700', marginTop: space.md }}>Technology fee (all-in)</T>
+            <Field label="Fee HQ charges each franchisee per month (optional)" value={fee} onChangeText={setFee} keyboardType="decimal-pad" placeholder="e.g. 199" />
+            {q.techFee ? (
+              <>
+                {line('HQ collects', `${money(q.techFee.collectedMonthly)}/mo`)}
+                {line('HQ pays Tarmo', `${money(q.allIn)}/mo`)}
+                {line(q.techFee.keptMonthly >= 0 ? 'HQ keeps' : 'HQ short by', `${money(Math.abs(q.techFee.keptMonthly))}/mo · ${money(Math.abs(q.techFee.keptYearly))}/yr`, true)}
+              </>
+            ) : null}
+            {(q.savings || q.techFee) && founding ? <T variant="small">Savings and fee use the regular $149, so they still hold after the founding year.</T> : null}
+
+            <T variant="small" style={{ fontWeight: '700', marginTop: space.lg }}>Email this quote</T>
+            <Field label="Brand name" value={brand} onChangeText={setBrand} placeholder="e.g. RealClean Aircraft Detailing" maxLength={120} />
+            <Field label="Contact name (optional)" value={contact} onChangeText={setContact} maxLength={80} />
+            <Field label="Contact email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="name@brand.com" />
+            <ErrorBanner message={error} />
+            <Button icon="mail-outline" title="Send quote" onPress={send} loading={busy} disabled={!brand.trim() || !/^\S+@\S+\.\S+$/.test(email.trim())} />
+            <T variant="small" style={{ marginTop: space.xs }}>Sent from Tarmo with your email as the reply-to; you get a copy.</T>
           </>
         )}
       </Card>
