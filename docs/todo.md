@@ -22,3 +22,4 @@ Open items agreed in planning. Launch steps live in `launch-checklist.md`.
 - [ ] Confirm Shiny Jets' Aircraft Detailing AI is still a separate paid app before sending the deck to investors.
 - [ ] Confirm RealClean's location count from its franchise disclosure document (Item 20) before quoting a number.
 
+- Franchise billing: when a franchisee billed by the App Store / Google Play joins a network, notify the owner (all-in: cancel the store subscription to avoid paying twice; split: subscribe on the web for 15% off). Not needed until a brand onboards existing in-app subscribers.
