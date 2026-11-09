@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { confirmAction, FormSheet, notify, type FieldDef } from '../../components/FormSheet';
 import { Gate } from '../../components/Gate';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Fab, ListRow, Row, Screen, Section, T } from '../../components/ui';
-import { canAdmin, extraLocationsPrice, FLEET_INCLUDED_LOCATIONS } from '../../lib/plans';
+import { canAdmin, extraLocationsPrice, FLEET_INCLUDED_LOCATIONS, PLANS } from '../../lib/plans';
 import { useOrg } from '../../lib/session';
 import { callFunction, friendlyError, must, supabase } from '../../lib/supabase';
 import { money } from '../../lib/format';
@@ -133,7 +133,43 @@ function BilledLocations({ activeCount, onChanged }: { activeCount: number; onCh
         </Row>
         <ErrorBanner message={error} />
         <Button title={extra === billed ? 'No change' : 'Update billing'} icon="card-outline" onPress={save} loading={busy} disabled={extra === billed} style={{ marginTop: space.md }} />
+        {billed > 0 ? <SwitchPeriod period={period} extra={billed} onChanged={onChanged} /> : null}
       </Card>
     </Section>
+  );
+}
+
+/** Monthly ↔ yearly for a Fleet plan with extra locations (moves both charges together). */
+function SwitchPeriod({ period, extra, onChanged }: { period: 'monthly' | 'annual'; extra: number; onChanged: () => Promise<void> }) {
+  const { org } = useOrg();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fleet = PLANS.find((p) => p.id === 'fleet')!;
+  const to = period === 'annual' ? 'monthly' : 'annual';
+  const yearly = fleet.annual + extraLocationsPrice(extra, 'annual');
+  const monthly = fleet.monthly + extraLocationsPrice(extra, 'monthly');
+  const switchNow = () => confirmAction(
+    to === 'annual' ? 'Switch to yearly billing?' : 'Switch to monthly billing?',
+    to === 'annual'
+      ? `You'll pay ${money(yearly)}/year instead of ${money(monthly)}/month (two months free), and card payments through Tarmo have no platform fee. You're charged now for the rest of the year, minus what's left of this month.`
+      : `You'll pay ${money(monthly)}/month instead of ${money(yearly)}/year. What's left of your year is credited to your next invoices.`,
+    async () => {
+      setBusy(true);
+      setError(null);
+      try {
+        await callFunction('billing-locations', { org_id: org.id, action: 'switch_period', period: to });
+        await onChanged();
+        notify('Billing updated', to === 'annual' ? 'You’re now billed yearly.' : 'You’re now billed monthly.');
+      } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+    });
+  return (
+    <View style={{ marginTop: space.md }}>
+      <T variant="small">
+        Billed {period === 'annual' ? `yearly: ${money(yearly)}/year` : `monthly: ${money(monthly)}/month`} for Fleet and {extra} extra location{extra === 1 ? '' : 's'}.
+      </T>
+      <ErrorBanner message={error} />
+      <Button small kind="secondary" icon="swap-horizontal-outline" loading={busy} style={{ marginTop: space.sm }}
+        title={to === 'annual' ? `Switch to yearly (${money(yearly)}/year)` : 'Switch to monthly'} onPress={switchNow} />
+    </View>
   );
 }

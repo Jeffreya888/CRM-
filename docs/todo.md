@@ -22,4 +22,3 @@ Open items agreed in planning. Launch steps live in `launch-checklist.md`.
 - [ ] Confirm Shiny Jets' Aircraft Detailing AI is still a separate paid app before sending the deck to investors.
 - [ ] Confirm RealClean's location count from its franchise disclosure document (Item 20) before quoting a number.
 
-- Founder metrics: MRR does not yet include extra-location revenue (Fleet extra_locations × $39/$29). Add it when the first Enterprise customer signs.

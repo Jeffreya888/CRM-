@@ -1240,6 +1240,18 @@ begin
   assert (m ->> 'companies')::int > 0 and m ? 'mrr' and m ? 'ai_questions_30d', 'founder metrics: ' || m::text;
 end $$;
 reset role;
+-- MRR counts billed extra locations: 7 extra = 7 x $39 on a monthly Fleet plan.
+do $$ declare o uuid; m1 jsonb; m2 jsonb; begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+  m1 := public.platform_metrics();
+  insert into organizations (name, plan, plan_expires_at, billing_period, extra_locations)
+    values ('Metrics Fleet Co', 'fleet', now() + interval '30 days', 'monthly', 7) returning id into o;
+  m2 := public.platform_metrics();
+  assert (m2 ->> 'mrr')::numeric - (m1 ->> 'mrr')::numeric = 219.99 + 273, 'Fleet + 7 extra locations in MRR: ' || (m2 ->> 'mrr') || ' vs ' || (m1 ->> 'mrr');
+  assert (m2 ->> 'extra_locations_billed')::int - (m1 ->> 'extra_locations_billed')::int = 7, 'extra locations counted';
+  assert (m2 ->> 'extra_locations_mrr')::numeric - (m1 ->> 'extra_locations_mrr')::numeric = 273, 'extra-location MRR';
+  delete from organizations where id = o;
+end $$;
 select set_config('request.jwt.claim.sub', '', false);
 
 -- ---------- Square (second payment processor) -------------------------------

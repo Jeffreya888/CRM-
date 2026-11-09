@@ -2,15 +2,18 @@
 //
 // POST { org_id, action: 'quote', extra }  → { extra, period, amount_cents, currency }
 // POST { org_id, action: 'set', extra }    → { ok: true, extra }
+// POST { org_id, action: 'switch_period', period: 'monthly'|'annual' } → { ok: true, period }
+//   Moves the Fleet plan and its extra locations to the other billing period together (Stripe's
+//   billing portal can't switch a subscription that has two items).
 // Owner only, web (Stripe) Fleet subscriptions only. Stripe prorates the change on the next invoice;
 // the stripe-webhook function mirrors the quantity onto organizations.extra_locations as well.
 import { adminClient, callerRole, stripe } from "../_shared/clients.ts";
 import { error, json, preflight, readJson } from "../_shared/http.ts";
 import {
-  EXTRA_LOCATION_CENTS, EXTRA_LOCATION_TIER, extraLocationLookupKey, extraLocationsCents, isExtraLocationItem, type Period,
+  EXTRA_LOCATION_CENTS, EXTRA_LOCATION_TIER, extraLocationLookupKey, extraLocationsCents, isExtraLocationItem, type Period, planPriceId,
 } from "../_shared/billing.ts";
 
-type Body = { org_id?: string; action?: string; extra?: number };
+type Body = { org_id?: string; action?: string; extra?: number; period?: string };
 const MAX_EXTRA = 500;
 
 Deno.serve(async (req) => {
@@ -22,8 +25,9 @@ Deno.serve(async (req) => {
     if (typeof orgId !== "string" || !orgId) return error("org_id required");
     const caller = await callerRole(req, orgId);
     if (!caller || caller.role !== "owner") return error("Only the company owner can change billed locations", 403);
-    const extra = Number(body.extra);
-    if (!Number.isInteger(extra) || extra < 0 || extra > MAX_EXTRA) return error(`Choose between 0 and ${MAX_EXTRA} extra locations`);
+    const switching = body.action === "switch_period";
+    const extra = switching ? 0 : Number(body.extra);
+    if (!switching && (!Number.isInteger(extra) || extra < 0 || extra > MAX_EXTRA)) return error(`Choose between 0 and ${MAX_EXTRA} extra locations`);
 
     const db = adminClient();
     const { data: org } = await db.from("organizations")
@@ -44,6 +48,20 @@ Deno.serve(async (req) => {
     const planItem = sub.items.data.find((i) => !isExtraLocationItem(i));
     const period: Period = planItem?.price?.recurring?.interval === "year" ? "annual" : "monthly";
     const current = sub.items.data.find((i) => isExtraLocationItem(i));
+
+    if (switching) {
+      const to = body.period as Period;
+      if (to !== "monthly" && to !== "annual") return error("Choose monthly or yearly billing");
+      if (to === period) return json({ ok: true, period });
+      const planPrice = planPriceId("fleet", to);
+      if (!planPrice || !planItem) return error("That billing period isn't available on the web yet. Please contact us.", 409);
+      const items: { id: string; price: string }[] = [{ id: planItem.id, price: planPrice }];
+      if (current) items.push({ id: current.id, price: await extraLocationPrice(to) });
+      // Both items move in one update so the subscription never mixes monthly and yearly prices.
+      await s.subscriptions.update(sub.id, { items, proration_behavior: "always_invoice" });
+      await db.from("organizations").update({ billing_period: to }).eq("id", orgId);
+      return json({ ok: true, period: to });
+    }
 
     if (body.action === "quote") {
       return json({ extra, period, amount_cents: extraLocationsCents(extra, period), currency: "USD" });
