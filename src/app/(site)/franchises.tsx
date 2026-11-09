@@ -75,7 +75,7 @@ export default function Franchises() {
           <Eyebrow center>Enterprise &amp; franchise</Eyebrow>
           <Heading level={2} center>Pricing built around your network.</Heading>
           <P size="lg" center style={{ marginTop: 14, maxWidth: 680 }}>
-            Each location subscribes at network pricing, and HQ gets Franchise HQ, onboarding for every crew and help moving your data.
+            Franchisees subscribe at network pricing, or HQ covers every location on one bill. Either way HQ gets Franchise HQ, onboarding for every crew and help moving your data.
             Tell us about your brand and we&apos;ll put together a plan.
           </P>
           <View style={{ marginTop: 22, gap: 10, alignSelf: 'center' }}>

@@ -21,3 +21,16 @@ test('extra location pricing', async () => {
   assert.equal(extraLocationsPrice(7, 'annual'), 2730);
   assert.equal(extraLocationsPrice(-3), 0);
 });
+
+test('franchise network quote', async () => {
+  const { franchiseQuote } = await import('./plans');
+  const q = franchiseQuote(46);
+  assert.equal(q.allIn, 46 * 149);
+  assert.equal(q.foundingAllIn, 46 * 129);
+  assert.equal(q.split.hq, 46 * 45);
+  assert.equal(q.split.franchiseePlan, 101.99);          // Team $119.99 less 15%
+  assert.equal(q.split.total, Math.round((46 * 45 + 46 * 101.99) * 100) / 100);
+  assert.equal(franchiseQuote(3).allIn, 499);              // HQ minimum
+  assert.equal(franchiseQuote(3).split.hq, 499);
+  assert.equal(franchiseQuote(0).allIn, 0);
+});

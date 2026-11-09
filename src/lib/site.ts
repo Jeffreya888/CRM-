@@ -35,7 +35,7 @@ export const ENTERPRISE_POINTS = [
   'Monthly royalty statements emailed to every location, with paid / unpaid tracking',
   'Compliance by location: SOP certifications and QC trends; HQ announcements to every team',
   'National accounts served across locations, with one combined report',
-  'Network pricing per location, plus help moving your data and onboarding every crew',
+  'Network pricing per location: franchisees pay their own plan, or HQ covers every location on one bill. Plus help moving your data and onboarding every crew',
   'Priority support and yearly invoiced billing',
 ];
 export const ENTERPRISE_HREF = '/enterprise';

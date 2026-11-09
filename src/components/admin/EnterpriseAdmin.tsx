@@ -5,7 +5,7 @@ import { View } from 'react-native';
 import { confirmAction, notify } from '../FormSheet';
 import { Badge, Button, Card, ErrorBanner, Field, Row, Section, T } from '../ui';
 import { money, titleCase } from '../../lib/format';
-import { extraLocationsPrice, FLEET_INCLUDED_LOCATIONS, PLANS } from '../../lib/plans';
+import { extraLocationsPrice, FLEET_INCLUDED_LOCATIONS, FRANCHISE_PRICING, franchiseQuote, PLANS } from '../../lib/plans';
 import { callFunction, friendlyError } from '../../lib/supabase';
 import { space } from '../../lib/theme';
 
@@ -33,6 +33,7 @@ export function EnterpriseAdmin() {
         Find a company to turn on Franchise HQ or set its location limit. Fleet owners billed on the website add extra locations themselves
         (Company locations); use a limit here for customers you invoice directly.
       </T>
+      <FranchiseCalculator />
       <Card>
         <Field label="Company name or email" value={query} onChangeText={setQuery} placeholder="e.g. RealClean" />
         <Button title="Search" icon="search" onPress={search} loading={busy} disabled={query.trim().length < 2} />
@@ -105,6 +106,40 @@ function OrgCard({ org, onSaved }: { org: OrgRow; onSaved: () => Promise<void> }
             onPress={() => save({ branch_limit: n }, n == null ? 'Back to the plan default.' : `Limit set to ${n} locations.`)} />
         </View>
         <ErrorBanner message={error} />
+      </Card>
+    </Section>
+  );
+}
+
+/** Quote a franchise network: all-in (HQ pays) or split (franchisees pay their own plan). */
+function FranchiseCalculator() {
+  const [locations, setLocations] = useState('10');
+  const n = Number(locations);
+  const valid = Number.isInteger(n) && n > 0 && n <= 5000;
+  const q = franchiseQuote(valid ? n : 0);
+  const line = (label: string, value: string, strong = false) => (
+    <Row style={{ justifyContent: 'space-between', paddingVertical: 3 }} gap={space.sm}>
+      <T style={{ flex: 1, fontWeight: strong ? '700' : '400' }}>{label}</T>
+      <T style={{ fontWeight: strong ? '700' : '400' }}>{value}</T>
+    </Row>
+  );
+  return (
+    <Section title="Franchise price calculator" icon="calculator-outline">
+      <Card>
+        <Field label="Number of locations" value={locations} onChangeText={setLocations} keyboardType="number-pad" />
+        {!valid ? <T variant="small">Enter a number of locations.</T> : (
+          <>
+            <T variant="small" style={{ fontWeight: '700', marginTop: space.xs }}>All-in (HQ pays for every location)</T>
+            {line(`${n} × ${money(FRANCHISE_PRICING.allIn)}`, `${money(q.allIn)}/mo`, true)}
+            {line('Yearly', `${money(q.allIn * 12)}/yr`)}
+            {line(`Founding network rate (${money(FRANCHISE_PRICING.foundingAllIn)}, 12 months)`, `${money(q.foundingAllIn)}/mo`)}
+            <T variant="small" style={{ fontWeight: '700', marginTop: space.md }}>Split (franchisees pay their own plan)</T>
+            {line(`HQ: ${n} × ${money(FRANCHISE_PRICING.hqPerLocation)} Franchise HQ`, `${money(q.split.hq)}/mo`)}
+            {line(`Each franchisee: Team at 15% off`, `${money(q.split.franchiseePlan)}/mo`)}
+            {line('Network total', `${money(q.split.total)}/mo`, true)}
+            <T variant="small" style={{ marginTop: space.sm }}>HQ pays at least {money(FRANCHISE_PRICING.hqMinimum)}/month either way.</T>
+          </>
+        )}
       </Card>
     </Section>
   );
