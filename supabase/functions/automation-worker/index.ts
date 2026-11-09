@@ -20,6 +20,7 @@ import { duePhrase, renderTemplate } from "../_shared/templates.ts";
 import { isEmail } from "../_shared/email.ts";
 import { toE164 } from "../_shared/sms.ts";
 import { chargeDueCarePlans } from "../_shared/squareBilling.ts";
+import { NETWORK_COLS, type NetworkRow, removeStaleDiscounts, syncNetwork } from "../_shared/franchiseBilling.ts";
 import {
   addDays, daysBetween, deliverMessage, fmtDate, fmtDateTime, fmtTime, fmtYmd, invoiceEmailText, links, localDate, money,
   type Org, ORG_COLS, outbox, queueMessage, type Row, textingActive, ymdAsDate,
@@ -53,6 +54,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
     return { jobs: jobs.data, expenses: expenses.data };
   });
   await step("square_care_plans", () => chargeDueCarePlans(db));
+  await step("franchise_billing", () => franchiseBilling(db));
   await step("automations", () => automations(db));
   await step("send", () => sendQueued(db));
   await step("push", () => pushOutbox(db));
@@ -874,4 +876,16 @@ async function pushOutbox(db: SupabaseClient) {
     await db.from("notification_outbox").update({ sent_at: new Date().toISOString() }).in("id", ids);
   }
   return { notifications: rows.length, pushes: pushes.length };
+}
+
+/** Franchise networks: Stripe quantity follows the number of locations; coverage and network discounts stay right. */
+async function franchiseBilling(db: SupabaseClient) {
+  if (!Deno.env.get("STRIPE_SECRET_KEY")) return;
+  const { data: nets, error } = await db.from("franchise_networks").select(NETWORK_COLS)
+    .not("stripe_subscription_id", "is", null).in("billing_status", ["active", "trialing", "past_due"]).limit(500);
+  if (error) throw error;
+  for (const n of (nets ?? []) as NetworkRow[]) {
+    try { await syncNetwork(db, n); } catch (e) { console.error("franchise billing sync", n.id, (e as Error).message); }
+  }
+  await removeStaleDiscounts(db);
 }

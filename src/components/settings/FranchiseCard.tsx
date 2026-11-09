@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { confirmAction } from '../FormSheet';
 import { Button, Card, ErrorBanner, Field, IconTile, Row, T, ToggleRow } from '../ui';
+import { useOrg } from '../../lib/session';
+import { APP_NAME } from '../../lib/config';
 import { joinNetwork, leaveNetwork, loadFranchise, loadStatements, updateMember } from '../../lib/franchise';
 import { date, money } from '../../lib/format';
 import { space } from '../../lib/theme';
@@ -18,6 +20,8 @@ export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean 
     const statements = f.membership ? await loadStatements({ orgId }).catch(() => []) : [];
     return { ...f, statements };
   }, [orgId]);
+  const { org } = useOrg();
+  const coveredByHq = org?.billing_source === 'franchise';
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -75,10 +79,11 @@ export function FranchiseCard({ orgId, owner }: { orgId: string; owner: boolean 
             ))}
           </View>
         ) : null}
+        {coveredByHq ? <T variant="small" style={{ marginBottom: space.sm }}>Your {APP_NAME} plan is paid for by HQ.</T> : null}
         <ErrorBanner message={error} />
         {owner ? (
           <Button small kind="ghost" icon="exit-outline" title="Leave network" disabled={busy}
-            onPress={() => confirmAction('Leave the franchise network?', 'HQ stops seeing your totals. You keep your copies of HQ standards, and you can edit them.', () => run(() => leaveNetwork(orgId)))} />
+            onPress={() => confirmAction('Leave the franchise network?', `HQ stops seeing your totals. You keep your copies of HQ standards, and you can edit them.${coveredByHq ? ' Your plan is paid by HQ: after leaving you have 14 days to choose a plan of your own.' : ''}`, () => run(() => leaveNetwork(orgId)))} />
         ) : null}
       </Card>
     );

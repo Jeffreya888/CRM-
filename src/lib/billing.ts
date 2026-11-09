@@ -21,7 +21,7 @@ export async function loadWebCatalog(): Promise<WebCatalog> {
   return { plans: r?.plans ?? [], packs: (r?.packs ?? []).slice().sort((a, b) => a.quantity - b.quantity) };
 }
 
-function go(url: string | undefined) {
+export function go(url: string | undefined) {
   if (!url) throw new Error('Could not open checkout. Please try again.');
   if (typeof window !== 'undefined') window.location.href = url;
 }

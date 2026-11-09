@@ -17,11 +17,12 @@
 //   customer.subscription.created, customer.subscription.updated,
 //   customer.subscription.deleted (checkout.session.completed is already on).
 // They are told apart from care plans (connected accounts) by `event.account`
-// and metadata.kind ('platform_plan' | 'ai_pack' | 'text_pack').
+// and metadata.kind ('platform_plan' | 'ai_pack' | 'text_pack' | 'franchise_hq').
 import { Stripe, type SupabaseClient } from "../_shared/deps.ts";
 import { adminClient, notifyManagers, stripe } from "../_shared/clients.ts";
 import { env } from "../_shared/http.ts";
 import { extraLocationsCents, GRACE_MS, isExtraLocationItem, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
+import { applyFranchiseSubscription } from "../_shared/franchiseBilling.ts";
 import { applyRefund, CARE_PLAN_COLS, type CarePlanSchedule, recordCarePlanCharge, recordDeposit, recordInvoicePayment } from "../_shared/payments.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
@@ -63,6 +64,11 @@ Deno.serve(async (req) => {
           await platformPlanCheckout(db, session);
           break;
         }
+        if (!event.account && kind === "franchise_hq") {
+          const subId = idOf(session.subscription as string | { id: string } | null);
+          if (subId && session.status === "complete") await applyFranchiseSubscription(db, await stripe().subscriptions.retrieve(subId));
+          break;
+        }
         if (!event.account && (kind === "ai_pack" || kind === "text_pack")) {
           if (session.payment_status === "paid") await platformPackPaid(db, session, kind);
           break;
@@ -96,6 +102,7 @@ Deno.serve(async (req) => {
       case "customer.subscription.created": {
         const sub = event.data.object as Stripe.Subscription;
         if (!event.account && sub.metadata?.kind === "platform_plan") await applyPlatformSubscription(db, sub);
+        if (!event.account && sub.metadata?.kind === "franchise_hq") await applyFranchiseSubscription(db, sub);
         break;
       }
       case "customer.subscription.updated":
@@ -103,6 +110,10 @@ Deno.serve(async (req) => {
         const sub = event.data.object as Stripe.Subscription;
         if (!event.account && sub.metadata?.kind === "platform_plan") {
           await applyPlatformSubscription(db, sub);
+          break;
+        }
+        if (!event.account && sub.metadata?.kind === "franchise_hq") {
+          await applyFranchiseSubscription(db, sub);
           break;
         }
         const status = event.type === "customer.subscription.deleted" ? "canceled" : mapSubStatus(sub.status);

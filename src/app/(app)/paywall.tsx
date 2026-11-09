@@ -25,6 +25,8 @@ type Period = 'monthly' | 'annual';
  * - Website: Stripe Checkout (billing-checkout; stripe-webhook upgrades the company).
  * The native apps never link to web checkout or web prices.
  */
+const titleCasePlan = (p: string) => p.charAt(0).toUpperCase() + p.slice(1);
+
 export default function Paywall() {
   const { plan, trialDays, role, refresh, org } = useSession();
   const [pkgs, setPkgs] = useState<StorePackage[] | null>(webBilling ? [] : null);
@@ -284,6 +286,10 @@ export default function Paywall() {
       ) : null}
       {!webBilling && onWeb ? (
         <BillingNotice tone="info" icon="information-circle-outline" text="Your subscription is managed in your web account." />
+      ) : null}
+      {org?.billing_source === 'franchise' && plan !== 'expired' ? (
+        <BillingNotice tone="success" icon="git-network-outline"
+          text={`Your ${titleCasePlan(plan)} plan is paid for by your franchise HQ${org.plan_expires_at ? ` (renews with your network, currently through ${date(org.plan_expires_at)})` : ''}. There's nothing for you to buy.`} />
       ) : null}
       {trialCarry ? (
         <BillingNotice tone="success" icon="gift-outline" text={`Subscribe now and keep your free trial: you won't be charged until it ends on ${date(org!.trial_ends_at)}.`} />

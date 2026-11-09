@@ -149,3 +149,13 @@ No SQL needed. In the app, open **Platform admin → Enterprise & franchise**, s
   for customers you invoice directly or who pay through the App Store / Google Play. The screen shows the suggested price.
 
 Franchisees joining a network with an invite code need neither.
+
+**Franchise network billing** (same screen, after Franchise HQ is on and the brand has created its network):
+1. Choose **All-in** (HQ pays $149 per franchisee location, franchisees covered on Team) or **Split** (HQ pays $45 per
+   location for Franchise HQ; franchisees pay their own plan with 15% off). $499/month minimum either way. Turn on the
+   **founding network rate** ($129 for 12 months, all-in only) for the first brands. Save.
+2. Either tap **Bill by invoice (net 30)**, or let the HQ owner tap **Start billing** in Franchise HQ → Dashboard to pay by card.
+3. Nothing else to do: Stripe's quantity follows the number of locations (checked every 10 minutes), all-in franchisees
+   are covered automatically, and split franchisees billed on the web get 15% off automatically. A location that leaves an
+   all-in network gets 14 days to choose its own plan.
+The Stripe prices and coupons are created automatically the first time they're used.

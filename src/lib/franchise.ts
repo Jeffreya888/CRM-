@@ -5,6 +5,7 @@ import type { LocationStats, RoyaltyRow } from './franchiseReport';
 export interface FranchiseNetwork {
   id: string; hq_org_id: string; name: string; royalty_pct: number; marketing_pct: number; public_slug: string | null; booking_enabled: boolean;
   invite_code: string; hq_playbook: string | null; standards_pushed_at: string | null; created_at: string;
+  billing_mode?: 'all_in' | 'split' | null; founding_rate?: boolean; billing_status?: string | null; billed_locations?: number; paid_through?: string | null;
 }
 export interface FranchiseMember {
   network_id: string; org_id: string; location_name: string | null; territory: string | null; share_details: boolean; joined_at: string;

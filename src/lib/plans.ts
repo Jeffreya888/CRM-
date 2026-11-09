@@ -206,7 +206,7 @@ export function extraLocationsPrice(n: number, period: 'monthly' | 'annual' = 'm
  *  - Split: each franchisee pays its own Team plan at 15% off; HQ pays $45/location for Franchise HQ.
  *  - HQ pays at least $499/month either way. Founding-network rate to close the first brands: $129 all-in, 12 months.
  */
-export const FRANCHISE_PRICING = { allIn: 149, foundingAllIn: 129, hqPerLocation: 45, hqMinimum: 499, franchiseeDiscount: 0.15 } as const;
+export const FRANCHISE_PRICING = { allIn: 149, foundingAllIn: 129, foundingPercentOff: 13.42, hqPerLocation: 45, hqMinimum: 499, franchiseeDiscount: 0.15 } as const;
 
 export function franchiseQuote(locations: number) {
   const n = Math.max(0, Math.floor(locations));
@@ -214,7 +214,8 @@ export function franchiseQuote(locations: number) {
   const franchiseePlan = Math.round(team * (1 - FRANCHISE_PRICING.franchiseeDiscount) * 100) / 100;
   const hqSplit = n ? Math.max(FRANCHISE_PRICING.hqMinimum, n * FRANCHISE_PRICING.hqPerLocation) : 0;
   const allIn = n ? Math.max(FRANCHISE_PRICING.hqMinimum, n * FRANCHISE_PRICING.allIn) : 0;
-  const founding = n ? Math.max(FRANCHISE_PRICING.hqMinimum, n * FRANCHISE_PRICING.foundingAllIn) : 0;
+  // Billed as a 13.42% coupon on the all-in price for 12 months ($149 → $129 per location).
+  const founding = Math.round(allIn * (100 - FRANCHISE_PRICING.foundingPercentOff)) / 100;
   return {
     locations: n,
     allIn,                                   // HQ pays, per month

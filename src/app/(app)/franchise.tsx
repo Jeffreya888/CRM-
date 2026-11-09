@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import * as Linking from 'expo-linking';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { confirmAction, notify } from '../../components/FormSheet';
 import { AccountsTab, AnnouncementsTab, ComplianceTab, StatementsPanel } from '../../components/franchise/HqTabs';
 import {
@@ -16,9 +16,10 @@ import {
   updateMember, updateNetwork, type FranchiseMember, type FranchiseNetwork, type LocationJob, type Territory,
 } from '../../lib/franchise';
 import { avgTicket, closeRate, insights, networkTotals, qcRate, royaltyCsv, type LocationStats } from '../../lib/franchiseReport';
-import { canAdmin } from '../../lib/plans';
+import { canAdmin, franchiseQuote } from '../../lib/plans';
+import { go } from '../../lib/billing';
 import { useOrg } from '../../lib/session';
-import { friendlyError, supabase } from '../../lib/supabase';
+import { callFunction, friendlyError, supabase } from '../../lib/supabase';
 import { colors, space } from '../../lib/theme';
 import { useQuery } from '../../lib/useQuery';
 
@@ -184,6 +185,7 @@ function Dashboard({ net }: { net: FranchiseNetwork }) {
   const notes = insights(rows);
   return (
     <>
+      <NetworkBillingCard net={net} />
       <Segmented<Period> value={period} onChange={setPeriod} options={[
         { value: 'month', label: 'This month' }, { value: 'last_month', label: 'Last month' },
         { value: 'quarter', label: '90 days' }, { value: 'year', label: 'This year' },
@@ -528,5 +530,52 @@ function Royalties({ net }: { net: FranchiseNetwork }) {
         franchisees as you do today.
       </T>
     </>
+  );
+}
+
+/** HQ's Tarmo bill for the network: start card billing, or see what's billed. Support sets the plan first. */
+function NetworkBillingCard({ net }: { net: FranchiseNetwork }) {
+  const { role } = useOrg();
+  const q = useQuery(() => callFunction<{ mode: 'all_in' | 'split' | null; founding: boolean; status: string | null; active: boolean; locations: number; billed_locations: number; monthly_cents: number | null; paid_through: string | null }>(
+    'franchise-billing', { action: 'status', network_id: net.id }), [net.id]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const s = q.data;
+  if (!s?.mode) return null;
+  const open = (url: string) => (Platform.OS === 'web' ? go(url) : Linking.openURL(url));
+  const quote = franchiseQuote(s.locations);
+  const monthly = s.mode === 'all_in' ? (s.founding ? quote.foundingAllIn : quote.allIn) : quote.split.hq;
+  const start = async () => {
+    setBusy(true);
+    setError(null);
+    try { open((await callFunction<{ url: string }>('franchise-billing', { action: 'checkout', network_id: net.id })).url); }
+    catch (e: any) { setError(e.message); } finally { setBusy(false); }
+  };
+  const manage = async () => {
+    setBusy(true);
+    setError(null);
+    try { open((await callFunction<{ url: string }>('billing-portal', { org_id: net.hq_org_id })).url); } catch (e: any) { setError(e.message); } finally { setBusy(false); }
+  };
+  const what = s.mode === 'all_in'
+    ? `${s.locations} location${s.locations === 1 ? '' : 's'}, every franchisee covered on Team${s.founding ? ' (founding network rate, first 12 months)' : ''}`
+    : `Franchise HQ for ${s.locations} location${s.locations === 1 ? '' : 's'}; franchisees pay their own plan with 15% off`;
+  return (
+    <Card style={{ marginBottom: space.md }}>
+      <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }} gap={space.sm}>
+        <View style={{ flex: 1 }}>
+          <T style={{ fontWeight: '700' }}>{APP_NAME} for your network</T>
+          <T variant="small">{what}</T>
+        </View>
+        {s.active ? <Badge label={s.status === 'past_due' ? 'Payment due' : 'Active'} tone={s.status === 'past_due' ? 'warning' : 'success'} raw /> : null}
+      </Row>
+      <T style={{ fontWeight: '700', fontSize: 18, marginTop: space.sm }}>{money(monthly)}/month</T>
+      <T variant="small">Updates automatically as locations join or leave{s.paid_through ? ` · paid through ${date(s.paid_through)}` : ''}.</T>
+      <ErrorBanner message={error ?? q.error} />
+      {role === 'owner' ? (
+        s.active
+          ? <Button small kind="secondary" icon="card-outline" title="Manage billing" onPress={manage} loading={busy} style={{ marginTop: space.sm }} />
+          : <Button icon="card-outline" title="Start billing" onPress={start} loading={busy} style={{ marginTop: space.sm }} />
+      ) : !s.active ? <T variant="small" style={{ marginTop: space.sm }}>Your company owner starts billing here.</T> : null}
+    </Card>
   );
 }

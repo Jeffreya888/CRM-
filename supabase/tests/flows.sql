@@ -1492,6 +1492,31 @@ do $$ declare b uuid := (select v from ctx where k='floc'); begin
     select b, 'FR-1', id, 'sent', 1000 from customers where org_id = b;
   insert into payments (org_id, invoice_id, amount, method) select b, id, 1000, 'card' from invoices where org_id = b;
 end $$;
+-- Franchise billing: an all-in network covers its franchisees on Team through the date HQ has paid.
+do $$ declare b uuid := (select v from ctx where k='floc'); n uuid := (select v from ctx where k='net'); begin
+  update franchise_networks set billing_mode = 'all_in', billing_status = 'active', paid_through = now() + interval '30 days' where id = n;
+  assert public.franchise_apply_coverage(n) = 1, 'one location covered';
+  assert (select plan = 'team' and billing_source = 'franchise' and plan_expires_at > now() + interval '32 days' from organizations where id = b), 'covered on Team';
+  -- A company paying for its own active plan keeps it.
+  update organizations set billing_source = 'stripe', plan = 'fleet', plan_expires_at = now() + interval '60 days' where id = b;
+  assert public.franchise_apply_coverage(n) = 0, 'own plan kept';
+  update organizations set billing_source = 'franchise', plan = 'team', plan_expires_at = now() + interval '33 days' where id = b;
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ begin
+  begin
+    update franchise_networks set billing_mode = 'split', paid_through = now() + interval '10 years';
+    raise exception 'HQ must not change its own billing';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.franchise_apply_coverage((select v from ctx where k='net'));
+    raise exception 'coverage is service-only';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
 set role authenticated;
 do $$ declare n uuid := (select v from ctx where k='net'); r record; begin
   select * into r from public.franchise_royalties(n, current_date);
@@ -1621,6 +1646,9 @@ do $$ declare b uuid := (select v from ctx where k='floc'); begin
   assert (select count(*) from franchise_networks) = 0, 'no longer sees the network';
 end $$;
 reset role;
+do $$ begin
+  assert (select plan_expires_at <= now() + interval '14 days 1 minute' from organizations where id = (select v from ctx where k='floc')), 'leaving an all-in network: 14 days to choose a plan';
+end $$;
 select set_config('request.jwt.claim.sub', '', false);
 
 \echo ALL FLOW TESTS PASSED

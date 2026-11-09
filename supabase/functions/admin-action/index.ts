@@ -4,6 +4,7 @@
 //      { action: 'support_handled', id }
 //      { action: 'find_orgs', query } → { orgs }
 //      { action: 'set_enterprise', org_id, franchise_hq_enabled?, branch_limit? (number | null) }
+//      { action: 'set_franchise_billing', network_id, mode: 'all_in'|'split', founding? }
 // → { ok: true }
 import { adminClient, userClient } from "../_shared/clients.ts";
 import { corsHeaders, error, json } from "../_shared/http.ts";
@@ -84,10 +85,15 @@ Deno.serve(async (req) => {
         if (e) throw e;
         const ids = (orgs ?? []).map((o) => o.id);
         const { data: br } = ids.length ? await db.from("branches").select("org_id").in("org_id", ids).eq("active", true) : { data: [] };
-        const { data: nets } = ids.length ? await db.from("franchise_networks").select("hq_org_id").in("hq_org_id", ids) : { data: [] };
+        const { data: nets } = ids.length
+          ? await db.from("franchise_networks").select("id, hq_org_id, name, billing_mode, founding_rate, billing_status, billed_locations, paid_through").in("hq_org_id", ids)
+          : { data: [] };
         const count = (id: string) => (br ?? []).filter((b) => b.org_id === id).length;
         return json({
-          orgs: (orgs ?? []).map((o) => ({ ...o, active_locations: count(o.id), has_network: (nets ?? []).some((n) => n.hq_org_id === o.id) })),
+          orgs: (orgs ?? []).map((o) => {
+            const network = (nets ?? []).find((n) => n.hq_org_id === o.id) ?? null;
+            return { ...o, active_locations: count(o.id), has_network: !!network, network };
+          }),
         });
       }
       case "set_enterprise": {
@@ -107,6 +113,19 @@ Deno.serve(async (req) => {
         if (patch.franchise_hq_enabled === true) {
           await outbox(db, { org_id, audience: "owners", kind: "franchise_hq_ready", title: "Franchise HQ is ready", body: "Set up your franchise network in Franchise HQ.", url: "/franchise" });
         }
+        return json({ ok: true });
+      }
+      case "set_franchise_billing": {
+        // Which way the network pays, and whether it gets the founding network rate (all-in only).
+        const { network_id, mode } = body;
+        if (typeof network_id !== "string") return error("network_id required");
+        if (mode !== "all_in" && mode !== "split") return error("Choose all-in or split");
+        const { data: net } = await db.from("franchise_networks").select("id, stripe_subscription_id, billing_status, billing_mode").eq("id", network_id).maybeSingle();
+        if (!net) return error("Network not found", 404);
+        const live = !!net.stripe_subscription_id && ["active", "trialing", "past_due"].includes(net.billing_status ?? "");
+        if (live && net.billing_mode !== mode) return error("Billing is already running. Cancel it in Stripe before switching all-in and split.", 409);
+        const { error: e } = await db.from("franchise_networks").update({ billing_mode: mode, founding_rate: mode === "all_in" && body.founding === true }).eq("id", network_id);
+        if (e) throw e;
         return json({ ok: true });
       }
       default:

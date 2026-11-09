@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { confirmAction, notify } from '../FormSheet';
-import { Badge, Button, Card, ErrorBanner, Field, Row, Section, T } from '../ui';
+import { Badge, Button, Card, ErrorBanner, Field, Row, Section, Segmented, T } from '../ui';
+import { useQuery } from '../../lib/useQuery';
 import { money, titleCase } from '../../lib/format';
 import { extraLocationsPrice, FLEET_INCLUDED_LOCATIONS, FRANCHISE_PRICING, franchiseQuote, PLANS } from '../../lib/plans';
 import { callFunction, friendlyError } from '../../lib/supabase';
@@ -12,6 +13,7 @@ import { space } from '../../lib/theme';
 type OrgRow = {
   id: string; name: string; email: string | null; plan: string; billing_source: string | null; billing_period: string | null;
   extra_locations: number; branch_limit: number | null; franchise_hq_enabled: boolean; active_locations: number; has_network: boolean;
+  network: { id: string; name: string; billing_mode: 'all_in' | 'split' | null; founding_rate: boolean; billing_status: string | null; billed_locations: number; paid_through: string | null } | null;
 };
 
 const FLEET_MONTHLY = PLANS.find((p) => p.id === 'fleet')!.monthly;
@@ -106,8 +108,64 @@ function OrgCard({ org, onSaved }: { org: OrgRow; onSaved: () => Promise<void> }
             onPress={() => save({ branch_limit: n }, n == null ? 'Back to the plan default.' : `Limit set to ${n} locations.`)} />
         </View>
         <ErrorBanner message={error} />
+        {org.network ? <NetworkBilling network={org.network} onSaved={onSaved} /> : null}
       </Card>
     </Section>
+  );
+}
+
+type Status = { mode: 'all_in' | 'split' | null; founding: boolean; status: string | null; active: boolean; locations: number; billed_locations: number; monthly_cents: number | null; paid_through: string | null };
+
+/** Support sets how a franchise network pays, then bills it by invoice or lets HQ start card billing. */
+function NetworkBilling({ network, onSaved }: { network: NonNullable<OrgRow['network']>; onSaved: () => Promise<void> }) {
+  const q = useQuery(async () => callFunction<Status>('franchise-billing', { action: 'status', network_id: network.id }), [network.id]);
+  const [mode, setMode] = useState<'all_in' | 'split'>(network.billing_mode ?? 'all_in');
+  const [founding, setFounding] = useState(network.founding_rate);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const s = q.data;
+  const quote = franchiseQuote(s?.locations ?? 0);
+  const run = async (fn: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    setError(null);
+    try { await fn(); notify('Done', done); await Promise.all([q.reload(), onSaved()]); }
+    catch (e: any) { setError(friendlyError(e.message)); } finally { setBusy(false); }
+  };
+  const save = () => run(() => callFunction('admin-action', { action: 'set_franchise_billing', network_id: network.id, mode, founding }), 'Billing settings saved.');
+  const invoice = () => confirmAction('Bill this network by invoice?', 'Stripe emails the HQ owner an invoice every month, due in 30 days, for the current number of locations.',
+    () => run(() => callFunction('franchise-billing', { action: 'invoice', network_id: network.id }), 'Invoice billing started. Stripe sends the first invoice now.'));
+  const sync = () => run(() => callFunction('franchise-billing', { action: 'sync', network_id: network.id }), 'Stripe now matches the network’s locations.');
+  const price = mode === 'all_in' ? (founding ? quote.foundingAllIn : quote.allIn) : quote.split.hq;
+
+  return (
+    <View style={{ marginTop: space.lg }}>
+      <T style={{ fontWeight: '700' }}>Franchise billing · {network.name}</T>
+      <T variant="small" style={{ marginTop: 2 }}>
+        {s ? `${s.locations} franchisee location${s.locations === 1 ? '' : 's'} · ${s.active ? `billing ${s.status}, ${s.billed_locations} billed` : 'not billing yet'}` : 'Loading…'}
+      </T>
+      <View style={{ marginTop: space.sm }}>
+        <Segmented value={mode} onChange={setMode} options={[{ value: 'all_in', label: 'All-in (HQ pays)' }, { value: 'split', label: 'Split' }]} />
+      </View>
+      {mode === 'all_in' ? (
+        <Button small kind={founding ? 'primary' : 'secondary'} icon={founding ? 'checkmark' : 'pricetag-outline'} style={{ marginTop: space.sm }}
+          title={founding ? 'Founding network rate on ($129 for 12 months)' : 'Give founding network rate'} onPress={() => setFounding(!founding)} />
+      ) : null}
+      <T variant="small" style={{ marginTop: space.sm }}>
+        {mode === 'all_in'
+          ? `HQ pays ${money(price)}/month for every franchisee location; franchisees are covered on Team.`
+          : `HQ pays ${money(price)}/month for Franchise HQ; each franchisee pays its own plan with 15% off.`}
+      </T>
+      <ErrorBanner message={error ?? q.error} />
+      <Row style={{ flexWrap: 'wrap', marginTop: space.sm }} gap={space.sm}>
+        <Button small kind="secondary" icon="save-outline" title="Save billing settings" onPress={save} loading={busy}
+          disabled={mode === network.billing_mode && founding === network.founding_rate} />
+        {s && !s.active && network.billing_mode ? <Button small icon="document-text-outline" title="Bill by invoice (net 30)" onPress={invoice} loading={busy} /> : null}
+        {s?.active ? <Button small kind="secondary" icon="sync-outline" title="Sync locations now" onPress={sync} loading={busy} /> : null}
+      </Row>
+      {s && !s.active && network.billing_mode ? (
+        <T variant="small" style={{ marginTop: space.sm }}>Or the HQ owner can start card billing in Franchise HQ → Dashboard.</T>
+      ) : null}
+    </View>
   );
 }
 
