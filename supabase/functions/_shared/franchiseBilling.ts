@@ -53,14 +53,17 @@ async function ensureCoupon(id: string, params: Stripe.CouponCreateParams): Prom
   } catch { /* not created yet */ }
   try {
     return (await s.coupons.create({ id, ...params })).id;
-  } catch {
-    return id; // created at the same moment by another request
+  } catch (e) {
+    // Created at the same moment by another request? Otherwise surface Stripe's error.
+    const again = await s.coupons.retrieve(id).catch(() => null);
+    if (again?.valid) return again.id;
+    throw e;
   }
 }
 export const networkDiscountCoupon = () =>
   ensureCoupon(NETWORK_DISCOUNT_COUPON, { percent_off: 15, duration: "forever", name: "Franchise network discount (15%)" });
 export const foundingNetworkCoupon = () =>
-  ensureCoupon(FOUNDING_NETWORK_COUPON, { percent_off: 13.42, duration: "repeating", duration_in_months: 12, name: "Founding network rate ($129 per location, 12 months)" });
+  ensureCoupon(FOUNDING_NETWORK_COUPON, { percent_off: 13.42, duration: "repeating", duration_in_months: 12, name: "Founding network rate, 12 months" });
 
 export async function locationCount(db: SupabaseClient, networkId: string): Promise<number> {
   const { count } = await db.from("franchise_members").select("org_id", { count: "exact", head: true }).eq("network_id", networkId);
@@ -127,7 +130,7 @@ export async function removeStaleDiscounts(db: SupabaseClient) {
         const sub = await s.subscriptions.retrieve(o.stripe_subscription_id, { expand: ["discounts.source.coupon"] });
         const ours = (sub.discounts ?? []).some((d) => typeof d !== "string" && !d.deleted &&
           (typeof d.source?.coupon === "string" ? d.source.coupon : d.source?.coupon?.id) === NETWORK_DISCOUNT_COUPON);
-        if (ours) await s.subscriptions.update(sub.id, { discounts: [] });
+        if (ours) await s.subscriptions.deleteDiscount(sub.id);
       }
       await db.from("organizations").update({ franchise_discount_applied: false }).eq("id", o.id);
     } catch (e) {

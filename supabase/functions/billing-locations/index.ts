@@ -55,8 +55,9 @@ Deno.serve(async (req) => {
       if (to === period) return json({ ok: true, period });
       const planPrice = planPriceId("fleet", to);
       if (!planPrice || !planItem) return error("That billing period isn't available on the web yet. Please contact us.", 409);
-      const items: { id: string; price: string }[] = [{ id: planItem.id, price: planPrice }];
-      if (current) items.push({ id: current.id, price: await extraLocationPrice(to) });
+      // Quantities are sent again: Stripe resets an item to 1 when its price changes.
+      const items: { id: string; price: string; quantity: number }[] = [{ id: planItem.id, price: planPrice, quantity: planItem.quantity ?? 1 }];
+      if (current) items.push({ id: current.id, price: await extraLocationPrice(to), quantity: current.quantity ?? 1 });
       // Both items move in one update so the subscription never mixes monthly and yearly prices.
       await s.subscriptions.update(sub.id, { items, proration_behavior: "always_invoice" });
       await db.from("organizations").update({ billing_period: to }).eq("id", orgId);
