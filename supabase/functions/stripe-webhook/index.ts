@@ -350,7 +350,7 @@ async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscri
         .catch((e) => console.error("could not remove extra locations after a plan change", sub.id, (e as Error).message));
     }
     update = {
-      plan, billing_period: period, billing_source: "stripe", stripe_subscription_id: sub.id,
+      plan, billing_period: period, billing_source: "stripe", stripe_subscription_id: sub.id, billing_status: sub.status,
       extra_locations: plan === "fleet" && extra ? Math.min(500, extra.quantity ?? 0) : 0,
       plan_expires_at: paidThrough ? new Date(paidThrough * 1000 + GRACE_MS).toISOString() : null,
       ...(await discountOf(sub, period)),
@@ -359,8 +359,8 @@ async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscri
     // canceled / unpaid / incomplete_expired / paused
     const end = sub.ended_at ?? (sub.status === "unpaid" ? periodStart : periodEnd) ?? Math.floor(Date.now() / 1000);
     update = end * 1000 > Date.now()
-      ? { plan_expires_at: iso(end), stripe_subscription_id: sub.id }
-      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id, extra_locations: 0, billing_discount_monthly: 0, billing_discount_ends_at: null };
+      ? { plan_expires_at: iso(end), stripe_subscription_id: sub.id, billing_status: sub.status }
+      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id, extra_locations: 0, billing_discount_monthly: 0, billing_discount_ends_at: null, billing_status: sub.status };
   }
   if (customer) update.stripe_billing_customer_id = customer;
   const { error } = await db.from("organizations").update(update).eq("id", org.id);

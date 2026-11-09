@@ -55,6 +55,10 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
   });
   await step("square_care_plans", () => chargeDueCarePlans(db));
   await step("franchise_billing", () => franchiseBilling(db));
+  // Founder dashboard history: refresh today's row about once an hour (the worker runs every 10 minutes).
+  if (new Date().getUTCMinutes() < 10) {
+    await step("platform_snapshot", async () => { const { error } = await db.rpc("platform_snapshot"); if (error) throw error; });
+  }
   await step("automations", () => automations(db));
   await step("send", () => sendQueued(db));
   await step("push", () => pushOutbox(db));

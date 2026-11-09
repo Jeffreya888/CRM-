@@ -10,7 +10,8 @@ create table if not exists auth.users (
   id uuid primary key default gen_random_uuid(),
   email text,
   raw_user_meta_data jsonb default '{}'::jsonb,
-  email_confirmed_at timestamptz default now()
+  email_confirmed_at timestamptz default now(),
+  last_sign_in_at timestamptz
 );
 create table if not exists auth.sessions (
   id uuid primary key default gen_random_uuid(),

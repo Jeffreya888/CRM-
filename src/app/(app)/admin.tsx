@@ -2,7 +2,10 @@ import * as Clipboard from 'expo-clipboard';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { Attention, attentionCount, useAttention } from '../../components/admin/Attention';
+import { Companies } from '../../components/admin/Companies';
 import { EnterpriseAdmin } from '../../components/admin/EnterpriseAdmin';
+import { Growth } from '../../components/admin/Growth';
 import { PlatformMetrics, usePlatformMetrics } from '../../components/admin/PlatformMetrics';
 import { notify } from '../../components/FormSheet';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Ionicons, Loading, Row, Screen, Section, Segmented, StatTile, T } from '../../components/ui';
@@ -64,7 +67,9 @@ export default function PlatformAdmin() {
 }
 
 function AdminBody() {
-  const [tab, setTab] = useState<'metrics' | 'health' | 'support' | 'early' | 'actions' | 'enterprise' | 'launch'>('metrics');
+  const [tab, setTab] = useState<'metrics' | 'growth' | 'attention' | 'companies' | 'health' | 'support' | 'early' | 'actions' | 'enterprise' | 'launch'>('metrics');
+  const [openCompany, setOpenCompany] = useState<string | null>(null);
+  const attention = useAttention();
   const [showHandled, setShowHandled] = useState(false);
 
   const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
@@ -96,10 +101,13 @@ function AdminBody() {
   };
 
   return (
-    <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); early.refresh(); }}>
+    <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); early.refresh(); attention.refresh(); }}>
       <Stack.Screen options={{ title: 'Platform admin' }} />
       <Segmented value={tab} onChange={setTab} options={[
         { value: 'metrics', label: 'Metrics' },
+        { value: 'growth', label: 'Growth & funnel' },
+        { value: 'attention', label: 'Needs attention', count: attentionCount(attention.data) },
+        { value: 'companies', label: 'Companies' },
         { value: 'health', label: 'Health' },
         { value: 'support', label: 'Support', count: h?.support_open },
         { value: 'early', label: 'Early access', count: early.data?.length },
@@ -110,6 +118,9 @@ function AdminBody() {
 
       {tab === 'metrics' ? <PlatformMetrics q={metrics} /> : null}
       {tab === 'enterprise' ? <EnterpriseAdmin /> : null}
+      {tab === 'growth' ? <Growth /> : null}
+      {tab === 'attention' ? <Attention q={attention} onOpen={(id) => { setOpenCompany(id); setTab('companies'); }} /> : null}
+      {tab === 'companies' ? <Companies openId={openCompany} onOpened={() => setOpenCompany(null)} /> : null}
 
       {tab === 'health' ? (
         <>

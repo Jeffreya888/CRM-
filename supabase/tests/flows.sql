@@ -1240,6 +1240,45 @@ begin
   assert (m ->> 'companies')::int > 0 and m ? 'mrr' and m ? 'ai_questions_30d', 'founder metrics: ' || m::text;
 end $$;
 reset role;
+-- Founder dashboard: snapshots, needs-attention lists, company lookup, support actions, funnel.
+do $$ declare o uuid; p uuid; h int; a jsonb; c jsonb; f jsonb; t timestamptz; begin
+  insert into organizations (name, plan, trial_ends_at) values ('Attention Trial Co', 'trial', now() + interval '2 days') returning id into o;
+  insert into organizations (name, plan, plan_expires_at, billing_source, billing_status) values ('Past Due Co', 'team', now() + interval '10 days', 'stripe', 'past_due') returning id into p;
+  insert into customers (org_id, name) values (o, 'First customer');
+  perform public.platform_snapshot();
+  perform public.platform_snapshot();  -- twice a day keeps one row
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
+  select count(*) into h from public.platform_history(30);
+  assert h = 1, 'one snapshot row for today: ' || h;
+  a := public.platform_attention();
+  assert a->'trials_ending' @> jsonb_build_array(jsonb_build_object('id', o)), 'trial ending soon listed';
+  assert a->'payment_failed' @> jsonb_build_array(jsonb_build_object('id', p)), 'failed payment listed';
+  assert jsonb_array_length(public.platform_find_companies('Attention Trial')) = 1, 'company search';
+  c := public.platform_company(o);
+  assert (c->>'customers')::int = 1 and c->>'effective_plan' = 'trial', 'company detail: ' || c::text;
+  t := public.platform_extend_trial(o, 10);
+  assert t > now() + interval '11 days', 'trial extended from its end date';
+  perform public.platform_comp_plan(o, 'team', 30);
+  assert (select plan = 'team' and plan_expires_at > now() + interval '29 days' from organizations where id = o), 'free month of Team';
+  begin
+    perform public.platform_extend_trial(o, 5);
+    raise exception 'no trial for a paid company';
+  exception when raise_exception then if sqlerrm not like '%already on a paid plan%' then raise; end if; end;
+  begin
+    perform public.platform_comp_plan(p, 'fleet', 30);
+    raise exception 'no comp over Stripe billing';
+  exception when raise_exception then if sqlerrm not like '%pays through Stripe%' then raise; end if; end;
+  f := public.platform_funnel(30);
+  assert (f->>'signed_up')::int >= 2 and (f->>'added_customer')::int >= 1, 'funnel: ' || f::text;
+  assert (select count(*) from notification_outbox where org_id = o and kind in ('trial_extended', 'plan_comped')) = 2, 'owner told';
+  -- Not for anyone else.
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000b', true);
+  begin perform public.platform_attention(); raise exception 'attention is admin-only';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public.platform_comp_plan(o, 'fleet', 365); raise exception 'comp is admin-only';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  delete from organizations where id in (o, p);
+end $$;
 -- MRR counts billed extra locations: 7 extra = 7 x $39 on a monthly Fleet plan.
 do $$ declare o uuid; m1 jsonb; m2 jsonb; begin
   perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', true);
