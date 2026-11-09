@@ -21,7 +21,7 @@
 import { Stripe, type SupabaseClient } from "../_shared/deps.ts";
 import { adminClient, notifyManagers, stripe } from "../_shared/clients.ts";
 import { env } from "../_shared/http.ts";
-import { GRACE_MS, isExtraLocationItem, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
+import { extraLocationsCents, GRACE_MS, isExtraLocationItem, planForPriceId, type Period, type PlanId, PLAN_IDS } from "../_shared/billing.ts";
 import { applyRefund, CARE_PLAN_COLS, type CarePlanSchedule, recordCarePlanCharge, recordDeposit, recordInvoicePayment } from "../_shared/payments.ts";
 
 const crypto = Stripe.createSubtleCryptoProvider();
@@ -342,13 +342,14 @@ async function applyPlatformSubscription(db: SupabaseClient, sub: Stripe.Subscri
       plan, billing_period: period, billing_source: "stripe", stripe_subscription_id: sub.id,
       extra_locations: plan === "fleet" && extra ? Math.min(500, extra.quantity ?? 0) : 0,
       plan_expires_at: paidThrough ? new Date(paidThrough * 1000 + GRACE_MS).toISOString() : null,
+      ...(await discountOf(sub, period)),
     };
   } else {
     // canceled / unpaid / incomplete_expired / paused
     const end = sub.ended_at ?? (sub.status === "unpaid" ? periodStart : periodEnd) ?? Math.floor(Date.now() / 1000);
     update = end * 1000 > Date.now()
       ? { plan_expires_at: iso(end), stripe_subscription_id: sub.id }
-      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id, extra_locations: 0 };
+      : { plan: "expired", plan_expires_at: iso(end), stripe_subscription_id: sub.id, extra_locations: 0, billing_discount_monthly: 0, billing_discount_ends_at: null };
   }
   if (customer) update.stripe_billing_customer_id = customer;
   const { error } = await db.from("organizations").update(update).eq("id", org.id);
@@ -384,4 +385,38 @@ async function platformPackPaid(db: SupabaseClient, session: Stripe.Checkout.Ses
     }
   }
   throw new Error("could not add texts (busy); Stripe will retry");
+}
+
+/**
+ * The subscription's coupon discount, as dollars off per month and when it ends (founder metrics).
+ * A founding coupon ($ off, 12 months) gives e.g. 60 off until a year after subscribing; Stripe then
+ * charges full price and the metrics follow. Percent coupons apply to the plan and extra locations.
+ */
+async function discountOf(sub: Stripe.Subscription, period: Period): Promise<{ billing_discount_monthly: number; billing_discount_ends_at: string | null }> {
+  const none = { billing_discount_monthly: 0, billing_discount_ends_at: null };
+  if (!sub.discounts?.length) return none;
+  try {
+    const full = await stripe().subscriptions.retrieve(sub.id, { expand: ["discounts.source.coupon"] });
+    const perMonth = period === "annual" ? 1 / 12 : 1;
+    const listCents = (full.items?.data ?? []).reduce((n, i) => n + (isExtraLocationItem(i)
+      ? extraLocationsCents(i.quantity ?? 0, period)
+      : (i.price?.unit_amount ?? 0) * (i.quantity ?? 1)), 0);
+    let offCents = 0;
+    let endsAt: number | null = null;
+    for (const d of full.discounts ?? []) {
+      if (typeof d === "string" || d.deleted) continue;
+      const c = d.source?.coupon;
+      if (!c || typeof c === "string") continue;
+      offCents += c.amount_off ?? (c.percent_off ? (listCents * c.percent_off) / 100 : 0);
+      if (d.end) endsAt = endsAt == null ? d.end : Math.min(endsAt, d.end);
+    }
+    if (offCents <= 0) return none;
+    return {
+      billing_discount_monthly: Math.round(Math.min(offCents, listCents || offCents) * perMonth) / 100,
+      billing_discount_ends_at: endsAt ? new Date(endsAt * 1000).toISOString() : null,
+    };
+  } catch (e) {
+    console.warn("could not read subscription discounts", sub.id, (e as Error).message);
+    return none;
+  }
 }

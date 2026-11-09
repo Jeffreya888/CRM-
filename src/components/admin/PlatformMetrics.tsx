@@ -12,7 +12,7 @@ export interface PlatformMetricsData {
   companies: number; new_companies_30d: number; trials_active: number; paid_companies: number; expired: number;
   by_plan: Partial<Record<'solo' | 'team' | 'fleet', number>>;
   by_source: Partial<Record<'app_store' | 'play_store' | 'stripe' | 'unknown', number>>;
-  mrr: number; mrr_net: number; arr: number; extra_locations_billed?: number; extra_locations_mrr?: number; arpa: number | null; trial_conversion_pct: number | null;
+  mrr: number; mrr_net: number; arr: number; extra_locations_billed?: number; extra_locations_mrr?: number; discounts_mrr?: number; discounted_companies?: number; arpa: number | null; trial_conversion_pct: number | null;
   payment_volume_30d: number; platform_fees_30d: number; companies_taking_payments_30d: number;
   ai_checks_30d: number; ai_questions_30d: number; ai_cost_estimate_30d: number; gross_margin_estimate_pct: number | null;
 }
@@ -43,6 +43,7 @@ export function PlatformMetrics({ q }: { q: ReturnType<typeof usePlatformMetrics
     { label: 'AI questions (30 days)', value: num(m?.ai_questions_30d), icon: 'chatbubbles-outline', tone: 'purple' },
     { label: 'Extra locations billed', value: num(m?.extra_locations_billed ?? 0), icon: 'git-branch-outline', tone: 'primary' },
     { label: 'Extra-location MRR', value: usd(m?.extra_locations_mrr ?? 0), icon: 'add-circle-outline', tone: 'success' },
+    { label: 'Discounts (founding etc.)', value: `${usd(m?.discounts_mrr ?? 0)} · ${num(m?.discounted_companies ?? 0)} co.`, icon: 'pricetag-outline', tone: 'warning' },
     { label: 'AI cost (estimate)', value: usd(m?.ai_cost_estimate_30d), icon: 'flask-outline', tone: 'warning' },
     { label: 'Gross margin (estimate)', value: pct(m?.gross_margin_estimate_pct), icon: 'pie-chart-outline', tone: 'info' },
   ];
