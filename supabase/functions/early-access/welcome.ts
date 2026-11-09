@@ -44,7 +44,7 @@ export function welcomeHtml(w: Welcome): string {
     <div style="font-weight:700;margin:0 0 8px">What Tarmo will do for you</div>
     <ul style="margin:0 0 18px;padding-left:20px;line-height:1.5">${li}</ul>
     <div style="font-weight:700;margin:0 0 8px">What happens next</div>
-    ${p("On launch day we'll email you your founding code and a link to start. Every plan starts with a 14-day free trial of every feature.")}
+    ${p("On launch day we'll email you your founding code and a link to start. Every plan starts with a 30-day free trial of every feature, no card required.")}
     ${p("<strong>One question:</strong> what's the most frustrating part of running your detailing business today? Just reply to this email. A real person reads every answer, and it shapes what we build.")}
     ${p("Welcome aboard,<br>The Tarmo team")}
   </div>
@@ -69,7 +69,7 @@ export function welcomeText(w: Welcome): string {
     ...highlights(w.types).map((h) => `- ${h}`),
     "",
     "WHAT HAPPENS NEXT",
-    "On launch day we'll email you your founding code and a link to start. Every plan starts with a 14-day free trial of every feature.",
+    "On launch day we'll email you your founding code and a link to start. Every plan starts with a 30-day free trial of every feature, no card required.",
     "",
     "One question: what's the most frustrating part of running your detailing business today? Just reply to this email. A real person reads every answer.",
     "",
