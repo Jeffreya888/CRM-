@@ -34,6 +34,16 @@ export default function GettingStarted() {
         <T variant="small" style={{ marginTop: 6 }}>{loading ? 'Checking…' : `${doneCount} of ${total} done`}</T>
       </Card>
       <SampleDataCard onChanged={refresh} />
+      <Card onPress={() => router.push('/import')}>
+        <Row gap={space.md}>
+          <Ionicons name="cloud-upload-outline" size={22} color={colors.primaryText} />
+          <View style={{ flex: 1 }}>
+            <T style={{ fontWeight: '700' }}>Coming from other software?</T>
+            <T variant="muted">Import your customers, aircraft, vehicles, boats and prices from a spreadsheet in a few minutes.</T>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Row>
+      </Card>
 
       {steps.map((s, i) => {
         const next = s.key === nextKey;

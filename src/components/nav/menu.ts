@@ -25,7 +25,7 @@ export type MenuItem = {
 export type MenuGroup = { key: 'company' | 'operations' | 'sales' | 'workflow' | 'finance' | 'help'; title: string; items: MenuItem[] };
 
 /** Tools a one-person business sees in the simple view. Everything else is one tap away with "Show all tools". */
-export const SIMPLE_VIEW_HREFS = ['/settings', '/team', '/account', '/assistant', '/schedule', '/route', '/aircraft', '/quotes', '/invoices', '/training', '/getting-started', '/about', '/paywall', '/admin'];
+export const SIMPLE_VIEW_HREFS = ['/settings', '/import', '/team', '/account', '/assistant', '/schedule', '/route', '/aircraft', '/quotes', '/invoices', '/training', '/getting-started', '/about', '/paywall', '/admin'];
 
 export const visibleItems = (items: MenuItem[]) => items.filter((i) => i.show !== false);
 
@@ -53,6 +53,7 @@ export function useMenu() {
     {
       key: 'company', title: 'Company', items: [
         { label: 'Company profile & settings', short: 'Settings', subtitle: 'Invoice sender details, business types, payments', icon: 'business-outline', tone: 'info', href: '/settings' },
+        { label: 'Import data', short: 'Import', subtitle: 'Customers, assets and prices from a spreadsheet', icon: 'cloud-upload-outline', tone: 'success', href: '/import', show: manager },
         { label: 'Team roles & access', short: 'Team', subtitle: team != null ? `${team} team member${team === 1 ? '' : 's'}` : 'Invite and manage your crew', icon: 'people-outline', tone: 'purple', href: '/team' },
         { label: 'Franchise HQ', short: 'Franchise HQ', subtitle: 'Locations, standards and royalties', icon: 'git-network-outline', tone: 'primary', href: '/franchise', show: admin, badge: fleetBadge },
         { label: 'Company locations', short: 'Locations', subtitle: 'Branches you operate from', icon: 'git-branch-outline', tone: 'info', href: '/branches', show: admin, badge: can('branches') ? undefined : 'Fleet' },

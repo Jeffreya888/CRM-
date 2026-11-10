@@ -1796,6 +1796,29 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Spreadsheet import -----------------------------------------------------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare o uuid := (select v from ctx where k='calco'); r jsonb; begin
+  r := public.import_customers(o, '[{"name":"Sky Mgmt","email":"AP@SkyMgmt.com","phone":"555"},{"name":"Sky Mgmt dup","email":"ap@skymgmt.com"},{"company":"Only Company Inc"},{"email":"x@y.com"},{"name":"Calendar customer"}]');
+  assert r = '{"added":2,"skipped":2,"invalid":1}'::jsonb, 'customers import: ' || r::text;
+  r := public.import_assets(o, '[{"tail":"n123ab","owner":"ap@skymgmt.com","make":"Cessna","model":"Citation"},{"tail":"N123AB"},{"tail":"Blue Wave","type":"Yacht","owner":"New Owner LLC"},{"tail":"","type":"car"}]');
+  assert (r->>'added')::int = 2 and (r->>'skipped')::int = 1 and (r->>'invalid')::int = 1 and (r->>'owners_added')::int = 1, 'assets import: ' || r::text;
+  assert (select asset_type = 'watercraft' and category = 'boat_medium' from aircraft where org_id = o and tail_number = 'Blue Wave'), 'boat typed';
+  assert (select c.email from aircraft a join customers c on c.id = a.customer_id where a.org_id = o and a.tail_number = 'N123AB') = 'ap@skymgmt.com', 'owner matched by email';
+  r := public.import_services(o, '[{"name":"Exterior Wash","price":"$1,250.00","hours":"4"},{"name":"Ceramic Coating Pro","price":"7488","category":"Ceramic"},{"name":"No price"}]');
+  assert (r->>'invalid')::int = 1 and (r->>'added')::int + (r->>'updated')::int = 2, 'services import: ' || r::text;
+  assert (select base_price from services where org_id = o and name = 'Ceramic Coating Pro') = 7488
+     and (select category from services where org_id = o and name = 'Ceramic Coating Pro') = 'coating', 'service price and category';
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
+do $$ begin
+  begin perform public.import_customers((select v from ctx where k='calco'), '[{"name":"x"}]'); raise exception 'tech imported';
+  exception when raise_exception then if sqlerrm not like 'Only owners%' then raise; end if; end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 -- ---------- In-app support message -----------------------------------------------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
