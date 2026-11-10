@@ -27,10 +27,16 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient(req).auth.getUser();
     if (!user) return error("Sign in first", 401);
     const db = adminClient();
-    const { data: admin } = await db.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    const { data: admin } = await db.from("platform_admins").select("user_id, role").eq("user_id", user.id).maybeSingle();
     if (!admin) return error("Not allowed", 403);
 
     const body = await req.json().catch(() => ({}));
+    // Support staff answer messages and look up companies; everything that changes billing or settings is owners only.
+    const SUPPORT_OK = ["support_handled", "find_orgs"];
+    if (admin.role !== "owner" && !SUPPORT_OK.includes(body.action)) return error("Only Tarmo owners can do that", 403);
+    // Activity log: who did what, for which company.
+    const audit = (action: string, orgId: string | null, details: Record<string, unknown> = {}) =>
+      db.rpc("platform_audit", { p_action: action, p_org: orgId, p_details: details, p_actor: user.id }).then(() => {}, () => {});
     switch (body.action) {
       case "set_sms": {
         const { org_id, status } = body;
@@ -49,6 +55,7 @@ Deno.serve(async (req) => {
         if (status === "active" && org.is_demo) return error("Demo companies cannot text");
         const { error: e } = await db.from("organizations").update(patch).eq("id", org_id);
         if (e) throw e;
+        await audit("texting_status_set", org_id, { status, number: patch.sms_number ?? null });
         if (status === "active") {
           await outbox(db, { org_id, audience: "owners", kind: "texting_ready", title: "Customer texting is ready", body: `Your texting number is ${patch.sms_number ?? org.sms_number}. Turn texting on in Customer texting.`, url: "/texting" });
         } else if (status === "suspended") {
@@ -62,6 +69,7 @@ Deno.serve(async (req) => {
         const { data: r, error: e } = await db.from("integration_requests").update({ status }).eq("id", id).select("org_id, provider").maybeSingle();
         if (e) throw e;
         if (!r) return error("Request not found", 404);
+        await audit("integration_status_set", r.org_id, { provider: r.provider, status });
         if (status === "approved" || status === "live") {
           await outbox(db, {
             org_id: r.org_id, audience: "owners", kind: "integration_status",
@@ -74,8 +82,9 @@ Deno.serve(async (req) => {
       }
       case "support_handled": {
         if (typeof body.id !== "string") return error("id required");
-        const { error: e } = await db.from("support_messages").update({ handled: body.handled !== false }).eq("id", body.id);
+        const { data: sm, error: e } = await db.from("support_messages").update({ handled: body.handled !== false }).eq("id", body.id).select("org_id, email").maybeSingle();
         if (e) throw e;
+        await audit("support_message_handled", sm?.org_id ?? null, { from: sm?.email ?? null });
         return json({ ok: true });
       }
       case "find_orgs": {
@@ -114,6 +123,7 @@ Deno.serve(async (req) => {
         const { data: r, error: e } = await db.from("organizations").update(patch).eq("id", org_id).select("id").maybeSingle();
         if (e) throw e;
         if (!r) return error("Company not found", 404);
+        await audit("enterprise_settings_set", org_id, patch);
         if (patch.franchise_hq_enabled === true) {
           await outbox(db, { org_id, audience: "owners", kind: "franchise_hq_ready", title: "Franchise HQ is ready", body: "Set up your franchise network in Franchise HQ.", url: "/franchise" });
         }
@@ -130,6 +140,8 @@ Deno.serve(async (req) => {
         if (live && net.billing_mode !== mode) return error("Billing is already running. Cancel it in Stripe before switching all-in and split.", 409);
         const { error: e } = await db.from("franchise_networks").update({ billing_mode: mode, founding_rate: mode === "all_in" && body.founding === true }).eq("id", network_id);
         if (e) throw e;
+        const { data: nw } = await db.from("franchise_networks").select("hq_org_id").eq("id", network_id).maybeSingle();
+        await audit("franchise_billing_set", nw?.hq_org_id ?? null, { mode, founding: mode === "all_in" && body.founding === true });
         return json({ ok: true });
       }
       case "send_franchise_quote": {
@@ -145,6 +157,7 @@ Deno.serve(async (req) => {
           brand, locations, contactName: typeof body.contact_name === "string" ? body.contact_name.slice(0, 80) : null,
           currentPerLocation: num(body.current_per_location), techFee: num(body.tech_fee), founding: body.founding === true,
         }, portalUrl());
+        await audit("franchise_quote_sent", null, { to, brand, locations, founding: body.founding === true });
         await sendEmail({
           to, cc: user.email ?? null, replyTo: user.email ?? null, fromName: "Tarmo", subject: q.subject, text: q.text,
           html: emailLayout({ heading: "Your franchise network quote", bodyHtml: q.html, button: { label: "See Franchise HQ", url: `${portalUrl()}/franchises` } }),

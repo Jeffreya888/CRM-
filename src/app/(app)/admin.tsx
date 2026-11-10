@@ -3,11 +3,14 @@ import * as Linking from 'expo-linking';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
+import { ActivityLog, AdminTeam } from '../../components/admin/AdminTeam';
+import { Announcements } from '../../components/admin/Announcements';
 import { Attention, attentionCount, useAttention } from '../../components/admin/Attention';
 import { Companies } from '../../components/admin/Companies';
 import { EnterpriseAdmin } from '../../components/admin/EnterpriseAdmin';
 import { Errors, useErrors } from '../../components/admin/Errors';
 import { Growth } from '../../components/admin/Growth';
+import { FeatureUsage, InvestorUpdate } from '../../components/admin/InvestorUpdate';
 import { PlatformMetrics, usePlatformMetrics } from '../../components/admin/PlatformMetrics';
 import { notify } from '../../components/FormSheet';
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Ionicons, Loading, Row, Screen, Section, Segmented, StatTile, T } from '../../components/ui';
@@ -54,9 +57,10 @@ const CHECKLIST: [string, string][] = [
 export default function PlatformAdmin() {
   const { session } = useSession();
   const uid = session?.user.id ?? '';
+  // 'owner' sees everything; 'support' sees companies, needs attention, errors, support and early access.
   const access = useQuery(async () => {
-    const { data } = await supabase.from('platform_admins').select('user_id').eq('user_id', uid).maybeSingle();
-    return !!data;
+    const { data } = await supabase.rpc('platform_my_role');
+    return (data === 'owner' || data === 'support' ? data : null) as 'owner' | 'support' | null;
   }, [uid]);
 
   if (access.data === undefined) return <><Stack.Screen options={{ title: 'Platform admin' }} /><Loading /></>;
@@ -68,17 +72,21 @@ export default function PlatformAdmin() {
       </Screen>
     );
   }
-  return <AdminBody />;
+  return <AdminBody owner={access.data === 'owner'} />;
 }
 
-function AdminBody() {
-  const [tab, setTab] = useState<'metrics' | 'growth' | 'attention' | 'companies' | 'errors' | 'health' | 'support' | 'early' | 'actions' | 'enterprise' | 'launch'>('metrics');
+type Tab = 'metrics' | 'growth' | 'usage' | 'investor' | 'attention' | 'companies' | 'errors' | 'health' | 'support' | 'early' | 'actions'
+  | 'enterprise' | 'announcements' | 'activity' | 'team' | 'launch';
+const SUPPORT_TABS: Tab[] = ['attention', 'companies', 'errors', 'support', 'early'];
+
+function AdminBody({ owner }: { owner: boolean }) {
+  const [tab, setTab] = useState<Tab>(owner ? 'metrics' : 'attention');
   const [openCompany, setOpenCompany] = useState<string | null>(null);
   const attention = useAttention();
   const errorsQ = useErrors(false);
   const [showHandled, setShowHandled] = useState(false);
 
-  const health = useQuery(async () => ({ ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() }), []);
+  const health = useQuery(async () => (owner ? { ...((await must(supabase.rpc('platform_health'))) as Health), fetchedAt: Date.now() } : null), [owner]);
   const support = useQuery(async () => {
     let q = supabase.from('support_messages').select('*').order('created_at', { ascending: false }).limit(100);
     if (!showHandled) q = q.eq('handled', false);
@@ -91,8 +99,8 @@ function AdminBody() {
     await Clipboard.setStringAsync(emails.join(', '));
     notify('Copied', `${emails.length} emails copied (unsubscribed people left out).`);
   };
-  const pending = useQuery(async () => (await must(supabase.rpc('platform_pending'))) as Pending, []);
-  const metrics = usePlatformMetrics();
+  const pending = useQuery(async () => (owner ? ((await must(supabase.rpc('platform_pending'))) as Pending) : null), [owner]);
+  const metrics = usePlatformMetrics(owner);
   const h = health.data;
   const plans = h?.companies_by_plan ?? {};
   const paying = (plans.solo ?? 0) + (plans.team ?? 0) + (plans.fleet ?? 0);
@@ -109,26 +117,36 @@ function AdminBody() {
   return (
     <Screen refreshing={metrics.refreshing || health.refreshing || support.refreshing} onRefresh={() => { metrics.refresh(); health.refresh(); support.refresh(); pending.refresh(); early.refresh(); attention.refresh(); }}>
       <Stack.Screen options={{ title: 'Platform admin' }} />
-      <Segmented value={tab} onChange={setTab} options={[
+      <Segmented value={tab} onChange={setTab} options={([
         { value: 'metrics', label: 'Metrics' },
         { value: 'growth', label: 'Growth & funnel' },
+        { value: 'usage', label: 'Feature usage' },
+        { value: 'investor', label: 'Investor update' },
         { value: 'attention', label: 'Needs attention', count: attentionCount(attention.data) },
         { value: 'companies', label: 'Companies' },
         { value: 'errors', label: 'Errors', count: errorsQ.data?.length },
         { value: 'health', label: 'Health' },
-        { value: 'support', label: 'Support', count: h?.support_open },
+        { value: 'support', label: 'Support', count: h ? h.support_open : support.data?.filter((m) => !m.handled).length },
         { value: 'early', label: 'Early access', count: early.data?.length },
         { value: 'actions', label: 'Texting & integrations', count: h?.texting_pending },
         { value: 'enterprise', label: 'Enterprise & franchise' },
+        { value: 'announcements', label: 'Announcements' },
+        { value: 'activity', label: 'Activity log' },
+        { value: 'team', label: 'Admin team' },
         { value: 'launch', label: 'Launch checklist' },
-      ]} />
+      ] as { value: Tab; label: string; count?: number }[]).filter((o) => owner || SUPPORT_TABS.includes(o.value))} />
 
       {tab === 'metrics' ? <PlatformMetrics q={metrics} /> : null}
       {tab === 'enterprise' ? <EnterpriseAdmin /> : null}
       {tab === 'growth' ? <Growth /> : null}
+      {tab === 'usage' ? <FeatureUsage /> : null}
+      {tab === 'investor' ? <InvestorUpdate /> : null}
+      {tab === 'announcements' ? <Announcements /> : null}
+      {tab === 'activity' ? <ActivityLog /> : null}
+      {tab === 'team' ? <AdminTeam /> : null}
       {tab === 'errors' ? <Errors /> : null}
       {tab === 'attention' ? <Attention q={attention} onOpen={(id) => { setOpenCompany(id); setTab('companies'); }} /> : null}
-      {tab === 'companies' ? <Companies openId={openCompany} onOpened={() => setOpenCompany(null)} /> : null}
+      {tab === 'companies' ? <Companies owner={owner} openId={openCompany} onOpened={() => setOpenCompany(null)} /> : null}
 
       {tab === 'health' ? (
         <>

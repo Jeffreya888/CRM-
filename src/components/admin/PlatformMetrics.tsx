@@ -23,8 +23,9 @@ const usd = (v: number | null | undefined) => (v == null ? '—' : moneyShort(v)
 
 type Tile = { label: string; value: string; icon: IconName; tone: Tone };
 
-export function usePlatformMetrics() {
-  return useQuery(async () => (await must(supabase.rpc('platform_metrics'))) as PlatformMetricsData, []);
+/** Owners only; support staff get null without asking the server. */
+export function usePlatformMetrics(enabled = true) {
+  return useQuery(async () => (enabled ? ((await must(supabase.rpc('platform_metrics'))) as PlatformMetricsData) : null), [enabled]);
 }
 
 export function PlatformMetrics({ q }: { q: ReturnType<typeof usePlatformMetrics> }) {

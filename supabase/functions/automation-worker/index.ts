@@ -76,6 +76,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
 
   await step("error_alerts", () => errorAlerts(db));
   await step("support_alerts", () => supportAlerts(db));
+  await step("announcement_emails", () => announcementEmails(db));
 
   await db.from("worker_runs").insert({ worker: "automation", ok, details });
   return { ok, ...details };
@@ -969,4 +970,32 @@ async function supportAlerts(db: SupabaseClient) {
     await db.from("support_messages").update({ notified_at: new Date().toISOString() }).eq("id", m.id);
   }
   return { alerted: msgs.length };
+}
+
+/** Emails Platform admin announcements that were posted with "Also email", up to 100 people per run, once each. */
+async function announcementEmails(db: SupabaseClient) {
+  const { data: rows, error } = await db.rpc("announcement_email_batch", { p_limit: 100 });
+  if (error) throw error;
+  if (!rows?.length) return { sent: 0 };
+  if (!Deno.env.get("RESEND_API_KEY")) return { sent: 0, skipped: "email not configured" };
+  let sent = 0, failed = 0;
+  for (const r of rows as { announcement_id: string; user_id: string; email: string; title: string; body: string; url: string | null }[]) {
+    const link = r.url ? (r.url.startsWith("/") ? `${portalUrl()}${r.url}` : r.url) : portalUrl();
+    const text = `${r.body ? `${r.body}\n\n` : ""}Open Tarmo: ${link}\n\nYou're getting this because you use Tarmo. We only email about things that affect your account.`;
+    try {
+      if (isEmail(r.email)) {
+        await sendEmail({
+          to: r.email, fromName: "Tarmo", subject: r.title, text,
+          html: emailLayout({ heading: r.title, bodyHtml: textToHtml(text), button: { label: "Open Tarmo", url: link } }),
+        });
+        sent++;
+      }
+      await db.from("platform_announcement_emails").insert({ announcement_id: r.announcement_id, user_id: r.user_id });
+    } catch (e) {
+      failed++;
+      console.error("announcement email", r.announcement_id, (e as Error).message);
+    }
+  }
+  const { data: finished } = await db.rpc("announcement_emails_finish");
+  return { sent, failed, finished };
 }

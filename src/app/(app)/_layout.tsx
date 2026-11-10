@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { setVoiceLanguage } from '../../components/assistant/voice';
 import { useLang } from '../../lib/i18n';
 import { View } from 'react-native';
+import { AnnouncementBanner } from '../../components/AnnouncementBanner';
 import { AppHeader } from '../../components/AppHeader';
 import { Sidebar } from '../../components/nav/Sidebar';
 import { FirstVisitTip } from '../../components/onboarding/FirstVisitTip';
@@ -19,6 +20,7 @@ export default function AppLayout() {
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.bg }}>
       {desktop ? <Sidebar /> : null}
       <View style={{ flex: 1 }}>
+        <AnnouncementBanner />
         <Stack
           screenOptions={{
             header: (props) => <AppHeader {...props} />,

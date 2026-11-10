@@ -19,7 +19,7 @@ type Detail = Found & {
 
 const lastSeen = (v: string | null) => (v ? relative(v) : 'never');
 
-export function Companies({ openId, onOpened }: { openId?: string | null; onOpened?: () => void }) {
+export function Companies({ openId, onOpened, owner = true }: { openId?: string | null; onOpened?: () => void; owner?: boolean }) {
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<Found[] | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export function Companies({ openId, onOpened }: { openId?: string | null; onOpen
     try { setRows((await must(supabase.rpc('platform_find_companies', { p_query: query }))) as Found[]); }
     catch (e: any) { setError(friendlyError(e.message)); } finally { setBusy(false); }
   };
-  if (selected) return <CompanyDetail id={selected} onBack={() => { setPicked(null); onOpened?.(); }} />;
+  if (selected) return <CompanyDetail owner={owner} id={selected} onBack={() => { setPicked(null); onOpened?.(); }} />;
   return (
     <>
       <Card>
@@ -53,7 +53,7 @@ export function Companies({ openId, onOpened }: { openId?: string | null; onOpen
   );
 }
 
-function CompanyDetail({ id, onBack }: { id: string; onBack: () => void }) {
+function CompanyDetail({ id, onBack, owner }: { id: string; onBack: () => void; owner: boolean }) {
   const q = useQuery(async () => (await must(supabase.rpc('platform_company', { p_org: id }))) as Detail, [id]);
   const [trialDays, setTrialDays] = useState('14');
   const [compPlan, setCompPlan] = useState<'solo' | 'team' | 'fleet'>('team');
@@ -148,6 +148,7 @@ function CompanyDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   </Row>
                 </>
               ) : null}
+              {owner ? (<>
               <T style={{ fontWeight: '700', marginTop: paid ? 0 : space.md }}>Free time on a plan</T>
               <T variant="small" style={{ marginBottom: space.sm }}>For design partners or to make up for a problem. Companies paying through Stripe or an app store get a coupon there instead.</T>
               <Segmented value={compPlan} onChange={setCompPlan} options={[{ value: 'solo', label: 'Solo' }, { value: 'team', label: 'Team' }, { value: 'fleet', label: 'Fleet' }]} />
@@ -157,6 +158,7 @@ function CompanyDetail({ id, onBack }: { id: string; onBack: () => void }) {
                   onPress={() => act(`Give ${compDays} days of ${titleCase(compPlan)}?`, `${c.name} gets ${titleCase(compPlan)} free for ${compDays} days. The owner gets a notification.`,
                     () => must(supabase.rpc('platform_comp_plan', { p_org: c.id, p_plan: compPlan, p_days: Number(compDays) })), `${titleCase(compPlan)} free for ${compDays} days.`)} />
               </Row>
+              </>) : paid ? <T variant="muted">Paid company: an owner can give free time if needed.</T> : null}
             </Card>
           </Section>
         </>

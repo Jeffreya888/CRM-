@@ -1836,6 +1836,42 @@ do $$ begin
 end $$;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Admin team roles and activity log ------------------------------------
+reset role;
+insert into platform_admins (user_id) values ('00000000-0000-0000-0000-0000000000a1') on conflict do nothing;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000d5', 'support-b@example.com') on conflict do nothing;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+select public.platform_set_admin('support-b@example.com', 'support');
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000d5', false);
+do $$ begin
+  assert public.platform_my_role() = 'support', 'support role';
+  perform public.platform_attention();                       -- support can see who needs attention
+  perform public.platform_find_companies('Calendar');
+  perform public.platform_extend_trial((select v from ctx where k='calco'), 3);
+  begin perform public.platform_metrics(); raise exception 'support saw revenue';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public.platform_history(30); raise exception 'support saw history';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public.platform_comp_plan((select v from ctx where k='calco'), 'fleet', 30); raise exception 'support gave free time';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public.platform_activity(); raise exception 'support read the log';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public._platform_funnel_impl(30); raise exception 'impl callable';
+  exception when insufficient_privilege then null; end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+do $$ declare a jsonb := public.platform_activity(50); begin
+  assert a @> '[{"action":"trial_extended"}]' and a @> '[{"action":"admin_team_set"}]', 'actions logged: ' || a::text;
+  assert (select (x->>'actor') from jsonb_array_elements(a) x where x->>'action' = 'trial_extended' limit 1) is not null, 'who did it';
+  begin perform public.platform_remove_admin('00000000-0000-0000-0000-0000000000a1'); raise exception 'removed self';
+  exception when raise_exception then if sqlerrm not like 'You can%' then raise; end if; end;
+  perform public.platform_remove_admin('00000000-0000-0000-0000-0000000000d5');
+  assert jsonb_array_length(public.platform_team()) >= 1 and not (public.platform_team() @> '[{"role":"support"}]'), 'support removed';
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
 -- ---------- In-app support message -----------------------------------------------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
@@ -1849,6 +1885,56 @@ do $$ begin
   assert (select source = 'app' and company = 'Calendar Co' and route = '/branches' and plan = 'trial' and notified_at is null
           from support_messages where message like 'How do I add%'), 'support message carries company, plan and screen';
 end $$;
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ---------- Announcements and feature usage ----------------------------------------
+reset role;
+insert into platform_admins (user_id, role) values ('00000000-0000-0000-0000-0000000000d5', 'support') on conflict (user_id) do update set role = 'support';
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000d5', false);
+do $$ begin
+  begin perform public.platform_post_announcement('Nope'); raise exception 'support posted';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+  begin perform public.platform_feature_usage(30); raise exception 'support saw usage';
+  exception when raise_exception then if sqlerrm <> 'Not allowed' then raise; end if; end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+create temp table ann as select public.platform_post_announcement('Maintenance Sunday', 'Offline 2-3am ET.', 'warning', 'all', 3, true, '/account') id;
+select public.platform_post_announcement('Owners only news', '', 'info', 'owners', 7, false, null);
+do $$ declare u jsonb := public.platform_feature_usage(30); begin
+  assert (u->>'companies')::int >= 1 and jsonb_array_length(u->'features') >= 15, 'usage: ' || u::text;
+  begin perform public.platform_post_announcement('Bad link', '', 'info', 'all', 3, false, 'javascript:alert(1)'); raise exception 'bad url accepted';
+  exception when check_violation then null; end;
+  begin perform public.platform_post_announcement('Too long', '', 'info', 'all', 400, false, null); raise exception 'days accepted';
+  exception when raise_exception then if sqlerrm not like 'Show it for%' then raise; end if; end;
+  assert public.platform_activity(20) @> '[{"action":"announcement_posted"}]', 'posting logged';
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare c jsonb := public.current_announcements(); begin
+  assert c @> '[{"title":"Maintenance Sunday","url":"/account"}]', 'member sees it: ' || c::text;
+  begin perform 1 from platform_announcements; raise exception 'table readable';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ begin
+  assert exists (select 1 from public.announcement_email_batch(500) b where b.announcement_id = (select id from ann)), 'queued for email';
+  assert not exists (select 1 from public.announcement_email_batch(500) b join platform_announcements a on a.id = b.announcement_id where not a.send_email), 'no email when not asked';
+end $$;
+insert into platform_announcement_emails (announcement_id, user_id) select announcement_id, user_id from public.announcement_email_batch(500);
+do $$ begin
+  assert public.announcement_emails_finish() >= 1, 'finished';
+  assert (select emailed_at is not null from platform_announcements where id = (select id from ann)), 'marked emailed';
+  assert not exists (select 1 from public.announcement_email_batch(500)), 'nothing left to send';
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
+select public.platform_end_announcement((select id from ann));
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ begin
+  assert not (public.current_announcements() @> '[{"title":"Maintenance Sunday"}]'), 'ended announcement hidden';
+end $$;
+reset role;
+delete from platform_admins where user_id = '00000000-0000-0000-0000-0000000000d5';
 select set_config('request.jwt.claim.sub', '', false);
 
 \echo ALL FLOW TESTS PASSED

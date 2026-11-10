@@ -31,8 +31,8 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await userClient(req).auth.getUser();
     if (!user) return error("Sign in first", 401);
-    const { data: pa } = await db.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
-    const platformAdmin = !!pa;
+    const { data: pa } = await db.from("platform_admins").select("user_id, role").eq("user_id", user.id).maybeSingle();
+    const platformAdmin = pa?.role === "owner";
     const caller = await callerRole(req, n.hq_org_id);
     const hqAdmin = !!caller && (caller.role === "owner" || caller.role === "admin");
     if (!platformAdmin && !hqAdmin) return error("Only franchise HQ admins can see network billing", 403);
@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
           metadata: { kind: "franchise_hq", network_id: n.id, org_id: n.hq_org_id, mode: n.billing_mode },
         });
         await db.from("franchise_networks").update({ stripe_subscription_id: sub.id, billing_status: sub.status, billed_locations: Math.max(1, locations) }).eq("id", n.id);
+        await db.rpc("platform_audit", { p_action: "franchise_invoice_billing_started", p_org: n.hq_org_id, p_details: { mode: n.billing_mode, locations }, p_actor: user.id });
         return json({ ok: true });
       }
 
