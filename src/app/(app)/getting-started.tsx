@@ -3,6 +3,7 @@ import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSetupSteps } from '../../components/dashboard/useSetupSteps';
+import { SampleDataCard } from '../../components/onboarding/SampleDataCard';
 import { notify } from '../../components/FormSheet';
 import { Button, Card, ErrorBanner, IconTile, Ionicons, Row, Screen, Section, T } from '../../components/ui';
 import { APP_GUIDE } from '../../lib/appGuide';
@@ -32,6 +33,7 @@ export default function GettingStarted() {
         </View>
         <T variant="small" style={{ marginTop: 6 }}>{loading ? 'Checking…' : `${doneCount} of ${total} done`}</T>
       </Card>
+      <SampleDataCard onChanged={refresh} />
 
       {steps.map((s, i) => {
         const next = s.key === nextKey;

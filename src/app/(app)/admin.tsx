@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -29,7 +30,10 @@ type PendingIntegration = { id: string; provider: string; management_company: st
 type Pending = { texting: PendingTexting[]; integrations: PendingIntegration[] };
 type EarlyAccess = { id: string; name: string; email: string; company: string | null; business_types: string[]; crew_size: string | null; created_at: string; unsubscribed_at: string | null };
 const TYPE_LABEL: Record<string, string> = { aircraft: 'Aircraft', watercraft: 'Boats', vehicle: 'Cars' };
-type SupportMessage = { id: string; name: string; email: string; company: string | null; topic: string | null; message: string; handled: boolean; created_at: string };
+type SupportMessage = {
+  id: string; name: string; email: string; company: string | null; topic: string | null; message: string; handled: boolean; created_at: string;
+  source?: string; plan?: string | null; route?: string | null; platform?: string | null; app_version?: string | null; org_id?: string | null;
+};
 
 const CHECKLIST: [string, string][] = [
   ['Domain & support email', 'Buy the domain, set up the support inbox, set EXPO_PUBLIC_PORTAL_URL and EXPO_PUBLIC_SUPPORT_EMAIL.'],
@@ -203,18 +207,25 @@ function AdminBody() {
           <ErrorBanner message={support.error} onRetry={support.refresh} />
           <Segmented value={showHandled ? 'all' : 'open'} onChange={(v) => setShowHandled(v === 'all')}
             options={[{ value: 'open', label: 'Open' }, { value: 'all', label: 'All' }]} />
-          {!support.loading && (support.data ?? []).length === 0 ? <EmptyState icon="mail-open-outline" title="No support messages" body="Messages from the website contact form show up here." /> : null}
+          {!support.loading && (support.data ?? []).length === 0 ? <EmptyState icon="mail-open-outline" title="No support messages" body="Messages from the website contact form and the app show up here." /> : null}
           {(support.data ?? []).map((m) => (
             <Card key={m.id}>
               <Row style={{ justifyContent: 'space-between' }}>
                 <View style={{ flex: 1 }}>
                   <T style={{ fontWeight: '700' }}>{m.name}{m.company ? ` · ${m.company}` : ''}</T>
                   <T variant="small">{m.email} · {relative(m.created_at)}</T>
+                  {m.source === 'app' ? (
+                    <T variant="small">In the app{m.plan ? ` · ${titleCase(m.plan)}` : ''}{m.route ? ` · ${m.route}` : ''}{m.platform ? ` · ${m.platform}` : ''}{m.app_version ? ` ${m.app_version}` : ''}</T>
+                  ) : null}
                 </View>
                 {m.handled ? <Badge label="handled" tone="success" /> : m.topic ? <Badge raw label={m.topic} tone="info" /> : null}
               </Row>
               <T style={{ marginTop: space.sm }}>{m.message}</T>
-              {!m.handled ? <Button small kind="secondary" icon="checkmark" title="Mark handled" style={{ alignSelf: 'flex-start', marginTop: space.md }} onPress={() => markHandled(m)} /> : null}
+              <Row style={{ flexWrap: 'wrap', marginTop: space.md }} gap={space.sm}>
+                <Button small icon="mail-outline" title="Reply" onPress={() => Linking.openURL(`mailto:${m.email}?subject=${encodeURIComponent(`Re: ${m.topic ?? 'your message'} · Tarmo`)}`)} />
+                {m.org_id ? <Button small kind="secondary" icon="business-outline" title="Open company" onPress={() => { setOpenCompany(m.org_id!); setTab('companies'); }} /> : null}
+                {!m.handled ? <Button small kind="secondary" icon="checkmark" title="Mark handled" onPress={() => markHandled(m)} /> : null}
+              </Row>
             </Card>
           ))}
         </>

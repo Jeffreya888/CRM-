@@ -1767,4 +1767,48 @@ do $$ declare o uuid := (select v from ctx where k='calco'); j uuid; n int; old 
 end $$;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Sample data: load, counted out of the funnel, removed in one tap ----------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select public.load_sample_data((select v from ctx where k='calco'));
+do $$ declare o uuid := (select v from ctx where k='calco'); begin
+  assert public.has_sample_data(o), 'sample loaded';
+  assert (select count(*) from customers where org_id = o and is_sample) = 2, 'two sample customers';
+  assert (select count(*) from jobs where org_id = o and number like 'SAMPLE-%') = 2, 'two sample jobs';
+  assert (select balance from invoices where org_id = o and number = 'SAMPLE-1') = 0, 'sample invoice paid';
+  begin perform public.load_sample_data(o); raise exception 'twice';
+  exception when raise_exception then if sqlerrm not like 'Sample data is already%' then raise; end if; end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
+do $$ begin
+  begin perform public.clear_sample_data((select v from ctx where k='calco')); raise exception 'tech cleared';
+  exception when raise_exception then if sqlerrm not like 'Only owners%' then raise; end if; end;
+end $$;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare o uuid := (select v from ctx where k='calco'); begin
+  assert public.clear_sample_data(o) = 2, 'cleared two customers';
+  assert not public.has_sample_data(o), 'nothing left';
+  assert (select count(*) from jobs where org_id = o and number like 'SAMPLE-%') = 0
+     and (select count(*) from invoices where org_id = o and number like 'SAMPLE-%') = 0
+     and (select count(*) from customers where org_id = o and name like 'Sample:%') = 0, 'every sample record removed';
+  assert (select count(*) from customers where org_id = o and name = 'Calendar customer') = 1, 'real customers untouched';
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub', '', false);
+
+-- ---------- In-app support message -----------------------------------------------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select public.send_support_message((select v from ctx where k='calco'), 'Billing', 'How do I add a second location?', '/branches', 'ios', '1.0.0');
+do $$ begin
+  begin perform public.send_support_message((select v from ctx where k='calco'), null, 'x'); raise exception 'too short';
+  exception when raise_exception then if sqlerrm not like 'Write a short%' then raise; end if; end;
+end $$;
+reset role;
+do $$ begin
+  assert (select source = 'app' and company = 'Calendar Co' and route = '/branches' and plan = 'trial' and notified_at is null
+          from support_messages where message like 'How do I add%'), 'support message carries company, plan and screen';
+end $$;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED

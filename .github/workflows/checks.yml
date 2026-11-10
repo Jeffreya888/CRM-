@@ -1,0 +1,64 @@
+# Runs on every push and pull request: the same checks run before each change is pushed.
+# A red mark on the commit means something is broken — don't deploy until it's green.
+name: Checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: App (typecheck, lint, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npx expo lint
+      - name: Unit tests
+        run: npm test
+
+  database:
+    name: Database (migrations + flow tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Migrations and flow tests on a throwaway Postgres
+        run: bash supabase/tests/run.sh
+
+  functions:
+    name: Server functions (type check + tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check every function
+        working-directory: supabase/functions
+        run: |
+          failed=0
+          for f in */index.ts; do
+            case "$f" in _*) continue;; esac
+            echo "::group::$f"
+            deno check --node-modules-dir=none "$f" || failed=1
+            echo "::endgroup::"
+          done
+          exit $failed
+      - name: Unit tests
+        working-directory: supabase/functions
+        run: deno test --node-modules-dir=none _tests/ics_test.ts

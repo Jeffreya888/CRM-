@@ -2,6 +2,7 @@ import { router, Stack } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Platform, View } from 'react-native';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
+import { MessageSupport } from '../../components/support/MessageSupport';
 import { Badge, Card, Ionicons, ListRow, Row, Screen, Section, T, type IconName } from '../../components/ui';
 import { APP_NAME, APP_TAGLINE, SUPPORT_EMAIL } from '../../lib/config';
 import { feePercent, PLANS, planInfo } from '../../lib/plans';
@@ -55,6 +56,10 @@ export default function About() {
               right={p.id === plan ? <Badge raw label="Current" tone="success" /> : undefined} />
           ))}
         </Card>
+      </Section>
+
+      <Section title="Message us" icon="chatbubble-ellipses-outline">
+        <MessageSupport from="/about" />
       </Section>
 
       <Section title="Website">

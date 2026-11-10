@@ -33,13 +33,13 @@ export function useSetupSteps() {
     const [services, priced, customers, assets, members, invites, completed, photos, sent, automations] = await Promise.all([
       count(supabase.from('services').select('id', head).eq('org_id', orgId).eq('active', true)),
       count(supabase.from('services').select('id', head).eq('org_id', orgId).eq('active', true).or('base_price.gt.0,price_per_foot.gt.0,hourly_rate.gt.0')),
-      count(supabase.from('customers').select('id', head).eq('org_id', orgId)),
-      count(supabase.from('aircraft').select('id', head).eq('org_id', orgId)),
+      count(supabase.from('customers').select('id', head).eq('org_id', orgId).eq('is_sample', false)),
+      count(supabase.from('aircraft').select('id, customers!inner(is_sample)', head).eq('org_id', orgId).eq('customers.is_sample', false)),
       count(supabase.from('memberships').select('id', head).eq('org_id', orgId).eq('active', true)),
       count(supabase.from('invitations').select('id', head).eq('org_id', orgId)),
-      count(supabase.from('jobs').select('id', head).eq('org_id', orgId).in('status', ['completed', 'invoiced'])),
+      count(supabase.from('jobs').select('id', head).eq('org_id', orgId).eq('is_sample', false).in('status', ['completed', 'invoiced'])),
       count(supabase.from('job_photos').select('id', head).eq('org_id', orgId)),
-      count(supabase.from('invoices').select('id', head).eq('org_id', orgId).neq('status', 'draft')),
+      count(supabase.from('invoices').select('id', head).eq('org_id', orgId).eq('is_sample', false).neq('status', 'draft')),
       count(supabase.from('automations').select('key', head).eq('org_id', orgId).eq('enabled', true)),
     ]);
     return { services, priced, customers, assets, members, invites, completed, photos, sent, automations };

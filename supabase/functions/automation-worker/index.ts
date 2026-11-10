@@ -75,6 +75,7 @@ export async function runWorker(opts: { forceDaily?: boolean } = {}) {
   });
 
   await step("error_alerts", () => errorAlerts(db));
+  await step("support_alerts", () => supportAlerts(db));
 
   await db.from("worker_runs").insert({ worker: "automation", ok, details });
   return { ok, ...details };
@@ -946,4 +947,26 @@ async function quickbooksSync(db: SupabaseClient) {
     }
   }
   return { companies: conns?.length ?? 0, invoices, payments, failed };
+}
+
+/** Emails platform admins about new support messages (website or in-app), once each. */
+async function supportAlerts(db: SupabaseClient) {
+  const { data: msgs, error } = await db.from("support_messages")
+    .select("id, name, email, company, topic, message, plan, route, platform, source").is("notified_at", null).order("created_at").limit(20);
+  if (error) throw error;
+  if (!msgs?.length) return { alerted: 0 };
+  const { data: admins } = await db.rpc("platform_admin_emails");
+  const to = ((admins ?? []) as string[]).filter(isEmail);
+  if (!to.length || !Deno.env.get("RESEND_API_KEY")) return { alerted: 0, skipped: "no admin email or email not configured" };
+  for (const m of msgs) {
+    const context = [m.company, m.plan ? `${m.plan} plan` : null, m.source === "app" ? `in the app${m.route ? ` on ${m.route}` : ""}${m.platform ? ` (${m.platform})` : ""}` : "from the website"]
+      .filter(Boolean).join(" · ");
+    const text = `${m.name} <${m.email}>${context ? `\n${context}` : ""}${m.topic ? `\nTopic: ${m.topic}` : ""}\n\n${m.message}\n\nReply to this email to answer them.`;
+    await sendEmail({
+      to, replyTo: m.email, subject: `Support: ${m.topic ?? "message"} from ${m.company ?? m.name}`, text,
+      html: emailLayout({ heading: "New support message", bodyHtml: textToHtml(text), button: { label: "Open Support", url: `${portalUrl()}/admin` } }),
+    });
+    await db.from("support_messages").update({ notified_at: new Date().toISOString() }).eq("id", m.id);
+  }
+  return { alerted: msgs.length };
 }
