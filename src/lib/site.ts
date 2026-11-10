@@ -97,7 +97,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
     id: 'ask', title: `Ask ${APP_NAME} AI assistant`, icon: 'chatbubbles-outline', tone: 'blue',
     body: 'Your crew asks by typing or by voice; it answers from your SOPs and the aircraft\u2019s own documents.',
     bullets: [
-      'Talk to it hands-free on the ramp, and hear answers read aloud',
+      'Talk to it hands-free on the ramp, and hear answers read aloud, in English or Spanish',
       'Expert in aircraft, marine and auto detailing, FBO and marina operations',
       'Knows your SOPs and your company playbook: your products, your methods, your rules',
       'Uses each aircraft\u2019s manual chapters and approved-product lists first',
@@ -113,7 +113,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'schedule', title: 'Scheduling & dispatch', icon: 'calendar-number-outline', tone: 'blue',
     body: 'A live crew calendar built for ramp days and early departures.',
-    bullets: ['Primary tech plus extra crew per job', 'Travel time, hangar and equipment reservations', 'Live conflict warnings and qualified-tech suggestions', 'Tentative jobs from accepted quotes, confirmed in one tap'],
+    bullets: ['Primary tech plus extra crew per job', 'Travel time, hangar and equipment reservations', 'Live conflict warnings and qualified-tech suggestions', 'Tentative jobs from accepted quotes, confirmed in one tap', 'Schedules sync to Google, Apple and Outlook calendars'],
   },
   {
     id: 'photos', title: 'Before/after photos & sign-off', icon: 'images-outline', tone: 'gold',
@@ -128,7 +128,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'invoices', title: 'Invoices & card payments', icon: 'card-outline', tone: 'green',
     body: 'From finished job to money in the bank, without the chase.',
-    bullets: ['Card payments through Stripe from a private link', 'Reminder sequences with optional late fees', 'Record checks, ACH and cash too', 'Clear status: sent, viewed, paid, overdue'],
+    bullets: ['Card payments through Stripe from a private link', 'Reminder sequences with optional late fees', 'Record checks, ACH and cash too', 'Clear status: sent, viewed, paid, overdue', 'Invoices and payments sync to QuickBooks Online'],
   },
   {
     id: 'portal', title: 'Customer portal & texting', icon: 'chatbubbles-outline', tone: 'blue',
@@ -159,6 +159,26 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
     id: 'franchise', title: 'Franchise HQ', icon: 'git-network-outline', tone: 'green',
     body: 'Run a franchise brand: many owners, one standard.',
     bullets: ['Revenue, jobs, close rate, QC and ratings by location', 'Standards and prices pushed to every location', 'Territories and a brand booking page that routes leads', 'Royalty statements, announcements and national accounts'],
+  },
+  {
+    id: 'offline', title: 'Works without signal', icon: 'cloud-offline-outline', tone: 'blue',
+    body: 'Inside a hangar or out at the marina, the work keeps going.',
+    bullets: ['Check off SOP steps with no connection', 'Clock in and out and take job photos offline', 'Everything syncs on its own when you\u2019re back online', 'Keeps the time each step was really done'],
+  },
+  {
+    id: 'spanish', title: 'Spanish for your crew', icon: 'language-outline', tone: 'gold',
+    body: 'Each technician picks English or Espa\u00f1ol.',
+    bullets: ['Job screens and checklists in Spanish', 'Your own SOP steps translated automatically', `Ask ${APP_NAME} answers and speaks in Spanish`, 'Owners and managers keep working in English'],
+  },
+  {
+    id: 'switch', title: 'Switch in an afternoon', icon: 'swap-horizontal-outline', tone: 'green',
+    body: 'Bring your customers, aircraft and prices with you.',
+    bullets: ['Import from Jobber, Housecall Pro or any spreadsheet', 'Columns matched for you, duplicates skipped', 'US aircraft filled in from the FAA registry', 'Or try a ready-made sample company first'],
+  },
+  {
+    id: 'connect', title: 'QuickBooks & calendar sync', icon: 'sync-outline', tone: 'blue',
+    body: 'Fits the tools you and your accountant already use.',
+    bullets: ['Invoices and payments sync to QuickBooks Online', 'Schedules in Google, Apple or Outlook calendars', 'A calendar for the whole company or just one tech', 'Full data export anytime'],
   },
   {
     id: 'costing', title: 'True job costing & profit', icon: 'stats-chart-outline', tone: 'gold',
@@ -239,6 +259,9 @@ export const AVIATION_PAGE = {
     { icon: 'card-outline', title: 'Get paid, every way', body: 'Invoices, deposits, Tap to Pay on the ramp and auto-charged care plans, with Stripe or Square.' },
     { icon: 'stats-chart-outline', title: 'True job profit', body: 'Labor, products and travel tied to every job: profit by aircraft class, model and service.' },
     { icon: 'cube-outline', title: 'Supply room', body: 'Supplies deduct as jobs finish and reorder automatically when they hit par.' },
+    { icon: 'cloud-offline-outline', title: 'Works inside the hangar', body: 'No signal? Techs still check off steps, clock in and take photos. It all syncs when they walk back out.' },
+    { icon: 'language-outline', title: 'Spanish for your crew', body: 'Each tech picks English or Español. Your own SOPs are translated automatically, and Ask Tarmo speaks Spanish.' },
+    { icon: 'sync-outline', title: 'QuickBooks and calendars', body: 'Invoices and payments sync to QuickBooks Online. Schedules show in Google, Apple and Outlook calendars.' },
   ] as { icon: IconName; title: string; body: string }[],
   onlyTitle: 'Only detail aircraft? You’ll only see aircraft.',
   onlyBody: 'Pick aircraft when you sign up and Tarmo shows only aviation tools: tail numbers, aircraft pricing and aviation SOPs. No car or boat screens. If you ever expand to yachts or cars, add them in settings.',
@@ -263,6 +286,9 @@ export const MARINE_PAGE = {
     { icon: 'card-outline', title: 'Get paid at the dock', body: 'Invoices, deposits and Tap to Pay on your phone, with Stripe or Square.' },
     { icon: 'stats-chart-outline', title: 'True job profit', body: 'Labor, products and travel tied to every job: profit by boat size and service.' },
     { icon: 'cube-outline', title: 'Supply room', body: 'Supplies deduct as jobs finish and reorder automatically when they hit par.' },
+    { icon: 'cloud-offline-outline', title: 'Works at the marina', body: 'No signal on the dock? Techs still check off steps, clock in and take photos. It all syncs later.' },
+    { icon: 'language-outline', title: 'Spanish for your crew', body: 'Each tech picks English or Español. Your own SOPs are translated automatically, and Ask Tarmo speaks Spanish.' },
+    { icon: 'sync-outline', title: 'QuickBooks and calendars', body: 'Invoices and payments sync to QuickBooks Online. Schedules show in Google, Apple and Outlook calendars.' },
   ] as { icon: IconName; title: string; body: string }[],
   onlyTitle: 'Only detail boats? You’ll only see boats.',
   onlyBody: 'Pick boats and yachts when you sign up and Tarmo shows only marine tools: per-foot pricing, marine SOPs and marinas. No aircraft or car screens. Add them later in settings if you expand.',
@@ -286,6 +312,10 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'What does “true job costing” include?', a: 'Each job compares estimated and actual hours, then adds up the real cost: wages plus payroll taxes and insurance, overhead per labor hour, supplies used and job expenses. Reports show profit and margin by aircraft class, model and boat size, so you can see which work pays best.' },
   { q: 'How do my customers pay?', a: 'Connect Stripe and customers pay invoices, deposits and care plans by card from a private link. Prefer checks or ACH? Record them in a tap.' },
   { q: 'Can I try it without setting anything up?', a: 'Yes. Open the demo for a fully loaded sample company. Nothing you do there sends real emails, texts or payments.' },
+  { q: 'Does it work in Spanish?', a: 'Yes. Each person picks English or Español. Technicians see the job screen, checklists and SOP steps in Spanish, including the SOPs you write yourself, which are translated automatically. Ask Tarmo answers, listens and speaks in Spanish.' },
+  { q: 'What if there is no signal in the hangar?', a: 'Keep working. Checklist steps, clocking in and out, and job photos save on the phone and send automatically when you are back online, with the time you actually did them.' },
+  { q: 'Can I bring my data from my current software?', a: 'Yes. Export a spreadsheet from Jobber, Housecall Pro or any other tool and import your customers, aircraft, boats, vehicles and services with prices. Tarmo matches the columns, skips duplicates and fills US aircraft in from the FAA registry.' },
+  { q: 'Does it work with QuickBooks and my calendar?', a: 'Yes. Invoices and payments sync to QuickBooks Online, and your schedule can show in Google, Apple or Outlook calendars, for the whole company or just one technician.' },
   { q: 'Can I take my data with me?', a: 'Always. The owner can export customers, assets, jobs, quotes, invoices and photos at any time.' },
 ];
 
@@ -314,7 +344,7 @@ export const SUPPORT_FAQ: { q: string; a: string }[] = [
 export const GETTING_STARTED: { title: string; body: string; icon: IconName }[] = [
   { title: 'Create your company & choose business types', body: 'Sign up, name your company and pick Aircraft only, Aircraft + Vehicles, or Aircraft + Vehicles + Watercraft. You can add categories later.', icon: 'business-outline' },
   { title: 'Set your services & prices', body: `Start from the built-in services — each comes with a step-by-step SOP — and set prices yourself or from the built-in price guide for aircraft, boats and cars.`, icon: 'pricetags-outline' },
-  { title: 'Add customers & assets', body: 'Add customers and their aircraft, vehicles or boats. Type a US tail number and the FAA registry fills in the details; sizes and facility notes make every quote and job faster.', icon: 'person-add-outline' },
+  { title: 'Add customers & assets', body: 'Add customers and their aircraft, vehicles or boats. Type a US tail number and the FAA registry fills in the details, or import everything from a spreadsheet exported from your old software.', icon: 'person-add-outline' },
   { title: 'Invite your crew', body: 'Send email invitations and choose each person’s role. Technicians see their assigned work — never your prices.', icon: 'people-outline' },
   { title: 'Connect payments', body: 'Connect Stripe to accept cards on invoices, deposits and care plans — or arrange payment directly and record it in the app.', icon: 'card-outline' },
   { title: 'Schedule & complete your first job', body: 'Put a job on the calendar, take before photos to start, follow the SOP, and take after photos to finish.', icon: 'camera-outline' },
@@ -325,7 +355,7 @@ export const TROUBLESHOOTING: { title: string; body: string; icon: IconName }[] 
   { title: 'Keep support messages safe', body: 'Never send passwords, verification codes, card numbers or customer records in a support message. We will never ask for them.', icon: 'shield-outline' },
   { title: 'Didn’t get the verification email?', body: 'Check spam and promotions, make sure the address is spelled correctly, then request a new email from the sign-in screen. Links expire, so use the newest one.', icon: 'mail-unread-outline' },
   { title: 'Card payments not working yet?', body: 'Open Settings → Payments and finish Stripe onboarding. Stripe may ask for business and bank details before payouts begin.', icon: 'card-outline' },
-  { title: 'Photos won’t upload?', body: 'Photos must be JPG, PNG or WebP under 10 MB. On a weak signal, keep the app open until uploads finish.', icon: 'cloud-upload-outline' },
+  { title: 'Photos won’t upload?', body: 'Photos must be JPG, PNG or WebP under 10 MB. With no signal, job photos save on your phone and upload automatically when you are back online.', icon: 'cloud-upload-outline' },
 ];
 
 export const SUPPORT_TOPICS = ['Getting started', 'Billing & plans', 'Payments', 'Texting', 'Account & data', 'Report a problem', 'Other'];
@@ -339,6 +369,7 @@ export const FRANCHISE_FEATURES: { icon: IconName; tone: 'blue' | 'gold' | 'gree
   { icon: 'document-text-outline', tone: 'gold', title: 'Royalty statements', body: 'Gross sales collected in Tarmo, your royalty and marketing-fund rates, and a statement emailed to every location each month, with paid and unpaid tracking.' },
   { icon: 'shield-checkmark-outline', tone: 'green', title: 'Compliance you can see', body: 'SOP certification coverage and QC pass-rate trends by location, so brand standards are measured, not assumed.' },
   { icon: 'megaphone-outline', tone: 'blue', title: 'Announcements', body: 'Post a new SOP, a promotion or a weather rule once. Every location sees it on their dashboard and their managers get a notification.' },
+  { icon: 'card-outline', tone: 'green', title: 'Billing handled', body: 'Pay all-in per location, or let each franchisee pay its own plan while HQ pays for Franchise HQ. Every location is billed automatically each month.' },
   { icon: 'briefcase-outline', tone: 'gold', title: 'National accounts', body: 'Serve a management company or charter operator across many locations and see that account\u2019s jobs and revenue in one report.' },
 ];
 export const FRANCHISE_WALLS = [
