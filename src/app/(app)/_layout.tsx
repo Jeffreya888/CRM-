@@ -1,13 +1,19 @@
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { setVoiceLanguage } from '../../components/assistant/voice';
+import { useLang } from '../../lib/i18n';
 import { View } from 'react-native';
 import { AppHeader } from '../../components/AppHeader';
 import { Sidebar } from '../../components/nav/Sidebar';
 import { FirstVisitTip } from '../../components/onboarding/FirstVisitTip';
+import { OfflineBanner } from '../../components/OfflineBanner';
 import { useIsDesktop } from '../../lib/layout';
 import { colors } from '../../lib/theme';
 
 export default function AppLayout() {
   const desktop = useIsDesktop();
+  const lang = useLang();
+  useEffect(() => { setVoiceLanguage(lang); }, [lang]);
   // The tree stays the same at every width so resizing the window keeps the navigation state.
   return (
     <View style={{ flex: 1, flexDirection: 'row', backgroundColor: colors.bg }}>
@@ -22,6 +28,7 @@ export default function AppLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="paywall" options={{ presentation: 'modal', title: 'Plans' }} />
         </Stack>
+        <OfflineBanner />
         <FirstVisitTip />
       </View>
     </View>

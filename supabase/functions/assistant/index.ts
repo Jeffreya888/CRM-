@@ -107,6 +107,9 @@ Deno.serve(async (req) => {
     if (!caller) return error("You're not a member of this company", 403);
     if (caller.role === "viewer") return error("View-only members can't use Ask. Ask an owner for a crew role.", 403);
     const userId = caller.userId;
+    // People who use Tarmo in Spanish get answers in Spanish (product names and units stay as written).
+    const { data: prof } = await adminClient().from("profiles").select("language").eq("id", userId).maybeSingle();
+    const spanish = prof?.language === "es";
     // Pricing answers only for people whose role can see prices (same rule as the app).
     const canPrice = await callerCanMoney(req, orgId);
     const prefix = `${orgId}/assistant/${userId}/`;
@@ -270,6 +273,7 @@ Deno.serve(async (req) => {
           system: [
             { type: "text", text: SYSTEM_PROMPT, cache_control: CACHE },
             { type: "text", text: companyText, cache_control: CACHE },
+            ...(spanish ? [{ type: "text" as const, text: "This team member uses Tarmo in Spanish. Write the answer in clear Latin American Spanish, the way a crew lead would say it. Keep product names, brand names, tail numbers, part numbers and units exactly as written; keep safety warnings just as strong." }] : []),
           ],
           messages,
         });

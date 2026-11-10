@@ -1819,6 +1819,23 @@ end $$;
 reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Language per person -------------------------------------------------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000c', false);
+select public.set_my_language('es');
+do $$ begin
+  begin perform public.set_my_language('fr'); raise exception 'only en/es';
+  exception when raise_exception then if sqlerrm not like 'Choose English%' then raise; end if; end;
+  begin perform 1 from translations; raise exception 'translations are server-only';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ begin
+  assert (select language from profiles where id = '00000000-0000-0000-0000-00000000000c') = 'es', 'tech chose Spanish';
+  assert (select language from profiles where id = '00000000-0000-0000-0000-00000000000a') = 'en', 'others stay English';
+end $$;
+select set_config('request.jwt.claim.sub', '', false);
+
 -- ---------- In-app support message -----------------------------------------------
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);

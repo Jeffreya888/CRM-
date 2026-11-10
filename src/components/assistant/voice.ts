@@ -17,11 +17,16 @@ const listeners = new Set<() => void>();
 const setSpeaking = (id: string | null) => { speakingId = id; listeners.forEach((l) => l()); };
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 
+// Spoken and heard language follows the person's language setting (set from the app layout).
+let voiceLang: 'en' | 'es' = 'en';
+export const setVoiceLanguage = (lang: 'en' | 'es') => { voiceLang = lang; };
+
 /** Reads an answer aloud; stops whatever was playing first. */
 export function speakAnswer(id: string, markdown: string) {
   Speech.stop().catch(() => {});
   setSpeaking(id);
   Speech.speak(speechText(markdown), {
+    language: voiceLang === 'es' ? 'es-US' : 'en-US',
     onDone: () => { if (speakingId === id) setSpeaking(null); },
     onStopped: () => { if (speakingId === id) setSpeaking(null); },
     onError: () => { if (speakingId === id) setSpeaking(null); },
@@ -87,7 +92,7 @@ export function useVoiceInput(onFinal: (text: string) => void) {
     }
     finalText.current = '';
     setTranscript('');
-    ExpoSpeechRecognitionModule.start({ interimResults: true, continuous: false, addsPunctuation: true, contextualStrings: VOCABULARY });
+    ExpoSpeechRecognitionModule.start({ lang: voiceLang === 'es' ? 'es-US' : 'en-US', interimResults: true, continuous: false, addsPunctuation: true, contextualStrings: VOCABULARY });
   }, []);
 
   const stop = useCallback(() => { ExpoSpeechRecognitionModule.stop(); }, []);

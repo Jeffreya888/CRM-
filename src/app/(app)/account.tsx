@@ -4,6 +4,7 @@ import { CompaniesSection, DataSection, DemoStatusCard, PushSection } from '../.
 import { AppleSection, PasswordSection, ProfileSection } from '../../components/security/ProfileSections';
 import { AppLockSection, DevicesSection, TwoStepSection } from '../../components/security/SecuritySections';
 import { CalendarSyncSection } from '../../components/settings/CalendarSyncSection';
+import { LanguageSection } from '../../components/settings/LanguageSection';
 import { isAnonymous } from '../../lib/security';
 import { useOrg } from '../../lib/session';
 
@@ -28,6 +29,7 @@ export default function Account() {
     <Screen>
       <Stack.Screen options={{ title: 'Account & security' }} />
       <ProfileSection />
+      <LanguageSection />
       <PasswordSection />
       <TwoStepSection />
       <AppLockSection />

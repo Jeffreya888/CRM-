@@ -83,7 +83,7 @@ export interface NotificationPrefs {
   /** Generic lock-screen text without customer names or amounts. */
   private_lock_screen?: boolean;
 }
-export interface Profile { id: string; full_name: string | null; phone: string | null; avatar_url: string | null; current_org_id: string | null; notification_prefs: NotificationPrefs }
+export interface Profile { id: string; full_name: string | null; phone: string | null; avatar_url: string | null; current_org_id: string | null; notification_prefs: NotificationPrefs; language?: 'en' | 'es' }
 
 /** Facilities: airports/FBOs, marinas and service sites. */
 export interface Location {

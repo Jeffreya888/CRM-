@@ -18,6 +18,7 @@ import { friendlyError, supabase } from '../../../lib/supabase';
 import type { AssetType, Branch } from '../../../lib/types';
 import { colors, space, type Tone } from '../../../lib/theme';
 import { useQuery } from '../../../lib/useQuery';
+import { clockIn, clockOut } from '../../../lib/offlineQueue';
 
 type Stats = Record<string, any>;
 type JobRow = {
@@ -90,13 +91,18 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [clock]);
 
+  // Works without signal: the time is kept and sent when the connection is back.
   const toggleClock = async () => {
     try {
-      const { error } = clock
-        ? await supabase.from('time_entries').update({ ended_at: new Date().toISOString() }).eq('id', clock.id)
-        : await supabase.from('time_entries').insert({ org_id: orgId, user_id: uid });
-      if (error) throw error;
-      q.reload();
+      if (clock) {
+        const queued = await clockOut(orgId, uid, clock.id);
+        if (queued) q.setData((d) => d && { ...d, clock: null });
+        else q.reload();
+      } else {
+        const r = await clockIn(orgId, uid, null);
+        if (r.queued) q.setData((d) => d && { ...d, clock: { id: r.entryId, user_id: uid, job_id: null, started_at: r.at, ended_at: null } });
+        else q.reload();
+      }
     } catch (e: any) {
       notify('Time clock', friendlyError(e.message));
     }

@@ -15,8 +15,10 @@ import { SessionProvider, useSession } from '../lib/session';
 import { supabase } from '../lib/supabase';
 import { colors } from '../lib/theme';
 import { installGlobalErrorHandlers, reportClientError, setErrorContext } from '../lib/errorReporter';
+import { startOfflineQueue } from '../lib/offlineQueue';
 
 installGlobalErrorHandlers();
+void startOfflineQueue();
 
 // Where a web visitor first landed, before any guard redirect.
 const initialWebPath = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname : null;

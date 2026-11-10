@@ -4,6 +4,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, Image, Modal, Platform, Press
 import { dateTime, money } from '../../lib/format';
 import { fetchGuide, pickJobPhoto, type PickedPhoto } from '../../lib/jobs';
 import { canEdit } from '../../lib/plans';
+import { useLang, useT, useTranslated } from '../../lib/i18n';
 import { useOrg } from '../../lib/session';
 import { friendlyError, supabase } from '../../lib/supabase';
 import { colors, radius, space, toneColors, type Tone } from '../../lib/theme';
@@ -152,35 +153,43 @@ export function GuideStepSheet({ item, onClose, onToggle, jobId, aircraftId }: {
   const q = useQuery(async () => (item?.guide_key ? fetchGuide(orgId, item.guide_key) : null), [item?.guide_key, orgId]);
   const g = q.data as ServiceGuide | null | undefined;
   const step: GuideStep | undefined = g && item?.step_index != null ? g.steps?.[item.step_index] : undefined;
+  // Spanish for technicians: the SOP text is translated once and saved.
+  const t = useT();
+  const lang = useLang();
+  const donts = g?.donts?.slice(0, 5) ?? [];
+  const src = [g?.title ?? '', step?.title ?? item?.label ?? '', step?.detail ?? '', step?.caution ?? '', ...donts];
+  const tx = useTranslated(orgId, src);
+  const [gTitle, sTitle, sDetail, sCaution] = tx;
+  const tDonts = tx.slice(4);
   return (
     <SheetModal visible={!!item} onClose={onClose}>
       <Row style={{ padding: space.lg, justifyContent: 'space-between' }}>
-        <T variant="h3" style={{ flex: 1 }} numberOfLines={1}>{g?.title ?? 'Step'}</T>
-        <Button small kind="secondary" title="Done" onPress={onClose} />
+        <T variant="h3" style={{ flex: 1 }} numberOfLines={1}>{gTitle || (lang === 'es' ? 'Paso' : 'Step')}</T>
+        <Button small kind="secondary" title={t('Done')} onPress={onClose} />
       </Row>
       <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: 60 }}>
         {q.loading ? <Loading /> : (
           <>
-            {item?.step_index != null ? <T variant="overline">Step {item.step_index + 1}{g?.steps?.length ? ` of ${g.steps.length}` : ''}</T> : null}
-            <T variant="h2" style={{ marginTop: 4 }}>{step?.title ?? item?.label}</T>
-            {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{step.detail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No SOP is linked to this step.</T> : null}
+            {item?.step_index != null ? <T variant="overline">{lang === 'es' ? 'Paso' : 'Step'} {item.step_index + 1}{g?.steps?.length ? ` ${lang === 'es' ? 'de' : 'of'} ${g.steps.length}` : ''}</T> : null}
+            <T variant="h2" style={{ marginTop: 4 }}>{sTitle}</T>
+            {step?.detail ? <T style={{ marginTop: space.md, lineHeight: 23 }}>{sDetail}</T> : !g ? <T variant="muted" style={{ marginTop: space.md }}>No SOP is linked to this step.</T> : null}
             {step?.caution ? (
               <Card style={{ backgroundColor: colors.warningSoft, marginTop: space.lg }}>
                 <Row style={{ alignItems: 'flex-start' }}>
                   <Ionicons name="warning-outline" size={20} color={colors.warning} />
-                  <T style={{ flex: 1 }}>{step.caution}</T>
+                  <T style={{ flex: 1 }}>{sCaution}</T>
                 </Row>
               </Card>
             ) : null}
             {g?.donts?.length ? (
               <View style={{ marginTop: space.lg }}>
-                <T style={{ fontWeight: '700', marginBottom: 6 }}>Never</T>
-                {g.donts.slice(0, 5).map((d, i) => <T key={i} variant="muted" style={{ marginBottom: 4 }}>• {d}</T>)}
+                <T style={{ fontWeight: '700', marginBottom: 6 }}>{lang === 'es' ? 'Nunca' : 'Never'}</T>
+                {tDonts.map((d, i) => <T key={i} variant="muted" style={{ marginBottom: 4 }}>• {d}</T>)}
               </View>
             ) : null}
-            <T variant="small" style={{ marginTop: space.lg }}>Always follow the manufacturer&apos;s maintenance manual and use OEM-approved products.</T>
+            <T variant="small" style={{ marginTop: space.lg }}>{lang === 'es' ? 'Siga siempre el manual de mantenimiento del fabricante y use productos aprobados por el fabricante (OEM).' : 'Always follow the manufacturer’s maintenance manual and use OEM-approved products.'}</T>
             <Row style={{ marginTop: space.lg, flexWrap: 'wrap' }}>
-              {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? 'Mark not done' : 'Mark done'} onPress={() => { onToggle(); onClose(); }} /> : null}
+              {onToggle && item ? <Button icon={item.done ? 'arrow-undo-outline' : 'checkmark-circle-outline'} title={item.done ? t('Mark not done') : t('Mark done')} onPress={() => { onToggle(); onClose(); }} /> : null}
               {canEdit(role) ? <Button kind="secondary" icon="sparkles-outline" title="Ask about this step" onPress={askStep} /> : null}
               {g ? <Button kind="secondary" icon="book-outline" title="Open full guide" onPress={() => { onClose(); router.push({ pathname: '/guides/[id]', params: { id: item?.guide_key ?? g.key, step: String(item?.step_index ?? '') } }); }} /> : null}
             </Row>
