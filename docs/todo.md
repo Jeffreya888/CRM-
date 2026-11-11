@@ -1,24 +1,50 @@
 # Tarmo to-do list
 
-Open items agreed in planning. Launch steps live in `launch-checklist.md`.
+Prioritized, most urgent first. Updated November 11, 2026. Full launch steps live in `launch-checklist.md`.
 
-## Waiting on Jeffrey
+## 1. This week (investors)
 
-- [ ] **LLC filing**, then EIN and D-U-N-S number. Unblocks Stripe/Square live accounts, bank account, Apple and Google developer accounts, texting (Telnyx), `MAILING_ADDRESS` secret, design partner agreements and SAFEs.
-- [ ] **Aircraft pricing table.** Load prices per model; use same-class rates for missing models; fix the Paint Correction $0 (hourly with no rate); scale time estimates by size class.
-- [ ] **Aircraft SOP wording changes.** Jeffrey will send the SOPs and the new wording. Also give Jetgleam its own copies of the SOPs with its products named (from its playbook); the shared SOPs stay as they are.
-- [ ] **Deck blanks:** launch month, early access count, design partners, years in the industry, headshot, 18-month goals.
-- [ ] **Design partner outreach** (messages and agreement in the Design Partner Program doc; lawyer review before signing).
+- [ ] **Thank-you email to Tim** with the one-pager PDF and the short note he can forward.
+- [ ] **Share the deck link** (deck → Share menu) before sending it to anyone; it is private now.
+- [ ] **Reply to every intro within 24 hours**: offer a 20-minute call and a live demo.
+- [ ] **Test the demo link**: gettarmo.com/sign-in?demo=1. If it fails, Supabase → Authentication → turn on "Allow anonymous sign-ins".
+- [ ] **Spanish test**: have a Spanish-speaking tech open a real job in the app.
+- [ ] Optional: headshot on deck slide 17 (Founder).
 
-## Product
+## 2. Blockers (most items below wait on these)
 
-- [ ] **Natural voice (Google Chirp 3 HD).** Waiting on Jeffrey's `GOOGLE_TTS_API_KEY`; then build the voice, cache audio per answer, and let owners pick 2–3 voices.
-- [ ] **Voice quality.** The free device voice sounds robotic. Add a per-user voice and speed picker (free device voices); later consider a natural cloud voice (about 2 cents per answer) with a monthly limit or add-on pack.
-- [ ] **Captcha on demo sign-ins** (anonymous sign-ins) before launch.
-- [ ] **Jetgleam trial.** Extend it before it runs out if launch is more than 30 days after the company was created.
+- [ ] **File the LLC**, then EIN and D-U-N-S number. Unlocks the bank account, live Stripe/Square, Apple and Google developer accounts, texting, SAFEs and design partner agreements.
+- [ ] **Business bank account.**
+- [ ] **Lawyer review**: Terms, Privacy, design partner agreement and SAFE. Fill the website's legal blanks (`src/components/site/legalContent.ts`): company name, address, state, effective date.
+- [ ] **`MAILING_ADDRESS` secret** in Supabase (CAN-SPAM requires a postal address in marketing emails).
 
-## Before launch
+## 3. Before the January 2027 launch
 
-- [ ] Confirm Shiny Jets' Aircraft Detailing AI is still a separate paid app before sending the deck to investors.
-- [ ] Confirm RealClean's location count from its franchise disclosure document (Item 20) before quoting a number.
+- [ ] **Sign 10 founding design partners** (messages in the Design Partner Program doc).
+- [ ] **Aircraft pricing file**: send prices per model; same-class rates fill missing models; fix the Paint Correction $0; scale time estimates by size class.
+- [ ] **SOP wording changes**: send the SOPs and new wording; Jetgleam also gets its own copies with its products named (shared SOPs stay as they are).
+- [ ] **Apple and Google developer accounts**, then the six subscription products, RevenueCat, app builds and store submission.
+- [ ] **Stripe live**: Connect and webhooks, plan prices, the three founding coupons. Square optional.
+- [ ] **Email**: verify gettarmo.com in Resend; point Supabase sign-in emails at it (custom SMTP).
+- [ ] **Supabase production**: Pro plan with more compute, a tested backup restore, two-step sign-in and Sign in with Apple, redirect URLs, the automation worker every 10 minutes, the FAA import secret.
+- [ ] **QuickBooks**: Intuit developer app; secrets `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_ENVIRONMENT`.
+- [ ] **Texting**: Telnyx 10DLC registration, or launch without texting.
+- [ ] **Capacity**: higher Anthropic usage tier; Resend Pro.
+- [ ] **Extend Jetgleam's trial** in Platform admin so it doesn't run out before launch.
+- [ ] **Film training videos**: brightwork, ceramic coating, carpet extraction, paint correction.
 
+## 4. Launch day
+
+- [ ] **`EXPO_PUBLIC_PRELAUNCH=0`** in Cloudflare, then redeploy (shows Sign in, the demo and store badges).
+- [ ] **Email the founding codes** to the early access list.
+- [ ] **Uptime monitor** on gettarmo.com.
+
+## Later / optional
+
+- [ ] `GOOGLE_TTS_API_KEY` for a natural Ask Tarmo voice (then build it, cache audio per answer, 2–3 voices to pick from).
+- [ ] Confirm RealClean's location count (franchise disclosure document, Item 20) before quoting a number.
+
+## Product (Claude, no action needed from Jeffrey)
+
+- [ ] Voice and speed picker for the free device voices.
+- [ ] Captcha on demo sign-ins before launch.
