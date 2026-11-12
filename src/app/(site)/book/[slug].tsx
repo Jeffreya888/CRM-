@@ -16,7 +16,7 @@ type Info = { name: string; locations: { name: string; airports: string[] }[] };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export default function BookingPage() {
-  const { slug, embed } = useLocalSearchParams<{ slug: string; embed?: string }>();
+  const { slug, embed, theme } = useLocalSearchParams<{ slug: string; embed?: string; theme?: string }>();
   const [company, setCompany] = useState<CompanyInfo | null | undefined>(undefined);
   useEffect(() => {
     let alive = true;
@@ -26,13 +26,13 @@ export default function BookingPage() {
     return () => { alive = false; };
   }, [slug]);
   if (company === undefined) {
-    return <View style={{ flex: 1, backgroundColor: site.bg, minHeight: '100%' as any, alignItems: 'center', justifyContent: 'center', padding: 40 }}><ActivityIndicator color={site.blueText} /></View>;
+    return <View style={{ flex: 1, backgroundColor: theme === 'light' ? '#FFFFFF' : site.bg, minHeight: '100%' as any, alignItems: 'center', justifyContent: 'center', padding: 40 }}><ActivityIndicator color={theme === 'light' ? '#0B5CAD' : site.blueText} /></View>;
   }
   if (company) {
     return (
       <>
         <Head><title>{`Book a detail · ${company.name}`}</title><meta name="description" content={`Request a detail from ${company.name}.`} /></Head>
-        <CompanyBooking slug={slug} info={company} embed={embed === '1'} />
+        <CompanyBooking slug={slug} info={company} embed={embed === '1'} theme={theme === 'light' ? 'light' : 'dark'} />
       </>
     );
   }

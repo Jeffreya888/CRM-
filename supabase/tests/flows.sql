@@ -1980,6 +1980,17 @@ do $$ declare i jsonb; r jsonb; v_org uuid := (select v from ctx where k='calco'
   begin perform public.booking_page_submit('calendar-co-detailing', 'P', 'bad', null, null, null, null, null, null, null, '[]', null, null); raise exception 'bad input accepted';
   exception when raise_exception then if sqlerrm not like 'Please enter%' then raise; end if; end;
   assert (select count(*) from website_bookings where org_id = v_org) = 6, 'six bookings logged';
+  -- Photos: a "Quote from photos" request with the photo paths; only paths in the company's website folder.
+  assert (public.booking_page_info('calendar-co-detailing')->>'photo_quotes')::boolean is not null, 'photo flag in info';
+  if public.booking_page_photo_org('calendar-co-detailing') is not null then
+    r := public.booking_page_submit('calendar-co-detailing', 'Pia Photo', 'pia@example.com', null, null, 'aircraft', 'N77PQ', null, null, null, '[]', null, 'iphash4',
+      jsonb_build_array(v_org::text || '/website/11111111-2222-3333-4444-555555555555.jpg'));
+    assert jsonb_array_length(r->'photos') = 1 and r->>'org_id' = v_org::text, 'photos returned: ' || r::text;
+    assert exists (select 1 from booking_requests where id = (r->>'booking_request_id')::uuid and kind = 'photo_quote' and cardinality(photo_paths) = 1), 'photo quote request';
+    begin perform public.booking_page_submit('calendar-co-detailing', 'Pia Photo', 'pia2@example.com', null, null, null, null, null, null, null, '[]', null, 'iphash4',
+      '["someone-else/website/11111111-2222-3333-4444-555555555555.jpg"]'); raise exception 'foreign photo path accepted';
+    exception when raise_exception then if sqlerrm not like 'One of the photos%' then raise; end if; end;
+  end if;
 end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);

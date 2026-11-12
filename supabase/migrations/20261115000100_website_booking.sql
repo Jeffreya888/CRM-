@@ -79,6 +79,7 @@ returns jsonb language sql stable security definer set search_path = public as $
   select jsonb_build_object(
     'name', o.name, 'logo_url', o.logo_url, 'phone', o.phone, 'website', o.website, 'message', o.booking_message,
     'business_types', to_jsonb(coalesce(o.business_types, array['aircraft'])),
+    'photo_quotes', coalesce(o.photo_quotes_enabled, true) and coalesce(public.plan_allows(o.id, 'photo_quotes'), false),
     'services', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'name', s.name, 'description', left(s.description, 240), 'asset_type', s.asset_type)
         order by s.asset_type, s.sort_order, s.name)
       from services s where s.org_id = o.id and s.active), '[]'))
@@ -88,11 +89,21 @@ returns jsonb language sql stable security definer set search_path = public as $
 $$;
 revoke execute on function public.booking_page_info(text) from public, anon, authenticated;
 
--- A booking from the public page (website-booking function only).
+-- The company behind a booking page, when it takes photos (website-booking function only).
+create or replace function public.booking_page_photo_org(p_slug text)
+returns uuid language sql stable security definer set search_path = public as $$
+  select o.id from organizations o
+  where o.booking_slug = lower(trim(p_slug)) and o.booking_enabled and not o.is_demo
+    and coalesce(o.photo_quotes_enabled, true) and coalesce(public.plan_allows(o.id, 'photo_quotes'), false);
+$$;
+revoke execute on function public.booking_page_photo_org(text) from public, anon, authenticated;
+
+-- A booking from the public page (website-booking function only). With photos it is a "Quote from photos" request,
+-- which the function then runs an AI condition check on.
 create or replace function public.booking_page_submit(
   p_slug text, p_name text, p_email text, p_phone text, p_company text,
   p_asset_type text, p_asset_id text, p_asset_desc text, p_service uuid, p_location text,
-  p_preferred jsonb, p_notes text, p_ip_hash text default null
+  p_preferred jsonb, p_notes text, p_ip_hash text default null, p_photo_paths jsonb default null
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   o organizations;
@@ -103,7 +114,7 @@ declare
   v_cust uuid; v_asset uuid; v_req uuid; v_opp uuid;
   v_svc services; f jsonb;
   v_make text; v_model text; v_year int; v_serial text; v_model_id uuid; v_cat public.aircraft_category; v_len numeric; v_span numeric;
-  v_notes text; v_title text;
+  v_notes text; v_title text; v_photos text[] := '{}'; p text;
 begin
   select * into o from organizations where booking_slug = lower(trim(p_slug)) and booking_enabled and not is_demo;
   if o.id is null then raise exception 'This booking page is not available'; end if;
@@ -117,6 +128,15 @@ begin
   end if;
   if (select count(*) from website_bookings where org_id = o.id and created_at > now() - interval '1 hour') >= 100 then
     raise exception 'Too many requests right now. Please try again later.';
+  end if;
+
+  if jsonb_typeof(p_photo_paths) = 'array' and jsonb_array_length(p_photo_paths) > 0 then
+    if jsonb_array_length(p_photo_paths) > 6 then raise exception 'Add up to 6 photos'; end if;
+    if public.booking_page_photo_org(p_slug) is null then raise exception 'This company does not take photos online. Please send the request without photos.'; end if;
+    for p in select jsonb_array_elements_text(p_photo_paths) loop
+      if p !~ ('^' || o.id::text || '/website/[0-9a-f-]{36}\.(jpg|png|webp)$') then raise exception 'One of the photos didn''t upload. Please add it again.'; end if;
+      v_photos := array_append(v_photos, p);
+    end loop;
   end if;
 
   if p_service is not null then
@@ -164,10 +184,10 @@ begin
     case when nullif(trim(coalesce(p_phone, '')), '') is not null then 'Phone: ' || left(trim(p_phone), 40) end,
     nullif(left(trim(coalesce(p_notes, '')), 1000), ''));
 
-  insert into booking_requests (org_id, customer_id, aircraft_id, service_id, kind, preferred, notes)
-  values (o.id, v_cust, v_asset, v_svc.id, 'booking',
+  insert into booking_requests (org_id, customer_id, aircraft_id, service_id, kind, preferred, notes, photo_paths)
+  values (o.id, v_cust, v_asset, v_svc.id, case when cardinality(v_photos) > 0 then 'photo_quote' else 'booking' end,
     case when jsonb_typeof(p_preferred) = 'array' then (select coalesce(jsonb_agg(x), '[]') from (select x from jsonb_array_elements(p_preferred) x limit 3) s) else '[]' end,
-    v_notes)
+    v_notes, v_photos)
   returning id into v_req;
 
   v_title := left(concat_ws(' · ', coalesce(v_svc.name, 'Website request'), coalesce(v_ident, v_desc), left(trim(p_name), 60)), 200);
@@ -179,6 +199,7 @@ begin
   values (o.id, v_email, p_ip_hash, v_req, v_opp);
 
   return jsonb_build_object('company', o.name, 'company_email', o.email, 'company_phone', o.phone,
-    'service', v_svc.name, 'booking_request_id', v_req);
+    'service', v_svc.name, 'booking_request_id', v_req, 'org_id', o.id, 'customer_id', v_cust, 'aircraft_id', v_asset,
+    'photos', to_jsonb(v_photos));
 end $$;
-revoke execute on function public.booking_page_submit(text, text, text, text, text, text, text, text, uuid, text, jsonb, text, text) from public, anon, authenticated;
+revoke execute on function public.booking_page_submit(text, text, text, text, text, text, text, text, uuid, text, jsonb, text, text, jsonb) from public, anon, authenticated;

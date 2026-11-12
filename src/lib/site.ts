@@ -133,7 +133,7 @@ export const FEATURES: { id: string; title: string; body: string; icon: IconName
   {
     id: 'portal', title: 'Website booking, portal & texting', icon: 'chatbubbles-outline', tone: 'blue',
     body: 'Win the booking on your website, then give every customer a private space.',
-    bullets: ['A booking form for your own website: bookings land in Tarmo as a customer, an aircraft and a lead', 'Customers view quotes, invoices, photos and history', 'Request service and preferred dates', 'Two-way texting with consent and quiet hours', 'On-our-way, reminders and review requests'],
+    bullets: ['A booking form for your own website, with photos for an AI quote: bookings land in Tarmo as a customer, an aircraft and a lead', 'Customers view quotes, invoices, photos and history', 'Request service and preferred dates', 'Two-way texting with consent and quiet hours', 'On-our-way, reminders and review requests'],
   },
   {
     id: 'recurring', title: 'Recurring care plans', icon: 'repeat-outline', tone: 'gold',
@@ -316,7 +316,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   { q: 'What if there is no signal in the hangar?', a: 'Keep working. Checklist steps, clocking in and out, and job photos save on the phone and send automatically when you are back online, with the time you actually did them.' },
   { q: 'Can I bring my data from my current software?', a: 'Yes. Export a spreadsheet from Jobber, Housecall Pro or any other tool and import your customers, aircraft, boats, vehicles and services with prices. Tarmo matches the columns, skips duplicates and fills US aircraft in from the FAA registry.' },
   { q: 'Does it work with QuickBooks and my calendar?', a: 'Yes. Invoices and payments sync to QuickBooks Online, and your schedule can show in Google, Apple or Outlook calendars, for the whole company or just one technician.' },
-  { q: 'Can customers book from my own website?', a: 'Yes. Turn on your booking page in Settings, then add the link, a “Book a detail” button or the full form to your website (Wix, Squarespace, WordPress, GoDaddy, Shopify or any site). Each booking lands in Tarmo as a request and a lead, with the customer and their aircraft, boat or vehicle already added (US aircraft are filled in from the FAA registry), and you get a notification and an email.' },
+  { q: 'Can customers book from my own website?', a: 'Yes. Turn on your booking page in Settings, then add the link, a “Book a detail” button or the full form to your website (Wix, Squarespace, WordPress, GoDaddy, Shopify or any site). Customers can add photos, and Tarmo’s AI turns them into a condition report with suggested services so you can send a price. Each booking lands in Tarmo as a request and a lead, with the customer and their aircraft, boat or vehicle already added (US aircraft are filled in from the FAA registry), and you get a notification and an email. Choose a dark or light style to match your website.' },
   { q: 'Can I take my data with me?', a: 'Always. The owner can export customers, assets, jobs, quotes, invoices and photos at any time.' },
 ];
 
