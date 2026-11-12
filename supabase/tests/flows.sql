@@ -1133,19 +1133,15 @@ begin
   assert (public.ai_allowance(o) ->> 'left')::int = 2 and (public.ai_allowance(o) ->> 'used')::int = 15, 'allowance';
   update organizations set plan = 'solo', plan_expires_at = now() + interval '30 days' where id = o;
   assert public.ai_included(o) = 25 and (public.ai_allowance(o) ->> 'left')::int = 12, 'solo: 25 + 2 extra - 15 used';
-  assert not public.plan_allows(o, 'job_costing') and not public.plan_allows(o, 'photo_quotes'), 'solo lacks Team features';
+  assert public.plan_allows(o, 'job_costing') and public.plan_allows(o, 'photo_quotes') and public.plan_allows(o, 'quality_check'), 'solo has photo quotes, QC and job costing';
+  assert not public.plan_allows(o, 'certification') and not public.plan_allows(o, 'team') and not public.plan_allows(o, 'branches'), 'solo lacks team-size features';
 end $$;
 set role authenticated;
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000000a1', false);
 do $$
 declare o uuid := (select v from ctx where k = 'edge');
 begin
-  begin
-    perform public.job_costing_report(o, current_date - 1, current_date + 1);
-    raise exception 'job costing needs Team';
-  exception when raise_exception then
-    if sqlerrm not like 'PLAN_FEATURE%' then raise; end if;
-  end;
+  perform public.job_costing_report(o, current_date - 1, current_date + 1); -- every plan
   begin
     perform public.set_skill(o, '00000000-0000-0000-0000-0000000000a2', 'interior_detail', 'certified');
     raise exception 'certification needs Team';

@@ -35,23 +35,24 @@ export const QUESTIONS_PER_EXTRA_CHECK = 10;
 
 const askLine = (n: number) => `Ask ${APP_NAME} AI assistant: ${n.toLocaleString('en-US')} questions/month`;
 
-/** Team and above: customer photo quotes, technician certification, quality checks, job costing report. */
-const TEAM_EXTRAS: Feature[] = ['photo_quotes', 'certification', 'quality_check', 'job_costing'];
+/** Team and above: technician certification (it needs a team). */
+const TEAM_EXTRAS: Feature[] = ['certification'];
 
-const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'expenses', 'recurring', 'texting', 'inventory', 'reports', 'pipeline', 'unlimited_customers'];
+const CORE: Feature[] = ['online_payments', 'customer_portal', 'reminders', 'expenses', 'recurring', 'texting', 'inventory', 'reports', 'pipeline', 'unlimited_customers',
+  'photo_quotes', 'quality_check', 'job_costing'];
 
 export const PLANS: PlanInfo[] = [
   {
     id: 'solo', name: 'Solo', monthly: 69.99, annual: 699.99, seats: 1, customerLimit: null, feeBps: 100, texts: 250, aiChecks: 25, aiQuestions: 300,
     features: CORE,
     blurb: 'For an independent detailer running the whole business from one phone.',
-    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal & card payments', '25 AI photo checks / month', askLine(300), '250 customer texts / month'],
+    highlights: ['Customers, assets, quotes, jobs & invoices', 'Step-by-step SOPs, condition & size pricing', 'FAA tail number lookup & quote margins', 'Customer portal, website booking & card payments', 'Customer photo quotes, quality checks & job costing', '25 AI photo checks / month', askLine(300), '250 customer texts / month'],
   },
   {
     id: 'team', name: 'Team', monthly: 119.99, annual: 1199.99, seats: 10, customerLimit: null, feeBps: 75, texts: 1000, aiChecks: 150, aiQuestions: 2000,
     features: [...CORE, 'team', 'timesheet_approvals', ...TEAM_EXTRAS],
     blurb: 'For a company coordinating a detailing crew.',
-    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification & quality checks', 'Job costing: profit by class, model & type', 'Customer photo quotes in the portal', '150 AI photo checks / month', askLine(2000), '1,000 customer texts / month'],
+    highlights: ['Everything in Solo', 'Up to 10 team members with roles', 'Crew scheduling, dispatch & timesheet approvals', 'Technician certification per SOP', '150 AI photo checks / month', askLine(2000), '1,000 customer texts / month'],
   },
   {
     id: 'fleet', name: 'Fleet', monthly: 219.99, annual: 2199.99, seats: Infinity, customerLimit: null, feeBps: 50, texts: 3000, aiChecks: 500, aiQuestions: 6000,
