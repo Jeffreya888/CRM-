@@ -7,6 +7,7 @@ import { BusinessTypeCard } from '../../components/settings/BusinessTypeCard';
 import { AiPlaybookCard } from '../../components/settings/AiPlaybookCard';
 import { FranchiseCard } from '../../components/settings/FranchiseCard';
 import { JobCostingCard } from '../../components/settings/JobCostingCard';
+import { WebsiteBookingCard } from '../../components/settings/WebsiteBookingCard';
 import { WorkModeCard } from '../../components/settings/WorkModeCard';
 import { appVersion, openSite, SITE } from '../../components/settings/links';
 import { PaymentsCard } from '../../components/settings/PaymentsCard';
@@ -233,6 +234,12 @@ export default function Settings() {
           <T variant="small" style={{ marginTop: space.xs }}>Applied to Tarmo price guide suggestions so they match prices in your area.</T>
         </Card>
       </Section>
+
+      {admin ? (
+        <Section title="Website booking" icon="globe-outline">
+          <WebsiteBookingCard orgId={orgId} isDemo={isDemo} />
+        </Section>
+      ) : null}
 
       {admin ? (
         <Section title="Where you work" icon="navigate-outline">

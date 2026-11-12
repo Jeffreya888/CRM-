@@ -1,9 +1,11 @@
-// A franchise brand's public booking page: gettarmo.com/book/<slug>.
-// The request goes to the location that covers the customer's airport (or zip code), else HQ.
+// Public booking pages at gettarmo.com/book/<slug>:
+// - a company's own page (its website links to it, or embeds it with ?embed=1): the booking goes into that company's Tarmo;
+// - a franchise brand's page: the request goes to the location that covers the customer's airport (or zip code), else HQ.
 import { useLocalSearchParams } from 'expo-router';
 import Head from 'expo-router/head';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TextInput, View } from 'react-native';
+import { CompanyBooking, type CompanyInfo } from '../../../components/site/CompanyBooking';
 import { Input } from '../../../components/site/SupportForm';
 import { CTAButton, Container, Glass, Glow, Heading, Ionicons, P, fontFamily, site, useBreakpoint } from '../../../components/site/primitives';
 import { APP_NAME } from '../../../lib/config';
@@ -13,7 +15,31 @@ import { colors } from '../../../lib/theme';
 type Info = { name: string; locations: { name: string; airports: string[] }[] };
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-export default function BrandBooking() {
+export default function BookingPage() {
+  const { slug, embed } = useLocalSearchParams<{ slug: string; embed?: string }>();
+  const [company, setCompany] = useState<CompanyInfo | null | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    callFunction<CompanyInfo>('website-booking', { action: 'info', slug })
+      .then((d) => { if (alive) setCompany(d); })
+      .catch(() => { if (alive) setCompany(null); });
+    return () => { alive = false; };
+  }, [slug]);
+  if (company === undefined) {
+    return <View style={{ flex: 1, backgroundColor: site.bg, minHeight: '100%' as any, alignItems: 'center', justifyContent: 'center', padding: 40 }}><ActivityIndicator color={site.blueText} /></View>;
+  }
+  if (company) {
+    return (
+      <>
+        <Head><title>{`Book a detail · ${company.name}`}</title><meta name="description" content={`Request a detail from ${company.name}.`} /></Head>
+        <CompanyBooking slug={slug} info={company} embed={embed === '1'} />
+      </>
+    );
+  }
+  return <BrandBooking />;
+}
+
+function BrandBooking() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { isMobile } = useBreakpoint();
   const [info, setInfo] = useState<Info | null>(null);

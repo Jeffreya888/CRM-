@@ -1937,4 +1937,60 @@ reset role;
 delete from platform_admins where user_id = '00000000-0000-0000-0000-0000000000d5';
 select set_config('request.jwt.claim.sub', '', false);
 
+-- ---------- Website booking page ------------------------------------------------
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+do $$ declare s text; st jsonb; begin
+  s := public.set_booking_page((select v from ctx where k='calco')::uuid, true, 'Calendar Co Detailing!', 'Tell us about your aircraft.');
+  assert s = 'calendar-co-detailing', 'slug cleaned: ' || s;
+  st := public.booking_page_status((select v from ctx where k='calco')::uuid);
+  assert (st->>'enabled')::boolean and st->>'slug' = 'calendar-co-detailing', 'status: ' || st::text;
+  begin perform public.set_booking_page((select v from ctx where k='calco')::uuid, true, 'a!', null); raise exception 'bad slug accepted';
+  exception when raise_exception then if sqlerrm not like 'Use 3 to 40%' then raise; end if; end;
+  begin perform public.booking_page_submit('calendar-co-detailing', 'x', 'x@example.com', null, null, null, null, null, null, null, '[]', null); raise exception 'callable by users';
+  exception when insufficient_privilege then null; end;
+end $$;
+reset role;
+do $$ declare i jsonb; r jsonb; v_org uuid := (select v from ctx where k='calco')::uuid; v_svc uuid; n_cust int; n_ac int; begin
+  i := public.booking_page_info('calendar-co-detailing');
+  assert i->>'name' = 'Calendar Co' and i->>'message' = 'Tell us about your aircraft.', 'info: ' || coalesce(i::text, 'null');
+  select id into v_svc from services where org_id = v_org and active limit 1;
+  r := public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'Pat@Example.com', '555-0100', 'Pat Air', 'aircraft', 'n 123ab', 'Citation XLS+',
+    v_svc, 'KHOU Signature', '["2026-12-03T12:00:00"]', 'Needs brightwork', 'iphash1');
+  assert r->>'company' = 'Calendar Co', 'submit: ' || r::text;
+  assert exists (select 1 from customers where org_id = v_org and email = 'pat@example.com' and source = 'Website booking'), 'customer created';
+  assert exists (select 1 from aircraft where org_id = v_org and tail_number = 'N123AB' and asset_type = 'aircraft'), 'aircraft created';
+  assert exists (select 1 from booking_requests b where b.org_id = v_org and b.service_id = v_svc and b.aircraft_id is not null and b.status = 'pending'
+    and b.notes like '%KHOU Signature%' and b.preferred @> '["2026-12-03T12:00:00"]'), 'request created';
+  assert exists (select 1 from opportunities where org_id = v_org and source = 'Website booking' and stage = 'new' and title like '%N123AB%'), 'lead created';
+  -- Same person, same aircraft: reuses both.
+  select count(*) into n_cust from customers where org_id = v_org; select count(*) into n_ac from aircraft where org_id = v_org;
+  perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'pat@example.com', null, null, 'aircraft', 'N123AB', null, null, null, '[]', null, 'iphash1');
+  assert (select count(*) from customers where org_id = v_org) = n_cust and (select count(*) from aircraft where org_id = v_org) = n_ac, 'reused customer and aircraft';
+  -- A boat with no service.
+  perform public.booking_page_submit('calendar-co-detailing', 'Sam Boat', 'sam@example.com', null, null, 'watercraft', 'Sea Breeze', 'Sea Ray 45 ft', null, 'Lakewood YC', '[]', null, 'iphash2');
+  assert exists (select 1 from aircraft where org_id = v_org and tail_number = 'Sea Breeze' and asset_type = 'watercraft'), 'boat created';
+  -- Limits: 5 a day per email.
+  perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'pat@example.com', null, null, null, null, null, null, null, '[]', null, 'iphash3');
+  perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'pat@example.com', null, null, null, null, null, null, null, '[]', null, 'iphash3');
+  perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'pat@example.com', null, null, null, null, null, null, null, '[]', null, 'iphash3');
+  begin perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'pat@example.com', null, null, null, null, null, null, null, '[]', null, 'iphash3');
+    raise exception 'limit not applied';
+  exception when raise_exception then if sqlerrm not like 'We already have%' then raise; end if; end;
+  begin perform public.booking_page_submit('calendar-co-detailing', 'P', 'bad', null, null, null, null, null, null, null, '[]', null, null); raise exception 'bad input accepted';
+  exception when raise_exception then if sqlerrm not like 'Please enter%' then raise; end if; end;
+  assert (select count(*) from website_bookings where org_id = v_org) = 6, 'six bookings logged';
+end $$;
+set role authenticated;
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000000a', false);
+select public.set_booking_page((select v from ctx where k='calco')::uuid, false, 'calendar-co-detailing', null);
+reset role;
+do $$ begin
+  assert public.booking_page_info('calendar-co-detailing') is null, 'off page hidden';
+  begin perform public.booking_page_submit('calendar-co-detailing', 'Pat Owner', 'new@example.com', null, null, null, null, null, null, null, '[]', null, null);
+    raise exception 'off page accepted a booking';
+  exception when raise_exception then if sqlerrm <> 'This booking page is not available' then raise; end if; end;
+end $$;
+select set_config('request.jwt.claim.sub', '', false);
+
 \echo ALL FLOW TESTS PASSED

@@ -464,6 +464,9 @@ verify_jwt = false
 [functions.brand-request]
 verify_jwt = false
 
+[functions.website-booking]
+verify_jwt = false   # Public booking page on each company's website
+
 [functions.calendar-feed]
 verify_jwt = false
 
